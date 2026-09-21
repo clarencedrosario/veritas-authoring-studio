@@ -1,0 +1,292 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* VERITAS Official Visual Identity Tokens */
+    --veritas-burgundy: #5A1832;
+    --veritas-burgundy-deep: #35101F;
+    --veritas-gold: #C29A52;
+    --veritas-gold-dark: #9A7438;
+    --veritas-parchment: #EDE4D6;
+    --veritas-ivory: #F6F0E7;
+    --veritas-taupe: #D8CCBC;
+    --veritas-charcoal: #292521;
+    --veritas-muted: #71685E;
+    --veritas-border: #CBBEAC;
+
+    /* Base theme variables mapped to Veritas Palette */
+    --app-bg: #EDE4D6;             /* Warm Parchment */
+    --app-surface: #F6F0E7;        /* Soft Ivory / Book Paper */
+    --app-surface-subtle: #E5DACB; /* Slightly deeper parchment */
+    --app-surface-elevated: #FAF6EE;
+    --app-border: #CBBEAC;         /* Subtle Border */
+    --app-border-subtle: #D8CCBC;  /* Warm Taupe */
+    --app-border-strong: #9A7438;  /* Dark Antique Gold */
+    --app-text-primary: #292521;   /* Ink Charcoal */
+    --app-text-secondary: #71685E; /* Muted Text */
+    --app-text-tertiary: #8C8276;
+    --app-accent: #5A1832;         /* Primary Burgundy */
+    --app-accent-hover: #35101F;   /* Deep Burgundy */
+    --app-accent-subtle: #F6F0E7;
+    --app-accent-text: #C29A52;    /* Antique Gold */
+
+    /* Legacy compatibility mappings updated to Veritas Brand */
+    --surf-bg: #EDE4D6;
+    --surf-surface: #F6F0E7;
+    --surf-border: #CBBEAC;
+    --surf-navy: #35101F;
+    --surf-navy-subtle: #71685E;
+    --surf-blue: #5A1832;
+    --surf-blue-light: #C29A52;
+    --surf-sky: #EDE4D6;
+    --surf-sky-border: #CBBEAC;
+    --sunny-orange: #C29A52;       /* Replaced with Antique Gold */
+    --sunny-orange-warm: #9A7438;
+
+    /* Semantic Contrast Tokens for Surfaces */
+    --text-on-dark: #F6F0E7;
+    --text-on-dark-secondary: #D8CCBD;
+    --text-on-dark-muted: #B8AFA6;
+    --text-on-burgundy: #F6F0E7;
+    --text-on-burgundy-secondary: #E3D6C7;
+    --text-on-light: #292521;
+    --text-on-light-secondary: #625A52;
+  }
+
+  .dark {
+    /* Refined Veritas Scholar Dark Palette: Deep Burgundy/Oxblood & Antique Gold on Charcoal */
+    --veritas-burgundy: #5A1832;
+    --veritas-burgundy-deep: #35101F;
+    --veritas-gold: #C29A52;
+    --veritas-gold-dark: #9A7438;
+    --veritas-parchment: #23161d;
+    --veritas-ivory: #2c1b25;
+    --veritas-taupe: #3e2735;
+    --veritas-charcoal: #F6F0E7;
+    --veritas-muted: #c9b9a6;
+    --veritas-border: #4d2b3b;
+
+    /* Semantic Contrast Tokens for Surfaces (Dark Mode) */
+    --text-on-dark: #F6F0E7;
+    --text-on-dark-secondary: #D8CCBD;
+    --text-on-dark-muted: #B8AFA6;
+    --text-on-burgundy: #F6F0E7;
+    --text-on-burgundy-secondary: #E3D6C7;
+    --text-on-light: #292521;
+    --text-on-light-secondary: #625A52;
+
+    --app-bg: #1e0f18;             /* Deep Oxblood Charcoal */
+    --app-surface: #2b1622;        /* Burgundy Dark Surface */
+    --app-surface-subtle: #24111d;
+    --app-surface-elevated: #35101F; /* Deep Burgundy */
+    --app-border: #4f2c3d;
+    --app-border-subtle: #3d1f2e;
+    --app-border-strong: #C29A52;  /* Antique Gold */
+    --app-text-primary: #F6F0E7;   /* Soft Ivory on dark */
+    --app-text-secondary: #c9b9a6;
+    --app-text-tertiary: #a09282;
+    --app-accent: #C29A52;         /* Antique Gold */
+    --app-accent-hover: #9A7438;
+    --app-accent-subtle: #35101F;
+    --app-accent-text: #F6F0E7;
+
+    --surf-bg: #1e0f18;
+    --surf-surface: #2b1622;
+    --surf-border: #4f2c3d;
+    --surf-navy: #F6F0E7;
+    --surf-navy-subtle: #c9b9a6;
+    --surf-blue: #C29A52;
+    --surf-blue-light: #C29A52;
+    --surf-sky: #2b1622;
+    --surf-sky-border: #4f2c3d;
+    --sunny-orange: #C29A52;
+    --sunny-orange-warm: #9A7438;
+  }
+
+  html, body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    letter-spacing: -0.011em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: var(--app-bg);
+    color: var(--app-text-primary);
+  }
+  
+  /* Discreet, minimal custom scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #CBBEAC;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #9A7438;
+  }
+}
+
+/* Veritas Button Standards (40-44px height, 15-16px text) */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 8px;
+  min-height: 42px;
+  transition: all 150ms ease;
+  background-color: #5A1832;
+  color: #F6F0E7;
+  padding: 8px 18px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.08);
+}
+.btn-primary:hover {
+  background-color: #35101F;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 500;
+  border-radius: 8px;
+  min-height: 42px;
+  transition: all 150ms ease;
+  background-color: #F6F0E7;
+  color: #292521;
+  border: 1px solid #CBBEAC;
+  padding: 8px 18px;
+}
+.btn-secondary:hover {
+  background-color: #EDE4D6;
+  border-color: #9A7438;
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 500;
+  border-radius: 8px;
+  min-height: 42px;
+  transition: all 150ms ease;
+  background-color: transparent;
+  color: #71685E;
+  padding: 8px 14px;
+}
+.btn-ghost:hover {
+  background-color: #EDE4D6;
+  color: #292521;
+}
+
+/* Veritas Academic Publishing Typography System */
+.veritas-page-title {
+  font-size: 28px;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+@media (min-width: 640px) {
+  .veritas-page-title {
+    font-size: 32px;
+  }
+}
+
+.veritas-section-title {
+  font-size: 20px;
+  line-height: 1.3;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+@media (min-width: 640px) {
+  .veritas-section-title {
+    font-size: 22px;
+  }
+}
+
+.veritas-card-title {
+  font-size: 17px;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+@media (min-width: 640px) {
+  .veritas-card-title {
+    font-size: 18px;
+  }
+}
+
+.veritas-prompt-text {
+  font-size: 17px;
+  line-height: 1.5;
+  font-weight: 600;
+}
+@media (min-width: 640px) {
+  .veritas-prompt-text {
+    font-size: 18px;
+  }
+}
+
+.veritas-body {
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.veritas-body-secondary {
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.veritas-label {
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.veritas-meta {
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+/* Meaningful Status Badges */
+.badge-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 6px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+/* Legacy utility mappings for non-regressing view styles */
+.surf-header-pill {
+  background-color: #F6F0E7;
+  border-color: #CBBEAC;
+  color: #292521;
+}
+
+.surf-card {
+  background-color: #F6F0E7;
+  border: 1px solid #CBBEAC;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+}
+
+/* Contrast Token Helpers */
+.text-on-dark { color: var(--text-on-dark); }
+.text-on-dark-secondary { color: var(--text-on-dark-secondary); }
+.text-on-dark-muted { color: var(--text-on-dark-muted); }
+.text-on-burgundy { color: var(--text-on-burgundy); }
+.text-on-burgundy-secondary { color: var(--text-on-burgundy-secondary); }
+.text-on-light { color: var(--text-on-light); }
+.text-on-light-secondary { color: var(--text-on-light-secondary); }
+

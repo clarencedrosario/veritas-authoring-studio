@@ -1,0 +1,6 @@
+{
+  "name": "Novel Organizer & Humanized Writer",
+  "description": "Comprehensive novel planning, drafting, and Style Consistency & Humanized Voice Guard platform, alongside multi-board K-12 English Language & Grammar series authoring across CISCE (ICSE/ISC), CBSE, and Cambridge International, featuring global context switching, tri-board curriculum comparative matrix, board question blueprints, sentence diagramming, and automated quality audits.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
