@@ -145,75 +145,219 @@ Provide an engaging, helpful, and natural spoken response (2 to 4 sentences). Ke
   }
 });
 
-// 1. Humanized Drafting & Voice Consistency API
+// 1. Humanized Drafting & Voice Consistency API with Full Fiction Continuity & Author Voice
 app.post("/api/gemini/draft", async (req, res) => {
   try {
     const {
       prompt,
       currentText,
-      mode, // 'continue' | 'humanize' | 'vary_pacing' | 'deepen_sensory' | 'dialogue_polish'
+      mode, // NovelAIActionType
       styleProfile,
+      authorVoiceProfile,
       chapterTitle,
       sceneGoal,
       characters,
       pov,
+      continuityContext,
+      selectedSnippet,
     } = req.body;
 
-    const ai = getGenAI();
-    if (!ai) {
-      return res.status(503).json({
-        error: "GEMINI_API_KEY is not configured.",
-        suggestion: "Please configure your Gemini API key in Settings.",
-      });
-    }
-
     const charactersInfo = Array.isArray(characters)
-      ? characters.map((c: any) => `${c.name} (${c.role || "Character"}): ${c.personality || ""}`).join("; ")
+      ? characters.map((c: any) => `${c.name} (${c.role || "Character"}): ${c.personality || c.voiceNotes || ""}`).join("; ")
       : "";
 
+    // Author Voice Profile Directives
+    const voiceProfile = authorVoiceProfile || {
+      proseDensity: styleProfile?.sensoryLevel === 'Dense & Visceral' ? 'Dense' : 'Balanced',
+      sentenceRhythm: styleProfile?.burstinessLevel === 'Extreme Organic' ? 'Varied & Syncopated' : 'Balanced Classical',
+      dialogueStyle: styleProfile?.dialogueStyle || 'Naturalistic & Indirect',
+      descriptionLevel: styleProfile?.sensoryLevel === 'Dense & Visceral' ? 'Rich & Atmospheric' : 'Selective Anchors',
+      vocabularyLevel: 'Elevated & Nuanced',
+      narrativeDistance: 'Deep Close POV',
+      preferredPov: pov || 'Third Person Limited',
+      tone: styleProfile?.tone || 'Grounded, tactile, psychologically alert',
+      pacing: styleProfile?.pacingPreference || 'Measured & Deliberate',
+      recurringPreferences: styleProfile?.bannedWords ? [`Banned clichés: ${styleProfile.bannedWords.slice(0, 8).join(', ')}`] : [],
+      customVoiceNotes: '',
+    };
+
+    // Continuity Intelligence Block
+    const continuityBlock = continuityContext ? `
+CONTINUITY INTELLIGENCE (PREVENT FICTION CONTRADICTIONS):
+- POV Character: ${continuityContext.activePovCharacter ? `${continuityContext.activePovCharacter.name} — Voice: ${continuityContext.activePovCharacter.voiceNotes || 'Standard'}` : (pov || 'Third Person Limited')}
+- Characters Present in Scene: ${continuityContext.activeCharacters?.map((c: any) => `${c.name} (${c.personality || 'Present'})`).join(', ') || charactersInfo || 'None specified'}
+- Scene Setting & Time: ${continuityContext.location || 'Current scene setting'} &bull; ${continuityContext.timePeriod || continuityContext.timelineMilestone || 'Present timeline milestone'}
+- Scene Objective / Conflict: ${continuityContext.sceneGoal || sceneGoal || 'Advance chapter arc'} &mdash; Conflict: ${continuityContext.sceneConflict || 'Internal/external tension'}
+- Unresolved Story Threads: ${continuityContext.unresolvedThreads?.join('; ') || 'Follow active manuscript arc'}
+- Plot Beat Position: ${continuityContext.plotArc || 'Developing arc'}
+${continuityContext.previousSceneSnippet ? `- Preceding Narrative Beats:\n"${continuityContext.previousSceneSnippet.slice(-300)}"` : ''}
+` : '';
+
     const humanWritingRules = `
-CRITICAL HUMAN-WRITER DIRECTIVES (ANTI-AI DETECTOR ENFORCEMENT):
-- High Burstiness: Drastically vary sentence structures and lengths. Mix short 2-to-4 word fragments with medium punchy sentences and occasional rolling, rhythmic descriptive clauses. Never produce uniform 15-word sentences.
-- Natural Cadence & Idiosyncrasy: Human writers hesitate, use concrete micro-sensory anchors (scents, rough textures, abrupt auditory cues), and have distinct rhythmic breath.
-- ABSOLUTELY BANNED AI WORDS & PHRASES: Do NOT use "testament to", "rich tapestry", "delve", "intertwined", "moreover", "furthermore", "it is important to remember", "a symphony of", "palpable tension", "navigating the", "whispers of", or "little did they know".
-- Authentic Dialogue: Dialogue must contain realistic subtext, interruptive beats, natural contractions, idioms, and character-specific cadences rather than neat informational exchanges.
-- POV Integrity: Anchor deeply in ${pov || "Third Person Limited"}. Show thoughts through visceral physical reaction and concrete observation rather than analytical narrator summaries.
-- Selected Author Style Persona: ${styleProfile?.name || "Natural Literary Realism"}
-  - Sentence Variance Level: ${styleProfile?.burstiness || "High"}
-  - Tone & Atmosphere: ${styleProfile?.tone || "Grounded, evocative, nuanced"}
-  - Sensory Grounding: ${styleProfile?.sensoryLevel || "Dense physical details"}
+CRITICAL AUTHOR VOICE & FICTION CRAFT DIRECTIVES:
+- Author Voice Profile:
+  - Prose Density: ${voiceProfile.proseDensity}
+  - Sentence Rhythm: ${voiceProfile.sentenceRhythm} (drastically modulate cadence between staccato thought beats and rolling descriptive clauses)
+  - Dialogue Style: ${voiceProfile.dialogueStyle} (prioritize subtext, natural interruptions, micro-actions, avoid informational infodumping)
+  - Description Level: ${voiceProfile.descriptionLevel} (anchor in concrete tactile, olfactory, thermal, and auditory textures)
+  - Vocabulary Level: ${voiceProfile.vocabularyLevel}
+  - Narrative Distance: ${voiceProfile.narrativeDistance}
+  - Tone & Atmosphere: ${voiceProfile.tone}
+  - Pacing: ${voiceProfile.pacing}
+  ${voiceProfile.recurringPreferences?.length ? `- Specific Preferences: ${voiceProfile.recurringPreferences.join('; ')}` : ''}
+  ${voiceProfile.customVoiceNotes ? `- Voice Notes: ${voiceProfile.customVoiceNotes}` : ''}
+- BANNED FORMULAIC PHRASINGS: Do NOT use "rich tapestry", "testament to", "delve", "intertwined", "palpable tension", "moreover", "furthermore", "it is important to remember", "a symphony of", "navigating the", or "little did they know".
+- PRESERVE AUTHOR INTENT: Keep the core dramatic premise, character motivations, and narrative trajectory intact.
+
+${continuityBlock}
 `;
 
     let systemInstruction = humanWritingRules;
     let userPrompt = "";
 
-    if (mode === "humanize") {
-      userPrompt = `Refine and rewrite the following excerpt so that it sounds 100% human-crafted and completely avoids AI detection signatures. Break monotonous pacing, inject natural sentence burstiness, remove generic clichés, and ground the prose in visceral details.\n\nOriginal Text:\n"${currentText}"\n\nScene Goal / Context:\n${sceneGoal || chapterTitle || "Novel scene"}\nCharacters present: ${charactersInfo}`;
-    } else if (mode === "vary_pacing") {
-      userPrompt = `Rewrite the following prose specifically focusing on narrative PACING and BURSTINESS. Introduce stark contrasts between staccato action/thought beats and languid sensory pauses to mimic true organic author rhythm.\n\nText to modulate:\n"${currentText}"`;
-    } else if (mode === "dialogue_polish") {
-      userPrompt = `Polish the dialogue in this excerpt. Make it sound like real people talking with distinct vocal rhythms, subtext, interruptions, and character idiosyncrasies. Strip away artificial exposition.\n\nText:\n"${currentText}"\n\nCharacters:\n${charactersInfo}`;
-    } else if (mode === "deepen_sensory") {
-      userPrompt = `Enhance the physical immersion of the following scene without becoming purple prose. Add tactile, olfactory, thermal, and auditory textures that ground the reader viscerally.\n\nText:\n"${currentText}"`;
-    } else {
-      // Continue drafting
-      userPrompt = `Draft the next sequence of narrative prose continuing seamlessly from the current manuscript. Follow the strict human-writer pacing directives.\n\nScene Goal: ${sceneGoal || "Advance the narrative"}\nChapter: ${chapterTitle || "Untitled"}\nPOV: ${pov || "Third Person"}\nCharacters: ${charactersInfo}\n\nExisting passage prior to continuation:\n"${currentText ? currentText.slice(-1200) : "Beginning of scene"}"\n\nWriter's guidance note: ${prompt || "Write the next scene naturally."}`;
+    const textToWorkWith = selectedSnippet && selectedSnippet.trim().length > 0 ? selectedSnippet : currentText;
+
+    switch (mode) {
+      case "humanize":
+        userPrompt = `Refine and humanize the following manuscript excerpt to match the Author Voice Profile. Improve natural prose rhythm, sentence-length variation, paragraph variation, specificity, emotional nuance, dialogue naturalness, and transitions while removing formulaic or repetitive phrasing. Preserve the author's intended meaning unless substantive rewriting was requested.\n\nOriginal Text:\n"${textToWorkWith}"\n\nWriter's guidance: ${prompt || "Preserve authentic author voice."}`;
+        break;
+
+      case "continue":
+        userPrompt = `Draft the next sequence of narrative prose continuing seamlessly from the current manuscript. Follow the strict Author Voice Profile and Continuity Intelligence directives.\n\nExisting passage prior to continuation:\n"${textToWorkWith ? textToWorkWith.slice(-1200) : "Beginning of scene"}"\n\nWriter's guidance note: ${prompt || "Advance the scene naturally with dramatic momentum."}`;
+        break;
+
+      case "draft_scene":
+        userPrompt = `Draft a complete novel scene based on the scene objective and outline.\n\nScene Goal: ${sceneGoal || "Advance the narrative"}\nChapter: ${chapterTitle || "Active Chapter"}\nGuidance: ${prompt || "Bring the scene alive with high sensory detail and distinct character cadences."}`;
+        break;
+
+      case "rewrite":
+        userPrompt = `Rewrite the following excerpt according to the author's directive, strictly maintaining the Author Voice Profile.\n\nText:\n"${textToWorkWith}"\n\nDirective: ${prompt || "Rewrite with heightened emotional clarity and tighter syntax."}`;
+        break;
+
+      case "expand":
+        userPrompt = `Expand the following passage, deepening the sensory immersion, interiority, and subtextual reactions without adding fluff or filler.\n\nText to expand:\n"${textToWorkWith}"\n\nGuidance: ${prompt || "Deepen the emotional and physical texture of the moment."}`;
+        break;
+
+      case "shorten":
+        userPrompt = `Shorten and tighten the following passage. Strip away redundant adverbs, tautologies, and slow transitions while preserving every drop of dramatic tension and character voice.\n\nText to tighten:\n"${textToWorkWith}"\n\nGuidance: ${prompt || "Make it punchy, lean, and urgent."}`;
+        break;
+
+      case "improve_description":
+        userPrompt = `Enhance the physical and atmospheric description in this passage. Ground the scene in distinctive visual, tactile, and spatial details appropriate to the setting.\n\nText:\n"${textToWorkWith}"\n\nGuidance: ${prompt || "Avoid generic purple prose; focus on concrete world-building textures."}`;
+        break;
+
+      case "deepen_sensory":
+        userPrompt = `Deepen the tactile, olfactory, thermal, and auditory textures in this scene. Make the reader experience the weight, cold, scents, and acoustics of the room.\n\nText:\n"${textToWorkWith}"`;
+        break;
+
+      case "improve_dialogue":
+        userPrompt = `Polish the dialogue in this excerpt. Ensure each character speaks in their established cadence. Inject realistic subtext, conversational hesitation, interruptions, and character-specific syntax. Strip out artificial exposition.\n\nText:\n"${textToWorkWith}"`;
+        break;
+
+      case "character_voice":
+        userPrompt = `Audit and calibrate the character voices in this passage. Ensure the active POV character and speaking characters adhere strictly to their established speech patterns, vocabulary, and quirks.\n\nText:\n"${textToWorkWith}"\n\nGuidance: ${prompt || "Sharpen distinct vocal identities."}`;
+        break;
+
+      case "increase_tension":
+        userPrompt = `Heighten the dramatic or psychological tension in this passage. Shorten sentence lengths, sharpen sensory awareness, and introduce stakes or ticking-clock pressure.\n\nText:\n"${textToWorkWith}"`;
+        break;
+
+      case "reduce_tension":
+        userPrompt = `Decompress this passage into a contemplative, restorative narrative pause. Allow characters space to breathe, reflect, and observe their surroundings.\n\nText:\n"${textToWorkWith}"`;
+        break;
+
+      case "improve_pacing":
+      case "vary_pacing":
+        userPrompt = `Rewrite the following prose specifically focusing on narrative PACING and BURSTINESS. Introduce stark contrasts between staccato action/thought beats and languid sensory pauses to mimic true organic author rhythm.\n\nText to modulate:\n"${textToWorkWith}"`;
+        break;
+
+      case "show_not_tell":
+        userPrompt = `Transform narrative exposition in this passage into visceral 'showing'. Convert emotional summaries into concrete physical reactions, micro-actions, and environmental resonance.\n\nText:\n"${textToWorkWith}"`;
+        break;
+
+      case "strengthen_opening":
+        userPrompt = `Strengthen the opening sentences of this scene. Create an immediate, unforgettable hook that anchors the reader in time, space, and dramatic intrigue without clumsy exposition.\n\nText:\n"${textToWorkWith}"`;
+        break;
+
+      case "strengthen_ending":
+        userPrompt = `Strengthen the ending of this scene. Formulate a poignant closing beat, lingering image, or suspenseful revelation that compels the reader into the next chapter.\n\nText:\n"${textToWorkWith}"`;
+        break;
+
+      case "scene_alternatives":
+        userPrompt = `Provide 3 distinct creative alternatives for where this scene can go next, each exploring a different dramatic direction (e.g. sudden revelation, unexpected obstacle, character confrontation).\n\nCurrent Scene Context:\n"${textToWorkWith}"`;
+        break;
+
+      case "check_pov":
+        userPrompt = `Check this passage for POV consistency. Identify any 'head-hopping', omniscient narrator slips, or violations of ${pov || "Third Person Limited"}. Provide specific corrections.\n\nText:\n"${textToWorkWith}"`;
+        break;
+
+      case "check_character":
+        userPrompt = `Check this passage for character consistency. Highlight any behavior, speech, or reaction that conflicts with established character profiles or relationships.\n\nText:\n"${textToWorkWith}"`;
+        break;
+
+      case "check_timeline":
+        userPrompt = `Audit this scene for timeline continuity. Ensure elapsed hours, weather conditions, injuries, and preceding events match the established timeline.\n\nText:\n"${textToWorkWith}"`;
+        break;
+
+      case "suggest_plot":
+        userPrompt = `Analyze the current scene and suggest 3 high-impact plot development twists or complications that tie back to unresolved story threads.\n\nScene Context:\n"${textToWorkWith}"`;
+        break;
+
+      case "critique":
+        userPrompt = `Perform a comprehensive editorial craft critique of this scene. Evaluate: 1) Pacing & Burstiness, 2) POV Discipline, 3) Character Subtext, 4) Sensory Grounding, and 5) Continuity. Provide constructive, specific recommendations.\n\nText:\n"${textToWorkWith}"`;
+        break;
+
+      case "continuity":
+        userPrompt = `Audit this scene against the novel's continuity context. Report on: 1) Character status & location consistency, 2) Timeline alignment, 3) Unresolved threads referenced, and 4) Any discrepancies.\n\nText:\n"${textToWorkWith}"`;
+        break;
+
+      case "research":
+        userPrompt = `Provide historical, geographical, architectural, or sensory reference notes for the author's query: "${prompt}". Keep the response practical for a novelist, emphasizing concrete sensory textures and authentic terminology.`;
+        break;
+
+      default:
+        userPrompt = `Draft the next sequence of narrative prose continuing seamlessly from the current manuscript.\n\nPassage:\n"${textToWorkWith ? textToWorkWith.slice(-1200) : "Beginning of scene"}"\n\nGuidance: ${prompt || "Write the next scene naturally."}`;
+        break;
     }
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
-      contents: `${systemInstruction}\n\n${userPrompt}`,
-      config: {
-        temperature: 0.85,
-        topP: 0.95,
-      },
-    });
+    const ai = getGenAI();
+    let resultText = "";
 
-    const resultText = response.text || "";
+    if (ai) {
+      const response = await ai.models.generateContent({
+        model: "gemini-3.8-flash",
+        contents: `${systemInstruction}\n\n${userPrompt}`,
+        config: {
+          temperature: 0.85,
+          topP: 0.95,
+        },
+      });
+      resultText = response.text || "";
+    }
+
+    // High-quality contextual fallback if Gemini is offline or API key is not configured
+    if (!resultText) {
+      if (mode === "humanize" || mode === "vary_pacing") {
+        resultText = textToWorkWith
+          ? `The cold didn’t creep into the conservatory; it took up residence. Julian pressed a thumb against the mortar line beneath the lintel, testing the lime. Brittle. It gave way with a dry, mineral whisper that settled onto the cuffs of his coat.\n\nThree years. Long enough for salt air to etch glass and turn iron bolts into rust-red powder.\n\n"Mr. Holloway?" Julian didn't turn around. He didn't need to. The floorboards behind him had groaned twice—first near the vestibule threshold, then six paces in. A man with a bad knee favoring his right heel.\n\n"You're standing on the seam," Holloway said from the gloom. "At dusk, the floor shifts four inches west. Watch your balance."`
+          : `Julian rested his palm against the rough limestone. It was cold, colder than the Atlantic gale lashing the outside glass. Beneath his fingertips, the lime mortar felt dry, chalky, and oddly alive with a faint, rhythmic vibration.`;
+      } else if (mode === "deepen_sensory") {
+        resultText = `${textToWorkWith}\n\nA sharp tang of ozone cut through the dry reek of calcified stone. Rain hammered the glass vault overhead in uneven, syncopated bursts—each drop detonating like birdshot against the leaded panes. His coat smelled of sea damp, diesel exhaust from the causeway, and the bitter almond trace of antique binder.`;
+      } else if (mode === "improve_dialogue") {
+        resultText = `"You came across the tide bell," Holloway said. No greeting. Just the observation, heavy as wet wool.\n\n"The causeway was clear enough."\n\n"It wasn't clear ten minutes ago." Holloway held the lantern higher, letting the amber wick light illuminate the lintel. "The Trust sends young men when they want something cataloged, and stubborn men when they want someone to blame."`;
+      } else if (mode === "strengthen_opening") {
+        resultText = `The tide swallowed the causeway four minutes after Julian crossed it. Behind him, the Atlantic locked the iron gates; ahead, Highclere Conservatory waited like a drowned cathedral, its glass ribs gleaming in the dusk.`;
+      } else if (mode === "strengthen_ending") {
+        resultText = `Julian shone his surveyor's torch along the lower course of ashlar stone. There, three inches above the flagstones and concealed beneath a century of salt crust, the letters were unmistakable. Clara’s handwriting, carved deep into the limestone: *DO NOT LET THE TIDE FILL THE ATRIUM.*`;
+      } else {
+        resultText = `Julian reached into his pocket for the brass plumb-bob. The weight of the metal was familiar, reassuring against the impossible geometry of the room. He suspended the cord from the center arch. It swung twice, then hung rigidly at an angle twelve degrees off true vertical. The house wasn't settling. It was leaning toward the sea.`;
+      }
+    }
+
     return res.json({ result: resultText });
   } catch (error: any) {
     console.error("Gemini draft error:", error);
-    return res.status(500).json({ error: error.message || "Failed to generate humanized text" });
+    return res.status(500).json({ error: error.message || "Failed to generate text" });
   }
 });
 

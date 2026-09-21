@@ -3,6 +3,8 @@ import {
   Home,
   BookOpen,
   GraduationCap,
+  FileText,
+  Film,
   BookMarked,
   BarChart2,
   Settings,
@@ -10,9 +12,10 @@ import {
   Moon,
   PanelLeftClose,
   PanelLeft,
+  Feather,
 } from 'lucide-react';
 
-export type WorkspaceType = 'home' | 'novel' | 'grammar' | 'publishing' | 'analytics';
+export type WorkspaceType = 'academic' | 'novel' | 'content' | 'film' | 'publishing' | 'analytics' | 'home';
 
 interface NavigationRailProps {
   activeWorkspace: WorkspaceType;
@@ -37,17 +40,28 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
   isOnline,
   isSyncing,
 }) => {
-  const primaryNavItems: Array<{
+  // Four Primary Authoring Destinations + Supporting Destinations
+  const primaryStudios: Array<{
+    id: WorkspaceType;
+    label: string;
+    sublabel: string;
+    icon: React.ComponentType<{ className?: string }>;
+    shortcut: string;
+  }> = [
+    { id: 'academic', label: 'Academic', sublabel: 'Books', icon: GraduationCap, shortcut: '1' },
+    { id: 'novel', label: 'Novel', sublabel: 'Studio', icon: Feather, shortcut: '2' },
+    { id: 'content', label: 'Content', sublabel: 'Writing', icon: FileText, shortcut: '3' },
+    { id: 'film', label: 'Film & Script', sublabel: 'Screenplay', icon: Film, shortcut: '4' },
+  ];
+
+  const supportingItems: Array<{
     id: WorkspaceType;
     label: string;
     icon: React.ComponentType<{ className?: string }>;
     shortcut: string;
   }> = [
-    { id: 'home', label: 'Home', icon: Home, shortcut: '1' },
-    { id: 'novel', label: 'Novel', icon: BookOpen, shortcut: '2' },
-    { id: 'grammar', label: 'Grammar', icon: GraduationCap, shortcut: '3' },
-    { id: 'publishing', label: 'Publishing', icon: BookMarked, shortcut: '4' },
-    { id: 'analytics', label: 'Analytics', icon: BarChart2, shortcut: '5' },
+    { id: 'publishing', label: 'Publish', icon: BookMarked, shortcut: '5' },
+    { id: 'analytics', label: 'Stats', icon: BarChart2, shortcut: '6' },
   ];
 
   return (
@@ -63,9 +77,9 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
           V
         </div>
 
-        {/* Primary Workspace Item Stack with Permanent Text Labels */}
+        {/* Primary Authoring Studios (Academic, Novel, Content, Film) */}
         <div className="w-full flex flex-col items-center space-y-1 px-1.5">
-          {primaryNavItems.map((item) => {
+          {primaryStudios.map((item) => {
             const Icon = item.icon;
             const isActive = activeWorkspace === item.id;
             return (
@@ -73,12 +87,12 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
                 key={item.id}
                 id={`nav-rail-${item.id}`}
                 onClick={() => onSelectWorkspace(item.id)}
-                className={`group relative w-full min-h-[52px] py-1.5 px-1 rounded-xl flex flex-col items-center justify-center transition-all ${
+                className={`group relative w-full min-h-[50px] py-1.5 px-1 rounded-xl flex flex-col items-center justify-center transition-all ${
                   isActive
                     ? 'bg-[#5A1832] text-[#F6F0E7] shadow-sm font-semibold'
                     : 'text-[#D8CCBC] hover:text-[#F6F0E7] hover:bg-[#4a182b]'
                 }`}
-                title={`${item.label} (⌘${item.shortcut})`}
+                title={`${item.label} ${item.sublabel} (⌘${item.shortcut})`}
               >
                 {/* Active Indicator Bar on Edge */}
                 {isActive && (
@@ -92,7 +106,45 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
                 />
 
                 {/* Visible Label */}
-                <span className="text-[11px] leading-tight mt-1 text-center truncate max-w-full font-sans">
+                <span className="text-[10px] leading-tight mt-1 text-center truncate max-w-full font-sans font-medium">
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Divider */}
+        <div className="w-8 h-[1px] bg-[#4a182b] my-1" />
+
+        {/* Supporting Destination Stack (Publish, Stats) */}
+        <div className="w-full flex flex-col items-center space-y-1 px-1.5">
+          {supportingItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeWorkspace === item.id;
+            return (
+              <button
+                key={item.id}
+                id={`nav-rail-${item.id}`}
+                onClick={() => onSelectWorkspace(item.id)}
+                className={`group relative w-full min-h-[42px] py-1 px-1 rounded-xl flex flex-col items-center justify-center transition-all ${
+                  isActive
+                    ? 'bg-[#5A1832] text-[#F6F0E7] shadow-sm font-semibold'
+                    : 'text-[#D8CCBC] hover:text-[#F6F0E7] hover:bg-[#4a182b]'
+                }`}
+                title={`${item.label} (⌘${item.shortcut})`}
+              >
+                {isActive && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-5 rounded-r bg-[#C29A52]" />
+                )}
+
+                <Icon
+                  className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-105 ${
+                    isActive ? 'text-[#C29A52]' : 'text-[#D8CCBC]'
+                  }`}
+                />
+
+                <span className="text-[9.5px] leading-tight mt-0.5 text-center truncate max-w-full font-sans">
                   {item.label}
                 </span>
               </button>

@@ -73,6 +73,178 @@ export interface Chapter {
   status: 'Draft' | 'In Revision' | 'Final';
 }
 
+export interface AuthorVoiceProfile {
+  id?: string;
+  name?: string;
+  description?: string;
+  proseDensity: 'Sparse' | 'Balanced' | 'Dense' | 'Ornate & Layered';
+  sentenceRhythm: 'Staccato & Punchy' | 'Varied & Syncopated' | 'Rolling & Lyrical' | 'Balanced Classical';
+  dialogueStyle: 'Naturalistic & Indirect' | 'Sharp & Witty' | 'Poetic & Subtextual' | 'Period / Formal';
+  descriptionLevel: 'Minimalist Focus' | 'Selective Anchors' | 'Rich & Atmospheric' | 'Immersive Tapestry';
+  vocabularyLevel: 'Accessible & Direct' | 'Contemporary Literary' | 'Elevated & Nuanced' | 'Archaic / Stylized';
+  narrativeDistance: 'Deep Close POV' | 'Moderate Intimate' | 'Cinematic Third' | 'Panoramic Omniscient';
+  preferredPov: 'First Person' | 'Third Person Limited' | 'Third Person Omniscient' | 'Second Person';
+  tone: string;
+  pacing: 'Brisk & Urgent' | 'Measured & Deliberate' | 'Slow-Burn Tension' | 'Episodic Rhythms';
+  recurringPreferences: string[];
+  antiClichés?: string[];
+  customVoiceNotes?: string;
+}
+
+export type NovelAIActionType =
+  | 'continue'
+  | 'draft_scene'
+  | 'rewrite'
+  | 'expand'
+  | 'shorten'
+  | 'improve_description'
+  | 'deepen_sensory'
+  | 'improve_dialogue'
+  | 'dialogue_polish'
+  | 'character_voice'
+  | 'increase_tension'
+  | 'reduce_tension'
+  | 'decompress_tension'
+  | 'tighten_scene'
+  | 'expand_scene'
+  | 'improve_pacing'
+  | 'vary_pacing'
+  | 'show_not_tell'
+  | 'strengthen_opening'
+  | 'strengthen_ending'
+  | 'scene_alternatives'
+  | 'check_pov'
+  | 'check_character'
+  | 'check_timeline'
+  | 'suggest_plot'
+  | 'humanize'
+  | 'critique'
+  | 'continuity'
+  | 'research';
+
+export interface NovelContinuityContext {
+  previousSceneSnippet?: string;
+  previousSceneSummary?: string;
+  activePovName?: string;
+  charactersInScene?: string[];
+  openPlotThreads?: string[];
+  tensionLevel?: string | number;
+  activePovCharacter?: {
+    name: string;
+    role?: string;
+    voiceNotes?: string;
+    personality?: string;
+    flaws?: string;
+  };
+  activeCharacters?: Array<{
+    name: string;
+    role?: string;
+    personality?: string;
+    voiceNotes?: string;
+  }>;
+  location?: string;
+  timePeriod?: string;
+  timelineMilestone?: string;
+  sceneGoal?: string;
+  sceneConflict?: string;
+  sceneOutcome?: string;
+  unresolvedThreads?: string[];
+  plotArc?: string;
+}
+
+// ==========================================
+// CONTENT WRITING STUDIO DOMAIN TYPES
+// ==========================================
+export type ContentType = 'article' | 'essay' | 'whitepaper' | 'blog_post' | 'thought_leadership' | 'case_study';
+
+export interface ContentOutlineSection {
+  id: string;
+  title: string;
+  keyPoints: string[];
+  estimatedWords: number;
+}
+
+export interface ContentDocument {
+  id: string;
+  title: string;
+  subtitle: string;
+  contentType: ContentType;
+  targetAudience: string;
+  primaryKeyword: string;
+  secondaryKeywords: string[];
+  searchIntent: 'Informational' | 'Commercial' | 'Educational' | 'Inspirational';
+  thesisStatement: string;
+  outline: ContentOutlineSection[];
+  bodyContent: string;
+  callToAction: string;
+  targetWordCount: number;
+  wordCount: number;
+  readingTimeMinutes: number;
+  status: 'Draft' | 'In Review' | 'Polished' | 'Published';
+  tags: string[];
+  updatedAt: string;
+}
+
+export interface ContentWritingProject {
+  id: string;
+  title: string;
+  authorName: string;
+  brandOrPublication: string;
+  editorialGuidelines: string;
+  documents: ContentDocument[];
+  activeDocumentId: string;
+}
+
+// ==========================================
+// FILM & SCRIPT STUDIO DOMAIN TYPES
+// ==========================================
+export type ScriptElementType =
+  | 'scene_heading'
+  | 'action'
+  | 'character'
+  | 'parenthetical'
+  | 'dialogue'
+  | 'transition'
+  | 'shot';
+
+export interface ScriptElement {
+  id: string;
+  type: ScriptElementType;
+  text: string;
+}
+
+export interface ScriptScene {
+  id: string;
+  sceneNumber: number;
+  heading: string; // e.g. "INT. HIGHCLERE CONSERVATORY - NIGHT"
+  intExt: 'INT.' | 'EXT.' | 'INT./EXT.';
+  setting: string;
+  timeOfDay: 'DAY' | 'NIGHT' | 'DUSK' | 'DAWN' | 'CONTINUOUS' | 'LATER';
+  synopsis: string;
+  charactersPresent: string[];
+  pageLengthEstimated: number;
+  elements: ScriptElement[];
+}
+
+export interface ScriptProject {
+  id: string;
+  title: string;
+  format: 'Feature Film (Screenplay)' | 'TV Pilot (60 Min)' | 'TV Half-Hour' | 'Short Film' | 'Stage Play';
+  logline: string;
+  screenwriter: string;
+  basedOnSource?: string;
+  actStructure: '3-Act Structure' | '5-Act Structure' | 'TV 4-Act + Teaser';
+  characters: Array<{
+    id: string;
+    name: string;
+    description: string;
+    dialogueNotes: string;
+  }>;
+  scenes: ScriptScene[];
+  activeSceneId: string;
+  targetPages: number;
+}
+
 export interface StylePersona {
   id: string;
   name: string;
@@ -146,6 +318,7 @@ export interface NovelProject {
   characters: Character[];
   plotBeats: PlotBeat[];
   stylePersona: StylePersona;
+  authorVoiceProfile?: AuthorVoiceProfile;
   coverDesign: BookCoverDesign;
   team: TeamMember[];
   comments: EditorialComment[];

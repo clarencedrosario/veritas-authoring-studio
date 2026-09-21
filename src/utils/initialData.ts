@@ -36,6 +36,25 @@ export const INITIAL_NOVEL: NovelProject = {
       'little did they know',
     ],
   },
+  authorVoiceProfile: {
+    id: 'voice-evelyn-vance-1',
+    proseDensity: 'Dense',
+    sentenceRhythm: 'Varied & Syncopated',
+    dialogueStyle: 'Naturalistic & Indirect',
+    descriptionLevel: 'Rich & Atmospheric',
+    vocabularyLevel: 'Elevated & Nuanced',
+    narrativeDistance: 'Deep Close POV',
+    preferredPov: 'Third Person Limited',
+    tone: 'Haunting, tactile, precise, psychologically alert',
+    pacing: 'Measured & Deliberate',
+    recurringPreferences: [
+      'Tactile lime mortar & salt sensory anchors',
+      'Abrupt short thought beats after rhythmic sentences',
+      'Subtextual dialogue with physical micro-movements',
+      'Architectural structural analogies'
+    ],
+    customVoiceNotes: 'Preserve Julian Mercer’s hyper-observant architectural vocabulary (lintels, lime mortar, load-bearing tensions).'
+  },
   coverDesign: {
     title: 'The Architect of Echoes',
     subtitle: 'A Novel by Evelyn Vance',

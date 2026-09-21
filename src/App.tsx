@@ -49,8 +49,12 @@ import { ChapterAuthoringStudio } from './components/chapter-studio/ChapterAutho
 import { TextbookPreviewView } from './components/textbook/TextbookPreviewView';
 import { PublisherSubmissionCentre } from './components/publishing/PublisherSubmissionCentre';
 import { BookPlannerView } from './components/book-planner/BookPlannerView';
-import { GrammarSeriesProject, CurriculumSystemId, GrammarClassLevel } from './types';
+import { NovelWritingStudio } from './components/NovelWritingStudio';
+import { ContentStudioView } from './components/ContentStudioView';
+import { ScriptStudioView } from './components/ScriptStudioView';
+import { GrammarSeriesProject, CurriculumSystemId, GrammarClassLevel, ContentWritingProject, ScriptProject } from './types';
 import { getInitialGrammarSeriesProject } from './utils/grammarInitialData';
+import { INITIAL_CONTENT_PROJECT, INITIAL_SCRIPT_PROJECT } from './utils/initialStudioData';
 import { getDefaultCurriculumMatrix } from './utils/spiralMatrixData';
 import { resolveActiveBookContext, switchActiveBookProject } from './utils/activeBookContext';
 
@@ -195,11 +199,46 @@ export default function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showLiveVoiceModal, setShowLiveVoiceModal] = useState(false);
 
+  // Content Studio & Script Studio Projects
+  const [contentProject, setContentProject] = useState<ContentWritingProject>(() => {
+    const saved = localStorage.getItem('veritas_content_project_v1');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse saved content project', e);
+      }
+    }
+    return INITIAL_CONTENT_PROJECT;
+  });
+
+  const [scriptProject, setScriptProject] = useState<ScriptProject>(() => {
+    const saved = localStorage.getItem('veritas_script_project_v1');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse saved script project', e);
+      }
+    }
+    return INITIAL_SCRIPT_PROJECT;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('veritas_content_project_v1', JSON.stringify(contentProject));
+  }, [contentProject]);
+
+  useEffect(() => {
+    localStorage.setItem('veritas_script_project_v1', JSON.stringify(scriptProject));
+  }, [scriptProject]);
+
   // Workspace detection
   const getActiveWorkspace = useCallback((tab: MainTab): WorkspaceType => {
     if (tab === 'home') return 'home';
+    if (tab === 'content_studio') return 'content';
+    if (tab === 'script_studio') return 'film';
     if (isGrammarTab(tab)) {
-      return 'grammar';
+      return 'academic';
     }
     if (['design', 'querykit'].includes(tab)) {
       return 'publishing';
@@ -213,10 +252,14 @@ export default function App() {
   const handleSelectWorkspace = useCallback((ws: WorkspaceType) => {
     if (ws === 'home') {
       setCurrentTab('home');
+    } else if (ws === 'academic' || (ws as string) === 'grammar') {
+      setCurrentTab('grammar_series');
     } else if (ws === 'novel') {
       setCurrentTab('manuscript');
-    } else if (ws === 'grammar') {
-      setCurrentTab('grammar_series');
+    } else if (ws === 'content') {
+      setCurrentTab('content_studio');
+    } else if (ws === 'film') {
+      setCurrentTab('script_studio');
     } else if (ws === 'publishing') {
       setCurrentTab('querykit');
     } else if (ws === 'analytics') {
@@ -723,17 +766,40 @@ const handleRestoreSnapshot = (snapshotId: string) => {
           )}
 
           {currentTab === 'manuscript' && activeChapter && activeScene && (
-            <EditorView
+            <NovelWritingStudio
               project={project}
               activeChapter={activeChapter}
               activeScene={activeScene}
               onUpdateSceneContent={handleUpdateSceneContent}
               onUpdateSceneMeta={handleUpdateSceneMeta}
+              onUpdateProject={(updates) => setProject((prev) => ({ ...prev, ...updates }))}
               onOpenFocusMode={() => setShowFocusMode(true)}
               onOpenHumanizerPanel={() => setCurrentTab('humanizer')}
+              onNavigateToTab={(tab) => setCurrentTab(tab)}
               isDarkMode={isDarkMode}
               onAddComment={handleAddComment}
-              onNavigateToCharacters={() => setCurrentTab('characters')}
+            />
+          )}
+
+          {currentTab === 'content_studio' && (
+            <ContentStudioView
+              project={contentProject}
+              onUpdateProject={(updated) => {
+                setContentProject(updated);
+                addAuditLog('CONTENT_PROJECT_UPDATED', `Updated content project: ${updated.title}`);
+              }}
+              isDarkMode={isDarkMode}
+            />
+          )}
+
+          {currentTab === 'script_studio' && (
+            <ScriptStudioView
+              project={scriptProject}
+              onUpdateProject={(updated) => {
+                setScriptProject(updated);
+                addAuditLog('SCRIPT_PROJECT_UPDATED', `Updated script project: ${updated.title}`);
+              }}
+              isDarkMode={isDarkMode}
             />
           )}
 

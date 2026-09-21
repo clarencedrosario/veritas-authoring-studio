@@ -7,8 +7,18 @@ import {
   Search,
   ShieldCheck,
   Check,
+  Sparkles,
+  Feather,
+  Flame,
+  Volume2,
+  Compass,
+  Clock,
+  Layers,
+  ArrowRight,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
-import { NovelProject, Chapter, Scene, AIDetectorReport } from '../types';
+import { NovelProject, Chapter, Scene, AIDetectorReport, NovelAIActionType } from '../types';
 
 export interface EditorialSuggestion {
   id: string;
@@ -29,12 +39,13 @@ interface EditorialIntelligencePanelProps {
   localAnalysis: AIDetectorReport;
   onApplyImprovement: (original: string | undefined, replacement: string) => void;
   onRunDraftAction: (
-    mode: 'humanize' | 'vary_pacing' | 'deepen_sensory' | 'dialogue_polish' | 'continue' | 'critique' | 'continuity' | 'research',
+    mode: NovelAIActionType,
     customPrompt?: string
   ) => Promise<void>;
   isGenerating: boolean;
   aiActionMessage: string | null;
   onOpenDetailedHumanizer?: () => void;
+  onOpenVoiceProfile?: () => void;
   isDarkMode: boolean;
 }
 
@@ -50,9 +61,10 @@ export const EditorialIntelligencePanel: React.FC<EditorialIntelligencePanelProp
   isGenerating,
   aiActionMessage,
   onOpenDetailedHumanizer,
+  onOpenVoiceProfile,
 }) => {
   // Collapsible section states
-  const [expandedSection, setExpandedSection] = useState<'voice' | 'style' | 'continuity' | 'character' | null>(null);
+  const [expandedSection, setExpandedSection] = useState<'voice' | 'style' | 'continuity' | 'character' | 'fiction_tools' | null>('fiction_tools');
   const [reviewingSuggestionId, setReviewingSuggestionId] = useState<string | null>(null);
   const [researchPrompt, setResearchPrompt] = useState('');
 
@@ -105,7 +117,7 @@ export const EditorialIntelligencePanel: React.FC<EditorialIntelligencePanelProp
     return list;
   });
 
-  const toggleSection = (section: 'voice' | 'style' | 'continuity' | 'character') => {
+  const toggleSection = (section: 'voice' | 'style' | 'continuity' | 'character' | 'fiction_tools') => {
     setExpandedSection(expandedSection === section ? null : section);
   };
 
@@ -254,6 +266,157 @@ export const EditorialIntelligencePanel: React.FC<EditorialIntelligencePanelProp
                       Details
                     </button>
                   )}
+                </div>
+
+                {/* Author Voice Profile Quick Calibrate */}
+                {onOpenVoiceProfile && (
+                  <div className="pt-2 border-t border-[#CBBEAC]/30 dark:border-[#4f2c3d]">
+                    <button
+                      onClick={onOpenVoiceProfile}
+                      className="w-full min-h-[36px] py-1 px-2.5 rounded-xl border border-[#C29A52]/50 bg-[#C29A52]/10 hover:bg-[#C29A52]/20 text-[#5A1832] dark:text-[#C29A52] text-[11px] font-semibold transition-colors flex items-center justify-between"
+                    >
+                      <span className="flex items-center space-x-1.5 truncate">
+                        <Feather className="w-3.5 h-3.5 shrink-0 text-[#C29A52]" />
+                        <span className="truncate">Voice: {project.authorVoiceProfile?.name || 'Calibrate Profile'}</span>
+                      </span>
+                      <span className="text-[10px] font-mono shrink-0 ml-1">Configure &rarr;</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* FICTION CRAFT SUITE (TENSION, SENSORY, PACING, HOOKS) */}
+          <div className="border-b border-[#CBBEAC]/50 dark:border-[#4f2c3d] pb-3.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono uppercase tracking-widest font-bold text-[#9A7438] dark:text-[#C29A52]">
+                Fiction Craft Suite
+              </span>
+              <button
+                onClick={() => toggleSection('fiction_tools')}
+                className="text-[#71685E] hover:text-[#35101F] dark:hover:text-[#F6F0E7] p-1"
+                title="Toggle fiction craft tools"
+              >
+                {expandedSection === 'fiction_tools' ? (
+                  <ChevronUp className="w-3.5 h-3.5" />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5" />
+                )}
+              </button>
+            </div>
+
+            <div className="mt-1">
+              <div className="text-[13px] font-serif font-bold text-[#35101F] dark:text-[#F6F0E7]">
+                Narrative Levers
+              </div>
+              <div className="text-[11.5px] text-[#71685E] dark:text-[#c9b9a6] mt-0.5">
+                Prose generation &amp; structural tension
+              </div>
+            </div>
+
+            {expandedSection === 'fiction_tools' && (
+              <div className="mt-2.5 pt-2.5 border-t border-[#CBBEAC]/40 dark:border-[#4f2c3d] space-y-2.5 animate-in fade-in">
+                {/* Scene Progression Actions */}
+                <div className="space-y-1">
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-[#71685E] dark:text-[#c9b9a6] font-semibold">
+                    Prose Continuation
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      onClick={() => onRunDraftAction('continue')}
+                      disabled={isGenerating}
+                      className="min-h-[36px] px-2 rounded-xl bg-[#EDE4D6] dark:bg-[#35101F] border border-[#CBBEAC] dark:border-[#4f2c3d] hover:bg-[#5A1832] hover:text-[#F6F0E7] text-[11px] font-semibold text-[#35101F] dark:text-[#F6F0E7] transition-colors flex items-center justify-center space-x-1"
+                      title="Continue scene seamlessly from the current paragraph"
+                    >
+                      <ArrowRight className="w-3 h-3 text-[#C29A52]" />
+                      <span>Continue Scene</span>
+                    </button>
+                    <button
+                      onClick={() => onRunDraftAction('draft_scene')}
+                      disabled={isGenerating}
+                      className="min-h-[36px] px-2 rounded-xl bg-[#EDE4D6] dark:bg-[#35101F] border border-[#CBBEAC] dark:border-[#4f2c3d] hover:bg-[#5A1832] hover:text-[#F6F0E7] text-[11px] font-semibold text-[#35101F] dark:text-[#F6F0E7] transition-colors flex items-center justify-center space-x-1"
+                      title="Draft scene beats based on current scene goal"
+                    >
+                      <Sparkles className="w-3 h-3 text-[#C29A52]" />
+                      <span>Draft from Goal</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Tension & Pacing Levers */}
+                <div className="space-y-1">
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-[#71685E] dark:text-[#c9b9a6] font-semibold">
+                    Tension &amp; Pacing
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      onClick={() => onRunDraftAction('increase_tension')}
+                      disabled={isGenerating}
+                      className="min-h-[36px] px-2 rounded-xl bg-[#EDE4D6] dark:bg-[#35101F] border border-[#CBBEAC] dark:border-[#4f2c3d] hover:bg-[#5A1832] hover:text-[#F6F0E7] text-[11px] font-semibold text-[#35101F] dark:text-[#F6F0E7] transition-colors flex items-center justify-center space-x-1"
+                      title="Shorten syntax and amplify psychological stakes"
+                    >
+                      <Flame className="w-3 h-3 text-red-500" />
+                      <span>Increase Tension</span>
+                    </button>
+                    <button
+                      onClick={() => onRunDraftAction('decompress_tension')}
+                      disabled={isGenerating}
+                      className="min-h-[36px] px-2 rounded-xl bg-[#EDE4D6] dark:bg-[#35101F] border border-[#CBBEAC] dark:border-[#4f2c3d] hover:bg-[#5A1832] hover:text-[#F6F0E7] text-[11px] font-semibold text-[#35101F] dark:text-[#F6F0E7] transition-colors flex items-center justify-center space-x-1"
+                      title="Add contemplative interiority and breathing room"
+                    >
+                      <Feather className="w-3 h-3 text-[#C29A52]" />
+                      <span>Decompress</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Craft Polish */}
+                <div className="space-y-1">
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-[#71685E] dark:text-[#c9b9a6] font-semibold">
+                    Texture &amp; Dialogue
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      onClick={() => onRunDraftAction('deepen_sensory')}
+                      disabled={isGenerating}
+                      className="min-h-[36px] px-2 rounded-xl bg-[#EDE4D6] dark:bg-[#35101F] border border-[#CBBEAC] dark:border-[#4f2c3d] hover:bg-[#5A1832] hover:text-[#F6F0E7] text-[11px] font-semibold text-[#35101F] dark:text-[#F6F0E7] transition-colors"
+                      title="Anchor olfactory, tactile, and auditory atmospheric textures"
+                    >
+                      Sensory Anchors
+                    </button>
+                    <button
+                      onClick={() => onRunDraftAction('dialogue_polish')}
+                      disabled={isGenerating}
+                      className="min-h-[36px] px-2 rounded-xl bg-[#EDE4D6] dark:bg-[#35101F] border border-[#CBBEAC] dark:border-[#4f2c3d] hover:bg-[#5A1832] hover:text-[#F6F0E7] text-[11px] font-semibold text-[#35101F] dark:text-[#F6F0E7] transition-colors flex items-center justify-center space-x-1"
+                      title="Sharpen subtext and character rhythm in dialogue"
+                    >
+                      <Volume2 className="w-3 h-3 text-[#C29A52]" />
+                      <span>Polish Dialogue</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Length Levers */}
+                <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                  <button
+                    onClick={() => onRunDraftAction('tighten_scene')}
+                    disabled={isGenerating}
+                    className="min-h-[34px] px-2 rounded-xl border border-[#CBBEAC] dark:border-[#4f2c3d] hover:bg-[#EDE4D6] dark:hover:bg-[#35101F] text-[11px] font-medium text-[#71685E] dark:text-[#c9b9a6] transition-colors flex items-center justify-center space-x-1"
+                    title="Trim superfluous filler and sharpen prose"
+                  >
+                    <Minimize2 className="w-3 h-3" />
+                    <span>Tighten Scene</span>
+                  </button>
+                  <button
+                    onClick={() => onRunDraftAction('expand_scene')}
+                    disabled={isGenerating}
+                    className="min-h-[34px] px-2 rounded-xl border border-[#CBBEAC] dark:border-[#4f2c3d] hover:bg-[#EDE4D6] dark:hover:bg-[#35101F] text-[11px] font-medium text-[#71685E] dark:text-[#c9b9a6] transition-colors flex items-center justify-center space-x-1"
+                    title="Elaborate scenic physical space and interior thoughts"
+                  >
+                    <Maximize2 className="w-3 h-3" />
+                    <span>Expand Scene</span>
+                  </button>
                 </div>
               </div>
             )}

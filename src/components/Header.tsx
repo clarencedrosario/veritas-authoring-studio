@@ -165,14 +165,20 @@ export const Header: React.FC<HeaderProps> = ({
     switch (activeWorkspace) {
       case 'home':
         return 'Overview';
+      case 'academic':
+        return 'Academic Book Studio';
       case 'novel':
-        return 'Novel Studio';
-      case 'grammar':
-        return 'Academic Publishing';
+        return 'Novel Writing Studio';
+      case 'content':
+        return 'Content Writing Studio';
+      case 'film':
+        return 'Film & Script Studio';
       case 'publishing':
         return 'Publishing Suite';
       case 'analytics':
         return 'Analytics & Metrics';
+      default:
+        return 'Authoring Studio';
     }
   };
 
@@ -213,7 +219,7 @@ export const Header: React.FC<HeaderProps> = ({
           <ChevronRight className="w-3.5 h-3.5 text-[#C29A52]/60 hidden md:inline shrink-0" />
 
           {/* Publishing / Curriculum Context */}
-          {activeWorkspace === 'grammar' ? (
+          {activeWorkspace === 'academic' ? (
             <div className="relative" ref={bookSelectorRef}>
               <button
                 type="button"

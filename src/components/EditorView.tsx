@@ -20,7 +20,7 @@ import {
   CheckCircle2,
   Copy,
 } from 'lucide-react';
-import { NovelProject, Chapter, Scene, EditorialComment } from '../types';
+import { NovelProject, Chapter, Scene, EditorialComment, NovelAIActionType, NovelContinuityContext } from '../types';
 import { analyzeProseLocally } from '../utils/detectorHeuristics';
 import { EditorialToolbar } from './EditorialToolbar';
 import { SceneDossierDrawer } from './SceneDossierDrawer';
@@ -35,6 +35,7 @@ interface EditorViewProps {
   onUpdateSceneMeta: (updates: Partial<Scene>) => void;
   onOpenFocusMode: () => void;
   onOpenHumanizerPanel: () => void;
+  onOpenVoiceProfile?: () => void;
   isDarkMode: boolean;
   onAddComment: (commentText: string, quote?: string) => void;
   onNavigateToCharacters?: () => void;
@@ -48,6 +49,7 @@ export const EditorView: React.FC<EditorViewProps> = ({
   onUpdateSceneMeta,
   onOpenFocusMode,
   onOpenHumanizerPanel,
+  onOpenVoiceProfile,
   isDarkMode,
   onAddComment,
   onNavigateToCharacters,
@@ -195,25 +197,51 @@ export const EditorView: React.FC<EditorViewProps> = ({
 
   // Humanized Editorial Drafting via Server API
   const handleRunDraftAction = async (
-    mode: 'humanize' | 'vary_pacing' | 'deepen_sensory' | 'dialogue_polish' | 'continue' | 'critique' | 'continuity' | 'research',
+    mode: NovelAIActionType,
     customPrompt?: string
   ) => {
     setIsGenerating(true);
-    setAiActionMessage(`Editorial analysis in progress (${mode.replace('_', ' ')})...`);
+    setAiActionMessage(`Editorial craft in progress (${mode.replace('_', ' ')})...`);
 
     try {
       const activePOV = project.characters.find((c) => c.id === activeScene.povCharacterId);
+
+      // Find previous scene for narrative continuity
+      const sceneIndex = activeChapter.scenes.findIndex((s) => s.id === activeScene.id);
+      let prevSceneSummary: string | undefined;
+      if (sceneIndex > 0) {
+        const prevScene = activeChapter.scenes[sceneIndex - 1];
+        prevSceneSummary = prevScene.sceneGoal || (prevScene.content ? prevScene.content.slice(0, 180) + '...' : undefined);
+      }
+
+      // Gather characters present in this scene
+      const charactersInScene = project.characters
+        .filter((c) => (activeScene.characterIds || []).includes(c.id) || c.id === activeScene.povCharacterId)
+        .map((c) => c.name);
+
+      const continuityContext: NovelContinuityContext = {
+        previousSceneSummary: prevSceneSummary,
+        timePeriod: activeScene.timePeriod,
+        location: activeScene.location,
+        activePovName: activePOV?.name,
+        tensionLevel: 'medium',
+        charactersInScene,
+        openPlotThreads: (project.plotBeats || []).map((beat) => `${beat.title}: ${beat.description}`),
+      };
+
       const res = await fetch('/api/gemini/draft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          mode: mode === 'critique' || mode === 'continuity' || mode === 'research' ? 'critique' : mode,
+          mode,
           currentText: activeScene.content,
           chapterTitle: activeChapter.title,
           sceneGoal: activeScene.sceneGoal,
           characters: project.characters,
           pov: activePOV ? `${activePOV.name} (${activePOV.archetype})` : 'Third Person Limited',
           styleProfile: project.stylePersona,
+          authorVoiceProfile: project.authorVoiceProfile,
+          continuityContext,
           customPrompt: customPrompt || '',
         }),
       });
@@ -229,7 +257,9 @@ export const EditorView: React.FC<EditorViewProps> = ({
         setPendingDraftReview({
           mode,
           text: data.result.trim(),
-          rationale: `Crafted according to ${project.stylePersona.name} guidelines with human cadence variance.`,
+          rationale: project.authorVoiceProfile
+            ? `Calibrated according to ${project.authorVoiceProfile.name} voice and continuity context.`
+            : `Crafted according to ${project.stylePersona.name} guidelines with human cadence variance.`,
         });
       }
       setAiActionMessage(null);
@@ -585,6 +615,7 @@ export const EditorView: React.FC<EditorViewProps> = ({
           isGenerating={isGenerating}
           aiActionMessage={aiActionMessage}
           onOpenDetailedHumanizer={onOpenHumanizerPanel}
+          onOpenVoiceProfile={onOpenVoiceProfile}
           isDarkMode={isDarkMode}
         />
       </div>

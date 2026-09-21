@@ -34,6 +34,7 @@ import {
   GitCompare,
   Send,
   PanelLeftClose,
+  Film,
 } from 'lucide-react';
 import { NovelProject, Chapter, Scene } from '../types';
 import { MainTab, isGrammarTab } from './Sidebar';
@@ -861,6 +862,78 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
     </div>
   );
 
+  // Render Content Writing Studio Secondary Navigation
+  const renderContentNav = () => (
+    <div className="space-y-4">
+      <div>
+        <div className="px-3 py-1 text-[11px] font-bold text-[#9A7438] dark:text-[#C29A52] uppercase tracking-wider font-mono">
+          Nonfiction & Articles
+        </div>
+        <div className="mt-1 space-y-1">
+          <button
+            onClick={() => onSelectTab('content_studio')}
+            className={`w-full min-h-[44px] flex items-center space-x-3 px-3.5 py-2 rounded-xl text-[14.5px] font-medium transition-colors ${
+              currentTab === 'content_studio'
+                ? 'bg-[#5A1832] text-[#F6F0E7] font-semibold shadow-sm'
+                : 'text-[#292521] dark:text-[#F6F0E7] hover:bg-[#EDE4D6] dark:hover:bg-[#35101F] hover:text-[#5A1832] dark:hover:text-[#C29A52]'
+            }`}
+          >
+            <FileText className={`w-4 h-4 shrink-0 ${currentTab === 'content_studio' ? 'text-[#C29A52]' : 'text-[#5A1832] dark:text-[#C29A52]'}`} />
+            <span>Content Studio</span>
+          </button>
+
+          <button
+            onClick={() => onSelectTab('research')}
+            className={`w-full min-h-[44px] flex items-center space-x-3 px-3.5 py-2 rounded-xl text-[14.5px] font-medium transition-colors ${
+              currentTab === 'research'
+                ? 'bg-[#5A1832] text-[#F6F0E7] font-semibold shadow-sm'
+                : 'text-[#292521] dark:text-[#F6F0E7] hover:bg-[#EDE4D6] dark:hover:bg-[#35101F] hover:text-[#5A1832] dark:hover:text-[#C29A52]'
+            }`}
+          >
+            <BookOpen className={`w-4 h-4 shrink-0 ${currentTab === 'research' ? 'text-[#C29A52]' : 'text-[#5A1832] dark:text-[#C29A52]'}`} />
+            <span>Research Archive</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Render Film & Script Studio Secondary Navigation
+  const renderFilmNav = () => (
+    <div className="space-y-4">
+      <div>
+        <div className="px-3 py-1 text-[11px] font-bold text-[#9A7438] dark:text-[#C29A52] uppercase tracking-wider font-mono">
+          Screenplay & Teleplay
+        </div>
+        <div className="mt-1 space-y-1">
+          <button
+            onClick={() => onSelectTab('script_studio')}
+            className={`w-full min-h-[44px] flex items-center space-x-3 px-3.5 py-2 rounded-xl text-[14.5px] font-medium transition-colors ${
+              currentTab === 'script_studio'
+                ? 'bg-[#5A1832] text-[#F6F0E7] font-semibold shadow-sm'
+                : 'text-[#292521] dark:text-[#F6F0E7] hover:bg-[#EDE4D6] dark:hover:bg-[#35101F] hover:text-[#5A1832] dark:hover:text-[#C29A52]'
+            }`}
+          >
+            <Film className={`w-4 h-4 shrink-0 ${currentTab === 'script_studio' ? 'text-[#C29A52]' : 'text-[#5A1832] dark:text-[#C29A52]'}`} />
+            <span>Screenplay Studio</span>
+          </button>
+
+          <button
+            onClick={() => onSelectTab('dialogue')}
+            className={`w-full min-h-[44px] flex items-center space-x-3 px-3.5 py-2 rounded-xl text-[14.5px] font-medium transition-colors ${
+              currentTab === 'dialogue'
+                ? 'bg-[#5A1832] text-[#F6F0E7] font-semibold shadow-sm'
+                : 'text-[#292521] dark:text-[#F6F0E7] hover:bg-[#EDE4D6] dark:hover:bg-[#35101F] hover:text-[#5A1832] dark:hover:text-[#C29A52]'
+            }`}
+          >
+            <MessageSquare className={`w-4 h-4 shrink-0 ${currentTab === 'dialogue' ? 'text-[#C29A52]' : 'text-[#5A1832] dark:text-[#C29A52]'}`} />
+            <span>Dialogue Calibration</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   // Render Home Secondary Navigation
   const renderHomeNav = () => (
     <div className="space-y-4">
@@ -897,7 +970,14 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
     </div>
   );
 
-    const effectiveWorkspace: WorkspaceType = isGrammarTab(currentTab) ? 'grammar' : activeWorkspace;
+    const effectiveWorkspace: WorkspaceType =
+      currentTab === 'content_studio'
+        ? 'content'
+        : currentTab === 'script_studio'
+        ? 'film'
+        : isGrammarTab(currentTab)
+        ? 'academic'
+        : activeWorkspace;
 
     return (
     <aside
@@ -911,8 +991,12 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
         <span className="text-xs font-serif font-bold tracking-wider text-[#5A1832] dark:text-[#C29A52] uppercase truncate">
           {effectiveWorkspace === 'novel'
             ? 'Novel Architecture'
-            : effectiveWorkspace === 'grammar'
-            ? 'Academic Publishing'
+            : effectiveWorkspace === 'academic'
+            ? 'Academic Books'
+            : effectiveWorkspace === 'content'
+            ? 'Content Writing'
+            : effectiveWorkspace === 'film'
+            ? 'Film & Script'
             : effectiveWorkspace === 'publishing'
             ? 'Publishing Suite'
             : effectiveWorkspace === 'analytics'
@@ -933,8 +1017,10 @@ export const SecondarySidebar: React.FC<SecondarySidebarProps> = ({
 
       {/* Nav Content */}
       <div className="flex-1 overflow-y-auto p-2.5 space-y-3.5">
-        {effectiveWorkspace === 'grammar' && renderGrammarNav()}
+        {(effectiveWorkspace === 'academic' || (effectiveWorkspace as string) === 'grammar') && renderGrammarNav()}
         {effectiveWorkspace === 'novel' && renderNovelNav()}
+        {effectiveWorkspace === 'content' && renderContentNav()}
+        {effectiveWorkspace === 'film' && renderFilmNav()}
         {effectiveWorkspace === 'publishing' && renderPublishingNav()}
         {effectiveWorkspace === 'analytics' && renderAnalyticsNav()}
         {effectiveWorkspace === 'home' && renderHomeNav()}
