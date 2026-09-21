@@ -256,6 +256,16 @@ export default function App() {
     return 'novel';
   }, []);
 
+  // Track the last active authoring workspace before navigating to Publishing
+  const [lastAuthoringWorkspace, setLastAuthoringWorkspace] = useState<'academic' | 'novel' | 'content' | 'film'>('novel');
+
+  useEffect(() => {
+    const ws = getActiveWorkspace(currentTab);
+    if (ws === 'academic' || ws === 'novel' || ws === 'content' || ws === 'film') {
+      setLastAuthoringWorkspace(ws);
+    }
+  }, [currentTab, getActiveWorkspace]);
+
   const handleSelectWorkspace = useCallback((ws: WorkspaceType) => {
     if (ws === 'home') {
       setCurrentTab('home');
@@ -806,11 +816,7 @@ const handleRestoreSnapshot = (snapshotId: string) => {
 
           {currentTab === 'publishing_studio' && (
             <PublishingStudioView
-              activeStudio={
-                (['academic', 'novel', 'content', 'film'].includes(getActiveWorkspace(currentTab))
-                  ? getActiveWorkspace(currentTab)
-                  : 'novel') as 'academic' | 'novel' | 'content' | 'film'
-              }
+              activeStudio={lastAuthoringWorkspace}
               novelProject={project}
               grammarProject={grammarProject}
               contentProject={contentProject}

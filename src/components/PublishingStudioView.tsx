@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BookMarked,
   FileText,
@@ -25,8 +25,10 @@ import {
   GrammarSeriesProject,
   ContentWritingProject,
   ScriptProject,
+  GrammarClassLevel,
 } from '../types';
 import { exportToDocx, exportToMarkdown, exportToPlainText } from '../utils/export';
+import { resolveActiveBookContext } from '../utils/activeBookContext';
 
 interface PublishingStudioViewProps {
   activeStudio: 'academic' | 'novel' | 'content' | 'film';
@@ -48,6 +50,11 @@ export const PublishingStudioView: React.FC<PublishingStudioViewProps> = ({
   isDarkMode,
 }) => {
   const [selectedStudio, setSelectedStudio] = useState<'academic' | 'novel' | 'content' | 'film'>(activeStudio);
+
+  // Synchronize when the authoring workspace changes from navigation
+  useEffect(() => {
+    setSelectedStudio(activeStudio);
+  }, [activeStudio]);
 
   // Academic Book Publishing State
   const [academicEdition, setAcademicEdition] = useState<'Student Edition' | 'Teacher Edition'>('Student Edition');
@@ -71,17 +78,70 @@ export const PublishingStudioView: React.FC<PublishingStudioViewProps> = ({
     setTimeout(() => setCopiedNotification(null), 3000);
   };
 
-  // Active book context for academic
-  const activeAcademicProject =
-    (grammarProject.bookProjects &&
-      grammarProject.activeBookProjectId &&
-      grammarProject.bookProjects[grammarProject.activeBookProjectId]) ||
-    (grammarProject.bookProjects && Object.values(grammarProject.bookProjects)[0]) || {
-      bookTitle: `English Language & Grammar — ${grammarProject.selectedClass || 'Class 6'}`,
-      subtitle: `${grammarProject.targetBoard} Curriculum Framework`,
-      board: grammarProject.targetBoard,
-      classLevel: grammarProject.selectedClass || 'Class 6',
-    };
+  // Resolve authoritative active book context from the live academic project
+  const bookContext = resolveActiveBookContext(grammarProject);
+  const activeAcademicProject = bookContext.activeProject;
+
+  const boardUpper = (activeAcademicProject.board || '').toUpperCase();
+  const sysUpper = (bookContext.activeSystemId || '').toUpperCase();
+
+  const isCambridge =
+    boardUpper.includes('CAMBRIDGE') ||
+    boardUpper.includes('CAIE') ||
+    boardUpper.includes('IGCSE') ||
+    boardUpper.includes('CHECKPOINT') ||
+    sysUpper === 'CAMBRIDGE';
+
+  const isCustomOrIndependent =
+    boardUpper.includes('CUSTOM') ||
+    boardUpper.includes('INDEPENDENT') ||
+    boardUpper.includes('GENERAL') ||
+    boardUpper.includes('COMMON CORE');
+
+  const isIndianBoard =
+    !isCambridge &&
+    !isCustomOrIndependent &&
+    (boardUpper.includes('CBSE') ||
+     boardUpper.includes('CISCE') ||
+     boardUpper.includes('ICSE') ||
+     boardUpper.includes('ISC') ||
+     sysUpper === 'CBSE' ||
+     sysUpper === 'CISCE');
+
+  // NEP 2020 may display for CISCE/ICSE/ISC or CBSE only when the active project configuration says it is applicable.
+  // Cambridge and Custom/Independent must NOT automatically display NEP 2020.
+  const isNepApplicable = Boolean(
+    isIndianBoard &&
+    (
+      (activeAcademicProject as any).isNepAligned === true ||
+      (activeAcademicProject as any).nepApplicable === true ||
+      (activeAcademicProject as any).curriculumFramework?.toUpperCase().includes('NEP') ||
+      (activeAcademicProject as any).pedagogicalFramework?.toUpperCase().includes('NEP') ||
+      (activeAcademicProject.notes || '').toUpperCase().includes('NEP') ||
+      (activeAcademicProject.subtitle || '').toUpperCase().includes('NEP') ||
+      (activeAcademicProject.curriculumProfile || '').toUpperCase().includes('NEP') ||
+      ((grammarProject as any).curriculumFramework || '').toUpperCase().includes('NEP') ||
+      (grammarProject.frameworkProfiles || []).some(
+        (fp) => ((fp.educationSystem as string) === bookContext.activeSystemId || (fp as any).systemId === bookContext.activeSystemId) &&
+          ((fp as any).frameworkName?.toUpperCase().includes('NEP') || (fp.notes || '').toUpperCase().includes('NEP') || (fp.frameworkDocument || '').toUpperCase().includes('NEP'))
+      )
+    )
+  );
+
+  const academicClassDisplay = activeAcademicProject.classLevel || activeAcademicProject.classOrStage || grammarProject.selectedClass;
+
+  const frameworkAlignmentLabel = isNepApplicable
+    ? 'NEP 2020 Pedagogical Alignment'
+    : (activeAcademicProject.curriculumProfile ||
+       (isCambridge
+         ? (activeAcademicProject.programme ? `Cambridge • ${activeAcademicProject.programme}` : 'Cambridge Curriculum Framework')
+         : `${activeAcademicProject.board} Curriculum Framework`));
+
+  const currentClassKey = academicClassDisplay as GrammarClassLevel;
+  const currentBook = grammarProject.books?.[currentClassKey];
+  const activeTopics = (activeAcademicProject.topics && activeAcademicProject.topics.length > 0)
+    ? activeAcademicProject.topics
+    : (currentBook?.topics || []);
 
   const activeContentDoc = contentProject.documents.find((d) => d.id === contentProject.activeDocumentId) || contentProject.documents[0];
 
@@ -149,10 +209,10 @@ export const PublishingStudioView: React.FC<PublishingStudioViewProps> = ({
               <div>
                 <div className="flex items-center space-x-2">
                   <span className="px-2 py-0.5 rounded bg-[#5A1832] text-[#F6F0E7] font-mono text-[11px] font-bold">
-                    {activeAcademicProject.board} • {activeAcademicProject.classLevel}
+                    {activeAcademicProject.board} • {academicClassDisplay}
                   </span>
                   <span className="text-xs text-[#9A7438] dark:text-[#C29A52] font-semibold">
-                    NEP 2020 Pedagogical Alignment
+                    {frameworkAlignmentLabel}
                   </span>
                 </div>
                 <h2 className="text-lg font-serif font-bold text-[#35101F] dark:text-[#F6F0E7] mt-1">
@@ -248,13 +308,21 @@ export const PublishingStudioView: React.FC<PublishingStudioViewProps> = ({
                       {activeAcademicProject.bookTitle}
                     </h1>
                     <div className="text-sm italic text-[#71685E] mt-0.5">
-                      {academicEdition} &bull; Academic Year 2026–2027
+                      {academicEdition} &bull; {activeAcademicProject.academicYear || 'Academic Year 2026–2027'}
                     </div>
                   </div>
 
                   <div className="space-y-4 text-xs font-sans leading-relaxed text-[#3a3530]">
                     <div className="p-3 rounded-lg bg-[#EDE4D6]/50 border border-[#CBBEAC]">
-                      <span className="font-bold text-[#5A1832]">NEP 2020 Competency Statement:</span> This volume integrates experiential syntax analysis, contextual cloze tests, and multi-tiered assessments conforming strictly to {activeAcademicProject.board} regulations.
+                      {isNepApplicable ? (
+                        <>
+                          <span className="font-bold text-[#5A1832]">NEP 2020 Competency Statement:</span> This volume integrates experiential syntax analysis, contextual cloze tests, and multi-tiered assessments conforming strictly to {activeAcademicProject.board} regulations.
+                        </>
+                      ) : (
+                        <>
+                          <span className="font-bold text-[#5A1832]">{activeAcademicProject.board} Curriculum Alignment:</span> This volume integrates structured syntactic inquiry, contextual language analysis, and formative assessments conforming strictly to {activeAcademicProject.board} {activeAcademicProject.programme ? `(${activeAcademicProject.programme})` : 'curriculum'} specifications.
+                        </>
+                      )}
                     </div>
 
                     <div className="text-sm font-serif font-bold text-[#35101F]">
@@ -288,7 +356,7 @@ export const PublishingStudioView: React.FC<PublishingStudioViewProps> = ({
                   <div className="p-4 rounded-xl border border-[#CBBEAC] bg-[#EDE4D6]/40 dark:bg-[#35101F]/40 space-y-2">
                     <div className="font-bold text-[#5A1832] dark:text-[#C29A52]">Preface &amp; Curriculum Rationale</div>
                     <p className="text-[#71685E] dark:text-[#D8CCBC]">
-                      Designed to nurture grammatical agility, conceptual mastery, and articulate written expression for {activeAcademicProject.classLevel} students.
+                      Designed to nurture grammatical agility, conceptual mastery, and articulate written expression for {academicClassDisplay} students under {activeAcademicProject.board} standards.
                     </p>
                   </div>
                 </div>
@@ -309,12 +377,18 @@ export const PublishingStudioView: React.FC<PublishingStudioViewProps> = ({
                   </button>
                 </div>
                 <div className="space-y-2 font-mono text-xs">
-                  {(grammarProject.books[grammarProject.selectedClass || 'Class 6']?.topics || []).map((t, idx) => (
-                    <div key={t.id} className="p-2.5 rounded-lg border border-[#CBBEAC]/50 flex items-center justify-between">
-                      <span className="font-bold text-[#5A1832] dark:text-[#C29A52]">Chapter {idx + 1}: {t.title}</span>
-                      <span className="text-[#71685E] dark:text-[#D8CCBC]">Page {(idx + 1) * 8}</span>
+                  {activeTopics.length > 0 ? (
+                    activeTopics.map((t, idx) => (
+                      <div key={t.id || `topic-${idx}`} className="p-2.5 rounded-lg border border-[#CBBEAC]/50 flex items-center justify-between">
+                        <span className="font-bold text-[#5A1832] dark:text-[#C29A52]">Chapter {idx + 1}: {t.title}</span>
+                        <span className="text-[#71685E] dark:text-[#D8CCBC]">Page {(idx + 1) * 8}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-xs text-[#71685E] dark:text-[#D8CCBC] italic">
+                      No syllabus chapters mapped yet for {activeAcademicProject.bookTitle}.
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             )}
@@ -351,11 +425,21 @@ export const PublishingStudioView: React.FC<PublishingStudioViewProps> = ({
                 <div className="grid grid-cols-2 gap-4 text-xs">
                   <div>
                     <label className="font-semibold text-[#71685E] dark:text-[#D8CCBC] block mb-1">Target ISBN</label>
-                    <input type="text" readOnly value="978-93-89012-44-1 (Provisional)" className="w-full h-8 px-2 rounded border border-[#CBBEAC] bg-stone-100 dark:bg-[#35101F]" />
+                    <input
+                      type="text"
+                      readOnly
+                      value={activeAcademicProject.isbnPlaceholder || (activeAcademicProject as any).isbn || 'Provisional (Not Assigned)'}
+                      className="w-full h-8 px-2 rounded border border-[#CBBEAC] bg-stone-100 dark:bg-[#35101F]"
+                    />
                   </div>
                   <div>
                     <label className="font-semibold text-[#71685E] dark:text-[#D8CCBC] block mb-1">Target Page Count</label>
-                    <input type="text" readOnly value="192 Pages (Crown Quarto)" className="w-full h-8 px-2 rounded border border-[#CBBEAC] bg-stone-100 dark:bg-[#35101F]" />
+                    <input
+                      type="text"
+                      readOnly
+                      value={`${activeAcademicProject.targetPageCount || 192} Pages (${activeAcademicProject.trimSize || 'Crown Quarto'})`}
+                      className="w-full h-8 px-2 rounded border border-[#CBBEAC] bg-stone-100 dark:bg-[#35101F]"
+                    />
                   </div>
                 </div>
               </div>
