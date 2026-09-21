@@ -37,9 +37,11 @@ import { NovelProject, Chapter, Scene } from '../types';
 
 export type MainTab =
   | 'home'
+  | 'library'
   | 'manuscript'
   | 'content_studio'
   | 'script_studio'
+  | 'publishing_studio'
   | 'codex'
   | 'timeline'
   | 'characters'

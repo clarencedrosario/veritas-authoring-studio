@@ -52,6 +52,10 @@ import { BookPlannerView } from './components/book-planner/BookPlannerView';
 import { NovelWritingStudio } from './components/NovelWritingStudio';
 import { ContentStudioView } from './components/ContentStudioView';
 import { ScriptStudioView } from './components/ScriptStudioView';
+import { ProjectLibraryView } from './components/ProjectLibraryView';
+import { PublishingStudioView } from './components/PublishingStudioView';
+import { HelpModal } from './components/HelpModal';
+import { HumaniseFloatingModal } from './components/HumaniseFloatingModal';
 import { GrammarSeriesProject, CurriculumSystemId, GrammarClassLevel, ContentWritingProject, ScriptProject } from './types';
 import { getInitialGrammarSeriesProject } from './utils/grammarInitialData';
 import { INITIAL_CONTENT_PROJECT, INITIAL_SCRIPT_PROJECT } from './utils/initialStudioData';
@@ -198,6 +202,8 @@ export default function App() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showLiveVoiceModal, setShowLiveVoiceModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showHumaniseModal, setShowHumaniseModal] = useState(false);
 
   // Content Studio & Script Studio Projects
   const [contentProject, setContentProject] = useState<ContentWritingProject>(() => {
@@ -235,15 +241,16 @@ export default function App() {
   // Workspace detection
   const getActiveWorkspace = useCallback((tab: MainTab): WorkspaceType => {
     if (tab === 'home') return 'home';
+    if (tab === 'library') return 'library';
     if (tab === 'content_studio') return 'content';
     if (tab === 'script_studio') return 'film';
     if (isGrammarTab(tab)) {
       return 'academic';
     }
-    if (['design', 'querykit'].includes(tab)) {
+    if (['design', 'querykit', 'publishing_studio', 'textbook_exporter', 'publisher_submission'].includes(tab)) {
       return 'publishing';
     }
-    if (tab === 'analytics') {
+    if (['analytics', 'pacing'].includes(tab)) {
       return 'analytics';
     }
     return 'novel';
@@ -252,6 +259,8 @@ export default function App() {
   const handleSelectWorkspace = useCallback((ws: WorkspaceType) => {
     if (ws === 'home') {
       setCurrentTab('home');
+    } else if (ws === 'library') {
+      setCurrentTab('library');
     } else if (ws === 'academic' || (ws as string) === 'grammar') {
       setCurrentTab('grammar_series');
     } else if (ws === 'novel') {
@@ -261,19 +270,23 @@ export default function App() {
     } else if (ws === 'film') {
       setCurrentTab('script_studio');
     } else if (ws === 'publishing') {
-      setCurrentTab('querykit');
-    } else if (ws === 'analytics') {
+      setCurrentTab('publishing_studio');
+    } else if (ws === 'analytics' || ws === 'tools') {
       setCurrentTab('analytics');
     }
     setIsSecondaryExpanded(true);
   }, []);
 
-  // Keyboard Shortcuts: Cmd+K for Command Palette, '[' to toggle sidebar
+  // Keyboard Shortcuts: Cmd+K for Command Palette, '[' to toggle sidebar, Alt+H for Humanise
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setShowCommandPalette((prev) => !prev);
+      }
+      if ((e.altKey || (e.metaKey && e.shiftKey)) && e.key.toLowerCase() === 'h') {
+        e.preventDefault();
+        setShowHumaniseModal((prev) => !prev);
       }
       const target = e.target as HTMLElement | null;
       const isInput =
@@ -708,6 +721,7 @@ const handleRestoreSnapshot = (snapshotId: string) => {
           activeWorkspace={getActiveWorkspace(currentTab)}
           onSelectWorkspace={handleSelectWorkspace}
           onOpenSettings={() => setShowSettingsModal(true)}
+          onOpenHelp={() => setShowHelpModal(true)}
           isDarkMode={isDarkMode}
           onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
           isSecondaryExpanded={isSecondaryExpanded}
@@ -746,7 +760,7 @@ const handleRestoreSnapshot = (snapshotId: string) => {
               ? 'bg-[#F6F0E7] text-[#292521]'
               : 'bg-[#EDE4D6] dark:bg-[#1e0f18] text-[#292521] dark:text-[#F6F0E7]'
           } min-h-0 ${
-            ['series_dashboard', 'book_projects', 'curriculum_mapping', 'publisher_submission', 'book_planner'].includes(currentTab)
+            ['series_dashboard', 'book_projects', 'curriculum_mapping', 'publisher_submission', 'book_planner', 'library', 'publishing_studio'].includes(currentTab)
               ? 'overflow-y-auto'
               : 'overflow-hidden'
           }`}
@@ -761,6 +775,47 @@ const handleRestoreSnapshot = (snapshotId: string) => {
               onAddScene={() => handleAddScene(activeChapterId)}
               onOpenLiveVoice={() => setShowLiveVoiceModal(true)}
               onOpenExportModal={() => setShowExportModal(true)}
+              isDarkMode={isDarkMode}
+            />
+          )}
+
+          {currentTab === 'library' && (
+            <ProjectLibraryView
+              novelProject={project}
+              grammarProject={grammarProject}
+              contentProject={contentProject}
+              scriptProject={scriptProject}
+              onOpenProject={(type) => {
+                if (type === 'academic') {
+                  setCurrentTab('grammar_series');
+                } else if (type === 'novel') {
+                  setCurrentTab('manuscript');
+                } else if (type === 'content') {
+                  setCurrentTab('content_studio');
+                } else if (type === 'film') {
+                  setCurrentTab('script_studio');
+                }
+              }}
+              onUpdateNovelProject={(updates) => setProject((prev) => ({ ...prev, ...updates }))}
+              onUpdateGrammarProject={(updated) => setGrammarProject(updated)}
+              onUpdateContentProject={(updated) => setContentProject(updated)}
+              onUpdateScriptProject={(updated) => setScriptProject(updated)}
+              isDarkMode={isDarkMode}
+            />
+          )}
+
+          {currentTab === 'publishing_studio' && (
+            <PublishingStudioView
+              activeStudio={
+                (['academic', 'novel', 'content', 'film'].includes(getActiveWorkspace(currentTab))
+                  ? getActiveWorkspace(currentTab)
+                  : 'novel') as 'academic' | 'novel' | 'content' | 'film'
+              }
+              novelProject={project}
+              grammarProject={grammarProject}
+              contentProject={contentProject}
+              scriptProject={scriptProject}
+              onNavigateToTab={(tab) => setCurrentTab(tab as MainTab)}
               isDarkMode={isDarkMode}
             />
           )}
@@ -1389,9 +1444,36 @@ const handleRestoreSnapshot = (snapshotId: string) => {
             onClose={() => setShowSettingsModal(false)}
             isDarkMode={isDarkMode}
             onTriggerSync={handleTriggerCloudSync}
+            onToggleDarkMode={() => setIsDarkMode((prev) => !prev)}
+            onOpenAuthorVoiceProfile={() => {
+              setShowSettingsModal(false);
+              setCurrentTab('humanizer');
+            }}
           />
         </ErrorBoundary>
       )}
+
+      {/* Global Help & Keyboard Shortcuts Modal */}
+      <HelpModal
+        isOpen={showHelpModal}
+        onClose={() => setShowHelpModal(false)}
+        isDarkMode={isDarkMode}
+      />
+
+      {/* Global Humanise Quick-Polish Modal (Alt+H) */}
+      <HumaniseFloatingModal
+        isOpen={showHumaniseModal}
+        onClose={() => setShowHumaniseModal(false)}
+        sourceText={activeScene?.content || ''}
+        onApplyText={(appliedText) => {
+          if (activeScene) {
+            handleUpdateSceneContent(appliedText);
+          }
+        }}
+        authorVoiceName={project.stylePersona?.name}
+        isDarkMode={isDarkMode}
+        workspaceContext={getActiveWorkspace(currentTab)}
+      />
 
       {/* Real-time Gemini 3.1 Flash Live Voice Modal */}
       {showLiveVoiceModal && (

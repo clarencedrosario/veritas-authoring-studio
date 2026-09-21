@@ -13,6 +13,14 @@ import {
   Database,
   KeyRound,
   RefreshCw,
+  Sliders,
+  Sparkles,
+  User,
+  GraduationCap,
+  BookMarked,
+  Sun,
+  Moon,
+  Feather,
 } from 'lucide-react';
 import { NovelProject, VersionSnapshot } from '../types';
 
@@ -24,6 +32,8 @@ interface SettingsModalProps {
   onClose: () => void;
   isDarkMode: boolean;
   onTriggerSync: () => void;
+  onToggleDarkMode?: () => void;
+  onOpenAuthorVoiceProfile?: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -34,11 +44,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose,
   isDarkMode,
   onTriggerSync,
+  onToggleDarkMode,
+  onOpenAuthorVoiceProfile,
 }) => {
-  const [activeTab, setActiveTab] = useState<'project' | 'encryption' | 'versions' | 'cloud'>('project');
+  type SettingsTab = 'general' | 'ai' | 'author' | 'academic' | 'publishing' | 'project' | 'encryption' | 'versions' | 'cloud';
+  const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const [passphraseInput, setPassphraseInput] = useState('');
   const [newSnapshotDesc, setNewSnapshotDesc] = useState('');
   const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
+
+  // General Settings
+  const [appLanguage, setAppLanguage] = useState('en-GB');
+  const [autosaveFreq, setAutosaveFreq] = useState('30s');
+  const [defaultStartupWs, setDefaultStartupWs] = useState('novel');
+
+  // AI Settings
+  const [aiModel] = useState('gemini-2.5-flash');
+  const [aiTemp, setAiTemp] = useState(0.7);
+  const [streamReplies, setStreamReplies] = useState(true);
+
+  // Author Settings
+  const [authorBio, setAuthorBio] = useState('Julian Mercer — Author & Literary Syntactician');
+
+  // Academic Settings
+  const [defBoard, setDefBoard] = useState('CBSE');
+  const [defClass, setDefClass] = useState('Class 6');
+
+  // Publishing Settings
+  const [defTrim, setDefTrim] = useState('6x9');
+  const [defFont, setDefFont] = useState('EB Garamond');
+  const [publisherImprint, setPublisherImprint] = useState('Veritas Academic Press');
 
   // Project metadata states
   const [title, setTitle] = useState(project.title || '');
@@ -104,26 +139,56 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const navCategories = [
     {
+      id: 'general' as const,
+      label: 'General',
+      icon: Sliders,
+      badge: null,
+    },
+    {
+      id: 'ai' as const,
+      label: 'AI & Models',
+      icon: Sparkles,
+      badge: 'Active',
+    },
+    {
+      id: 'author' as const,
+      label: 'Author Profile',
+      icon: User,
+      badge: null,
+    },
+    {
+      id: 'academic' as const,
+      label: 'Academic',
+      icon: GraduationCap,
+      badge: 'NEP 2020',
+    },
+    {
+      id: 'publishing' as const,
+      label: 'Publishing',
+      icon: BookMarked,
+      badge: null,
+    },
+    {
       id: 'project' as const,
-      label: 'Project Metadata',
+      label: 'Project Identity',
       icon: BookOpen,
       badge: null,
     },
     {
       id: 'encryption' as const,
-      label: 'End-to-End Encryption',
+      label: 'Encryption',
       icon: Lock,
       badge: project.isEncrypted ? 'Active' : 'Off',
     },
     {
       id: 'versions' as const,
-      label: 'Version History',
+      label: 'Versions',
       icon: History,
       badge: String(versionList.length),
     },
     {
       id: 'cloud' as const,
-      label: 'Cloud & Offline',
+      label: 'Cloud Sync',
       icon: Cloud,
       badge: 'Online',
     },
@@ -223,7 +288,345 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           id="settings-content-viewport"
           className="p-6 sm:p-8 overflow-y-auto space-y-6 flex-1 bg-[#EDE4D6] dark:bg-[#1e0f18]"
         >
-          {/* CATEGORY 1: PROJECT METADATA */}
+          {/* CATEGORY: GENERAL */}
+          {activeTab === 'general' && (
+            <div id="settings-panel-general" className="space-y-6">
+              <div className="p-6 rounded-2xl border border-[#CBBEAC] dark:border-[#4f2c3d] bg-[#F6F0E7] dark:bg-[#2b1622] shadow-xs space-y-5">
+                <div className="border-b border-[#CBBEAC]/60 dark:border-[#4f2c3d] pb-3">
+                  <h3 className="text-[19px] sm:text-[20px] font-serif font-bold text-[#35101F] dark:text-[#F6F0E7]">
+                    General Preferences
+                  </h3>
+                  <p className="text-[14.5px] text-[#71685E] dark:text-[#c9b9a6] mt-1">
+                    Interface display, localization, autosave rhythm, and default authoring studio.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  {/* Theme Mode */}
+                  <div>
+                    <label className="block text-sm font-semibold text-[#292521] dark:text-[#F6F0E7] mb-1.5">
+                      Interface Theme
+                    </label>
+                    <div className="flex items-center space-x-3">
+                      <button
+                        type="button"
+                        onClick={onToggleDarkMode}
+                        className="h-10 px-4 rounded-xl border border-[#CBBEAC] dark:border-[#4f2c3d] bg-[#EDE4D6] dark:bg-[#35101F] flex items-center space-x-2 text-xs font-semibold cursor-pointer"
+                      >
+                        {isDarkMode ? (
+                          <>
+                            <Sun className="w-4 h-4 text-[#C29A52]" />
+                            <span>Switch to Light Mode</span>
+                          </>
+                        ) : (
+                          <>
+                            <Moon className="w-4 h-4 text-[#5A1832]" />
+                            <span>Switch to Dark Mode</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Language */}
+                  <div>
+                    <label className="block text-sm font-semibold text-[#292521] dark:text-[#F6F0E7] mb-1.5">
+                      Editorial Language &amp; Spelling
+                    </label>
+                    <select
+                      value={appLanguage}
+                      onChange={(e) => setAppLanguage(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl border border-[#CBBEAC] dark:border-[#4f2c3d] bg-[#EDE4D6] dark:bg-[#35101F] text-xs font-medium outline-none"
+                    >
+                      <option value="en-GB">English (UK / Commonwealth)</option>
+                      <option value="en-US">English (United States)</option>
+                      <option value="en-IN">English (India Standard)</option>
+                    </select>
+                  </div>
+
+                  {/* Autosave Frequency */}
+                  <div>
+                    <label className="block text-sm font-semibold text-[#292521] dark:text-[#F6F0E7] mb-1.5">
+                      Autosave Frequency
+                    </label>
+                    <select
+                      value={autosaveFreq}
+                      onChange={(e) => setAutosaveFreq(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl border border-[#CBBEAC] dark:border-[#4f2c3d] bg-[#EDE4D6] dark:bg-[#35101F] text-xs font-medium outline-none"
+                    >
+                      <option value="15s">Every 15 seconds</option>
+                      <option value="30s">Every 30 seconds (Recommended)</option>
+                      <option value="60s">Every 1 minute</option>
+                    </select>
+                  </div>
+
+                  {/* Default Workspace */}
+                  <div>
+                    <label className="block text-sm font-semibold text-[#292521] dark:text-[#F6F0E7] mb-1.5">
+                      Default Startup Studio
+                    </label>
+                    <select
+                      value={defaultStartupWs}
+                      onChange={(e) => setDefaultStartupWs(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl border border-[#CBBEAC] dark:border-[#4f2c3d] bg-[#EDE4D6] dark:bg-[#35101F] text-xs font-medium outline-none"
+                    >
+                      <option value="academic">Academic Book Studio</option>
+                      <option value="novel">Novel Writing Studio</option>
+                      <option value="content">Content Writing Studio</option>
+                      <option value="film">Film &amp; Script Studio</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CATEGORY: AI & MODELS */}
+          {activeTab === 'ai' && (
+            <div id="settings-panel-ai" className="space-y-6">
+              <div className="p-6 rounded-2xl border border-[#CBBEAC] dark:border-[#4f2c3d] bg-[#F6F0E7] dark:bg-[#2b1622] shadow-xs space-y-5">
+                <div className="border-b border-[#CBBEAC]/60 dark:border-[#4f2c3d] pb-3">
+                  <div className="flex items-center space-x-2">
+                    <Sparkles className="w-5 h-5 text-[#5A1832] dark:text-[#C29A52]" />
+                    <h3 className="text-[19px] sm:text-[20px] font-serif font-bold text-[#35101F] dark:text-[#F6F0E7]">
+                      Shared Intelligence &amp; Gemini Engine
+                    </h3>
+                  </div>
+                  <p className="text-[14.5px] text-[#71685E] dark:text-[#c9b9a6] mt-1">
+                    Unified AI Assistant and Humanise engine powering all four authoring studios.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-[#EDE4D6]/60 dark:bg-[#35101F]/60 border border-[#CBBEAC] dark:border-[#4f2c3d] space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-[#5A1832] dark:text-[#C29A52]">Active Model Service:</span>
+                    <span className="px-2 py-0.5 rounded font-mono bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold">
+                      Google Gemini 2.5 / 3.1 Flash (Server-Side Proxy)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#71685E] dark:text-[#c9b9a6]">
+                    All AI drafting, Humanise calibrations, sentence diagramming, and research requests are routed securely through server-side endpoints without client credential exposure.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs">
+                  <div>
+                    <label className="block text-sm font-semibold text-[#292521] dark:text-[#F6F0E7] mb-1.5">
+                      Creativity &amp; Temperature ({aiTemp})
+                    </label>
+                    <input
+                      type="range"
+                      min="0.2"
+                      max="1.0"
+                      step="0.05"
+                      value={aiTemp}
+                      onChange={(e) => setAiTemp(parseFloat(e.target.value))}
+                      className="w-full accent-[#5A1832] dark:accent-[#C29A52]"
+                    />
+                    <div className="flex justify-between text-[10.5px] text-[#71685E] mt-1">
+                      <span>Rigid (0.2)</span>
+                      <span>Balanced (0.7)</span>
+                      <span>Imaginative (1.0)</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-[#292521] dark:text-[#F6F0E7] mb-1.5">
+                      Streaming Generation
+                    </label>
+                    <label className="flex items-center space-x-2 mt-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={streamReplies}
+                        onChange={(e) => setStreamReplies(e.target.checked)}
+                        className="rounded accent-[#5A1832] dark:accent-[#C29A52]"
+                      />
+                      <span className="text-xs text-[#292521] dark:text-[#F6F0E7]">
+                        Enable token-by-token streaming in Assistant drawer
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CATEGORY: AUTHOR PROFILE */}
+          {activeTab === 'author' && (
+            <div id="settings-panel-author" className="space-y-6">
+              <div className="p-6 rounded-2xl border border-[#CBBEAC] dark:border-[#4f2c3d] bg-[#F6F0E7] dark:bg-[#2b1622] shadow-xs space-y-5">
+                <div className="border-b border-[#CBBEAC]/60 dark:border-[#4f2c3d] pb-3">
+                  <h3 className="text-[19px] sm:text-[20px] font-serif font-bold text-[#35101F] dark:text-[#F6F0E7]">
+                    Author Profile &amp; Voice Calibration
+                  </h3>
+                  <p className="text-[14.5px] text-[#71685E] dark:text-[#c9b9a6] mt-1">
+                    Manage biographical identity and continuous stylistic cadence preferences.
+                  </p>
+                </div>
+
+                <div className="space-y-4 text-xs">
+                  <div>
+                    <label className="block font-semibold text-[#292521] dark:text-[#F6F0E7] mb-1">
+                      Author / Pen Name
+                    </label>
+                    <input
+                      type="text"
+                      value={authorName}
+                      onChange={(e) => setAuthorName(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl border border-[#CBBEAC] dark:border-[#4f2c3d] bg-[#EDE4D6] dark:bg-[#35101F] text-xs font-medium outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-[#292521] dark:text-[#F6F0E7] mb-1">
+                      Author Biography
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={authorBio}
+                      onChange={(e) => setAuthorBio(e.target.value)}
+                      className="w-full p-3 rounded-xl border border-[#CBBEAC] dark:border-[#4f2c3d] bg-[#EDE4D6] dark:bg-[#35101F] text-xs font-medium outline-none resize-none"
+                    />
+                  </div>
+
+                  <div className="p-4 rounded-xl border border-[#CBBEAC] bg-[#EDE4D6]/50 dark:bg-[#35101F]/50 flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-[#5A1832] dark:text-[#C29A52]">Active Author Voice Profile</div>
+                      <div className="text-[11px] text-[#71685E] dark:text-[#c9b9a6]">
+                        {project.stylePersona?.name || 'Julian Mercer (Literary Precision)'} &bull; Stylistic Archetype: Atmospheric Suspense
+                      </div>
+                    </div>
+                    {onOpenAuthorVoiceProfile && (
+                      <button
+                        type="button"
+                        onClick={onOpenAuthorVoiceProfile}
+                        className="h-8 px-3 rounded-lg bg-[#5A1832] text-[#F6F0E7] text-xs font-semibold hover:bg-[#722040] cursor-pointer"
+                      >
+                        Calibrate Voice
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CATEGORY: ACADEMIC */}
+          {activeTab === 'academic' && (
+            <div id="settings-panel-academic" className="space-y-6">
+              <div className="p-6 rounded-2xl border border-[#CBBEAC] dark:border-[#4f2c3d] bg-[#F6F0E7] dark:bg-[#2b1622] shadow-xs space-y-5">
+                <div className="border-b border-[#CBBEAC]/60 dark:border-[#4f2c3d] pb-3">
+                  <h3 className="text-[19px] sm:text-[20px] font-serif font-bold text-[#35101F] dark:text-[#F6F0E7]">
+                    Academic Curriculum &amp; Board Standards
+                  </h3>
+                  <p className="text-[14.5px] text-[#71685E] dark:text-[#c9b9a6] mt-1">
+                    Pedagogical presets for Indian and International school textbook authoring.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs">
+                  <div>
+                    <label className="block font-semibold text-[#292521] dark:text-[#F6F0E7] mb-1">
+                      Default School Board
+                    </label>
+                    <select
+                      value={defBoard}
+                      onChange={(e) => setDefBoard(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl border border-[#CBBEAC] dark:border-[#4f2c3d] bg-[#EDE4D6] dark:bg-[#35101F] text-xs font-medium outline-none"
+                    >
+                      <option value="CBSE">Central Board of Secondary Education (CBSE)</option>
+                      <option value="CISCE">Council for the Indian School Certificate (CISCE / ICSE)</option>
+                      <option value="Cambridge">Cambridge International (CAIE)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-[#292521] dark:text-[#F6F0E7] mb-1">
+                      Default Target Class Level
+                    </label>
+                    <select
+                      value={defClass}
+                      onChange={(e) => setDefClass(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl border border-[#CBBEAC] dark:border-[#4f2c3d] bg-[#EDE4D6] dark:bg-[#35101F] text-xs font-medium outline-none"
+                    >
+                      {Array.from({ length: 12 }, (_, i) => `Class ${i + 1}`).map((cls) => (
+                        <option key={cls} value={cls}>{cls}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl border border-[#CBBEAC] bg-[#EDE4D6]/40 dark:bg-[#35101F]/40 space-y-1 text-xs">
+                  <span className="font-bold text-[#5A1832] dark:text-[#C29A52]">NEP 2020 Pedagogical Framework:</span>
+                  <p className="text-[#71685E] dark:text-[#c9b9a6]">
+                    Ensures all academic volumes conform to 5+3+3+4 structural competencies with experiential grammar, inductive learning, and differentiated learning rubrics.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CATEGORY: PUBLISHING */}
+          {activeTab === 'publishing' && (
+            <div id="settings-panel-publishing" className="space-y-6">
+              <div className="p-6 rounded-2xl border border-[#CBBEAC] dark:border-[#4f2c3d] bg-[#F6F0E7] dark:bg-[#2b1622] shadow-xs space-y-5">
+                <div className="border-b border-[#CBBEAC]/60 dark:border-[#4f2c3d] pb-3">
+                  <h3 className="text-[19px] sm:text-[20px] font-serif font-bold text-[#35101F] dark:text-[#F6F0E7]">
+                    Publishing Defaults &amp; Imprint Metadata
+                  </h3>
+                  <p className="text-[14.5px] text-[#71685E] dark:text-[#c9b9a6] mt-1">
+                    Book production specifications, trim sizes, typography, and publisher imprints.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs">
+                  <div>
+                    <label className="block font-semibold text-[#292521] dark:text-[#F6F0E7] mb-1">
+                      Default Trim Size
+                    </label>
+                    <select
+                      value={defTrim}
+                      onChange={(e) => setDefTrim(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl border border-[#CBBEAC] dark:border-[#4f2c3d] bg-[#EDE4D6] dark:bg-[#35101F] text-xs font-medium outline-none"
+                    >
+                      <option value="6x9">6 × 9 in (US Trade Paperback)</option>
+                      <option value="5.5x8.5">5.5 × 8.5 in (Demy Paperback)</option>
+                      <option value="quarto">Crown Quarto 189 × 246 mm (Academic Textbook)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-[#292521] dark:text-[#F6F0E7] mb-1">
+                      Body Typography Font
+                    </label>
+                    <select
+                      value={defFont}
+                      onChange={(e) => setDefFont(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl border border-[#CBBEAC] dark:border-[#4f2c3d] bg-[#EDE4D6] dark:bg-[#35101F] text-xs font-medium outline-none"
+                    >
+                      <option value="EB Garamond">EB Garamond (Literary Classic)</option>
+                      <option value="Lora">Lora (Contemporary Editorial)</option>
+                      <option value="Literata">Literata (Digital Reader Standard)</option>
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block font-semibold text-[#292521] dark:text-[#F6F0E7] mb-1">
+                      Publisher Imprint
+                    </label>
+                    <input
+                      type="text"
+                      value={publisherImprint}
+                      onChange={(e) => setPublisherImprint(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl border border-[#CBBEAC] dark:border-[#4f2c3d] bg-[#EDE4D6] dark:bg-[#35101F] text-xs font-medium outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CATEGORY: PROJECT METADATA */}
           {activeTab === 'project' && (
             <div id="settings-panel-project" className="space-y-6">
               <div className="p-6 rounded-2xl border border-[#CBBEAC] dark:border-[#4f2c3d] bg-[#F6F0E7] dark:bg-[#2b1622] shadow-xs space-y-5">
