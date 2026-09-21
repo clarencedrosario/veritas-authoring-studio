@@ -254,86 +254,36 @@ export const CHAPTER_COMPONENT_REGISTRY: Record<string, ChapterComponentDefiniti
   },
 
   // -------------------------------------------------------------
-  // VALIDATION COMPONENT A: COMP-07 / Worked Examples
+  // COMP-07 / Examples & Contrastive Pairs
   // -------------------------------------------------------------
   'comp-7': {
     id: 'comp-7',
     componentNumber: 7,
-    title: 'Worked Examples with Step-by-Step Commentary',
-    shortTitle: 'Worked Examples',
+    title: 'Examples & Contrastive Pairs',
+    shortTitle: 'Examples',
     category: 'instruction',
-    categoryLabel: 'Modelled Examples',
-    description: 'Step-by-step grammatical reasoning demonstrating student thought process, rule application, and verified answers.',
-    defaultEstimatedPages: 0.75,
+    categoryLabel: 'Examples & Contrast',
+    description: 'Highlighted exemplar sentences and contrastive pairs illustrating rules in authentic contexts.',
+    defaultEstimatedPages: 0.5,
     isRequired: true,
     targetAudience: 'both',
     editorType: 'specialised',
-    supportedBlockTypes: ['worked_example', 'step_sequence', 'contrastive_pair'],
-    iconName: 'HelpCircle',
+    supportedBlockTypes: ['example', 'contrastive_pair'],
+    iconName: 'CheckCircle2',
     badgeColor: '#5A1832',
-    pedagogicalRole: 'Scaffolds cognitive reasoning from rule observation to independent drill problem solving.',
+    pedagogicalRole: 'Illustrates positive models and contrastive pairs to anchor theoretical concepts.',
     aiPromptConfig: {
-      systemRole: 'Master Pedagogical Modeling Author',
-      taskPromptTemplate: 'Generate 2–3 step-by-step worked grammar examples demonstrating thought process, grammatical reasoning, and verified final answers.',
-      constraints: [
-        'Each worked example must include: problem sentence, 2 to 4 sequential reasoning steps, rule applied, and final verified solution.',
-        'Teacher edition view must receive pedagogical insight explaining why students might hesitate.',
-        'Grade-adapted difficulty and authentic board-appropriate sentences.',
-      ],
-      expectedJsonFormat: `{
-  "items": [
-    {
-      "id": "we-1",
-      "title": "Example 1: Resolving Intervening Prepositional Phrases",
-      "problem": "The bouquet of yellow roses (look / looks) magnificent on the table.",
-      "contextOrScenario": "Subject-verb agreement with intervening prepositional modifier",
-      "difficulty": "Standard",
-      "steps": [
-        { "stepNumber": 1, "title": "Identify Grammatical Subject", "instruction": "Locate the core subject noun before the preposition.", "sampleWork": "'The bouquet' is the head noun (singular).", "ruleApplied": "Rule 1.1: Agreement with Head Noun" },
-        { "stepNumber": 2, "title": "Bracket Intervening Phrase", "instruction": "Ignore intervening prepositional modifier 'of yellow roses'.", "sampleWork": "[of yellow roses] is a modifier and does not govern the verb." },
-        { "stepNumber": 3, "title": "Select Verb Form", "instruction": "Match singular subject 'bouquet' with third-person singular finite verb.", "sampleWork": "Singular verb required: 'looks'." }
-      ],
-      "finalAnswer": "The bouquet of yellow roses looks magnificent on the table.",
-      "grammaticalRationale": "The singular subject 'bouquet' governs the third-person singular finite verb 'looks', regardless of the plural noun 'roses' inside the intervening prepositional phrase.",
-      "ruleReference": "RULE 1.1",
-      "teacherNote": "Students frequently get trapped by proximity agreement with plural 'roses'. Highlight the syntactic head on the board."
-    }
-  ]
-}`,
+      systemRole: 'Exemplar & Contrastive Content Author',
+      taskPromptTemplate: 'Generate high-quality exemplar pairs and contrastive usage examples for this topic.',
+      constraints: ['Include positive models and contrastive pairs'],
+      expectedJsonFormat: '{ "items": any[] }',
     },
-    validationRules: [
-      {
-        id: 'has-worked-examples',
-        label: 'At least one worked example authored',
-        check: (ch) => {
-          const c07Items = ch.component07?.items || [];
-          const hasSectionBlocks = ch.sections.some((s) => s.blocks.some((b) => b.type === 'worked_example'));
-          return {
-            valid: c07Items.length > 0 || hasSectionBlocks,
-            message: 'Authored worked examples are required to model cognitive reasoning',
-          };
-        },
-      },
-      {
-        id: 'valid-steps',
-        label: 'Worked examples have structured steps',
-        check: (ch) => {
-          const c07Items = ch.component07?.items || [];
-          if (c07Items.length === 0) return { valid: true };
-          const allHaveSteps = c07Items.every((item) => item.steps && item.steps.length >= 2);
-          return {
-            valid: allHaveSteps,
-            message: 'Each worked example should contain at least 2 structured reasoning steps',
-          };
-        },
-      },
-    ],
+    validationRules: [],
     exportRules: {
       headingLevel: 3,
       includeInStudentEdition: true,
       includeInTeacherEdition: true,
-      calloutBoxTheme: 'worked-example-parchment',
-      exportRendererId: 'worked_examples',
+      exportRendererId: 'examples',
     },
   },
 
@@ -368,33 +318,85 @@ export const CHAPTER_COMPONENT_REGISTRY: Record<string, ChapterComponentDefiniti
     },
   },
 
+  // -------------------------------------------------------------
+  // VALIDATION COMPONENT A: COMP-09 / Worked Examples with Commentary
+  // -------------------------------------------------------------
   'comp-9': {
     id: 'comp-9',
     componentNumber: 9,
-    title: 'Modelled Examples with Commentary',
-    shortTitle: 'Modelled Examples',
+    title: 'Worked Examples with Step-by-Step Commentary',
+    shortTitle: 'Worked Examples',
     category: 'instruction',
     categoryLabel: 'Worked Examples',
-    description: 'Detailed problem walkthroughs showing teacher reasoning and board explanation annotations.',
-    defaultEstimatedPages: 0.5,
+    description: 'Step-by-step problem modeling demonstrating student thought process, rule application, and verified answers.',
+    defaultEstimatedPages: 0.75,
     isRequired: true,
     targetAudience: 'both',
     editorType: 'specialised',
-    supportedBlockTypes: ['worked_example'],
+    supportedBlockTypes: ['worked_example', 'step_sequence', 'contrastive_pair'],
     iconName: 'HelpCircle',
     badgeColor: '#5A1832',
-    pedagogicalRole: 'Exemplifies mastery with explicit metacognitive commentary.',
+    pedagogicalRole: 'Scaffolds cognitive reasoning from rule observation to independent drill problem solving.',
     aiPromptConfig: {
       systemRole: 'Master Pedagogical Modeling Author',
-      taskPromptTemplate: 'Generate step-by-step worked examples showing teacher annotations.',
-      constraints: ['Include full teacher commentary and solution steps'],
-      expectedJsonFormat: '{ "items": any[] }',
+      taskPromptTemplate: 'Generate 2–3 step-by-step worked examples demonstrating thought process, logical reasoning, and verified final answers.',
+      constraints: [
+        'Each worked example must include: problem prompt, 2 to 4 sequential reasoning steps, rule/concept applied, and final verified solution.',
+        'Teacher edition view must receive pedagogical insight explaining why students might hesitate.',
+        'Grade-adapted difficulty and authentic board-appropriate problems.',
+      ],
+      expectedJsonFormat: `{
+  "items": [
+    {
+      "id": "we-1",
+      "title": "Example 1: Step-by-Step Problem Walkthrough",
+      "problem": "Problem prompt or sentence task",
+      "contextOrScenario": "Key concept or sub-topic",
+      "difficulty": "Standard",
+      "steps": [
+        { "stepNumber": 1, "title": "Identify Core Element", "instruction": "Step instruction", "sampleWork": "Modelled analysis", "ruleApplied": "Core Rule" },
+        { "stepNumber": 2, "title": "Apply Concept", "instruction": "Step instruction", "sampleWork": "Modelled analysis", "ruleApplied": "Core Rule" }
+      ],
+      "finalAnswer": "Verified final answer or solution",
+      "grammaticalRationale": "Precise explanation why this answer is correct",
+      "ruleReference": "RULE 1.1",
+      "teacherNote": "Classroom instruction tip or common hesitation point."
+    }
+  ]
+}`,
     },
-    validationRules: [],
+    validationRules: [
+      {
+        id: 'has-worked-examples',
+        label: 'At least one worked example authored',
+        check: (ch) => {
+          const c09Items = ch.component09?.items || ch.component07?.items || [];
+          const hasSectionBlocks = ch.sections.some((s) => s.blocks.some((b) => b.type === 'worked_example'));
+          return {
+            valid: c09Items.length > 0 || hasSectionBlocks,
+            message: 'Authored worked examples are required to model cognitive reasoning',
+          };
+        },
+      },
+      {
+        id: 'valid-steps',
+        label: 'Worked examples have structured steps',
+        check: (ch) => {
+          const c09Items = ch.component09?.items || ch.component07?.items || [];
+          if (c09Items.length === 0) return { valid: true };
+          const allHaveSteps = c09Items.every((item) => item.steps && item.steps.length >= 2);
+          return {
+            valid: allHaveSteps,
+            message: 'Each worked example should contain at least 2 structured reasoning steps',
+          };
+        },
+      },
+    ],
     exportRules: {
       headingLevel: 3,
       includeInStudentEdition: true,
       includeInTeacherEdition: true,
+      calloutBoxTheme: 'worked-example-parchment',
       exportRendererId: 'worked_examples',
     },
   },

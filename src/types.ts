@@ -1409,6 +1409,7 @@ export interface StudioChapter {
   component05?: Component05Data;
   component06?: Component06Data;
   component07?: Component07Data;
+  component09?: Component07Data;
   component10?: Component10Data;
   component11?: Component11Data;
   componentData?: Record<string, any>;

@@ -1507,132 +1507,220 @@ Output pure, valid JSON only. No markdown ticks or explanation.`;
 // ============================================================================
 // REUSABLE CHAPTER COMPONENT ENGINE: Component AI Content Generator
 // ============================================================================
+function getPedagogicalGradeGuidance(classLevel: string): string {
+  const digits = classLevel.replace(/\D/g, "");
+  const num = parseInt(digits, 10);
+
+  if (isNaN(num)) {
+    const lower = classLevel.toLowerCase();
+    if (lower.includes("primary") || lower.includes("junior")) {
+      return `Pedagogical Level: Primary (Age 7–10). Use simple, decodable vocabulary, concrete relatable situations, and moderate scaffolding. Avoid abstract academic jargon.`;
+    }
+    if (lower.includes("senior") || lower.includes("higher") || lower.includes("advanced")) {
+      return `Pedagogical Level: Senior Secondary (Age 16–18). Use rigorous academic discourse, subtle nuance, advanced problem transformation, and comprehensive analytical rationale.`;
+    }
+    return `Pedagogical Level: Middle School (Age 11–14). Provide systematic explanations, structured multi-step reasoning, and clear rule applications.`;
+  }
+
+  if (num <= 2) {
+    return `Pedagogical Level: Early Primary (Class ${num}, Age 6–7). Keep language extremely simple, decodable, and playful. Sentences under 8 words. Focus on concrete real-world objects (toys, animals, family). Zero abstract academic jargon. Maximum scaffolding.`;
+  }
+  if (num <= 5) {
+    return `Pedagogical Level: Primary (Class ${num}, Age 8–10). Use accessible school/home contexts and friendly relatable scenarios. Focus on clear contrastive patterns and fundamental concepts. Clear, supportive step-by-step guidance with moderate scaffolding.`;
+  }
+  if (num <= 8) {
+    return `Pedagogical Level: Middle School (Class ${num}, Age 11–13). Rigorous yet accessible. Systematic step-by-step reasoning explaining the underlying logic and mechanics. Highlight common traps and intervening modifiers. Moderate scaffolding.`;
+  }
+  if (num <= 10) {
+    return `Pedagogical Level: Secondary / Board Examination (Class ${num}, Age 14–16). High academic rigor aligned with board examination standards. Emphasize authentic examination traps, subtle distractors, precise analytical terminology, and formal solution structures. Light scaffolding.`;
+  }
+  return `Pedagogical Level: Senior Secondary (Class ${num}, Age 17–18). Publication-grade academic depth. Advanced theoretical synthesis, stylistic and rhetorical variations, edge cases, and independent critical thinking. Minimal scaffolding.`;
+}
+
+function getBoardProgrammeGuidance(board: string): string {
+  const b = (board || "").toUpperCase();
+  if (b.includes("CISCE") || b.includes("ICSE") || b.includes("ISC")) {
+    return `Board Context: CISCE (ICSE / ISC). Emphasize rigorous formal precision, exact terminology, transformation rigor, and avoidance of classic CISCE board exam traps.`;
+  }
+  if (b.includes("CAMBRIDGE") || b.includes("CAIE") || b.includes("IGCSE") || b.includes("CHECKPOINT")) {
+    return `Board Context: Cambridge Assessment International Education (CAIE). Emphasize inquiry-based conceptual discovery, international contexts, British English conventions, and communicative/functional precision.`;
+  }
+  if (b.includes("CBSE") || b.includes("NCF") || b.includes("NCERT")) {
+    return `Board Context: CBSE / NCF. Emphasize competency-based learning, inductive pattern finding, authentic integrated exercises, and application to real-world communication.`;
+  }
+  return `Board Context: ${board} (Independent / Custom Curriculum). Focus on universal academic rigor, clear conceptual progression, and transparent instructional scaffolding.`;
+}
+
 app.post("/api/chapter-studio/generate-component", async (req, res) => {
   try {
     const {
-      componentId = "comp-7",
-      topic = "Subject-Verb Agreement",
-      classLevel = "Class 6",
-      board = "CBSE",
+      componentId,
+      topic,
+      classLevel,
+      board,
+      subject,
+      curriculumFramework,
       existingCount = 0,
     } = req.body || {};
 
-    const effectiveId = componentId === "comp-9" ? "comp-7" : componentId;
+    // 1. Strict neutral validation: require real context from active chapter, never invent academic defaults
+    const missingFields: string[] = [];
+    if (!componentId || typeof componentId !== "string" || !componentId.trim()) {
+      missingFields.push("componentId (e.g. comp-9, comp-10, comp-11)");
+    }
+    if (!topic || typeof topic !== "string" || !topic.trim()) {
+      missingFields.push("topic (or chapter title)");
+    }
+    if (!classLevel || typeof classLevel !== "string" || !classLevel.trim()) {
+      missingFields.push("classLevel (e.g. Class 1–12, Grade, Stage)");
+    }
+    if (!board || typeof board !== "string" || !board.trim()) {
+      missingFields.push("board (e.g. CBSE, CISCE, Cambridge, Custom / Independent)");
+    }
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        error: `Missing required generation context: ${missingFields.join(", ")}. The component engine requires canonical project context and does not apply hardcoded defaults.`,
+        missingFields,
+      });
+    }
+
+    const trimmedTopic = topic.trim();
+    const trimmedClass = classLevel.trim();
+    const trimmedBoard = board.trim();
+    const effectiveSubject = subject && typeof subject === "string" && subject.trim() ? subject.trim() : "Academic Curriculum";
+    const gradeGuidance = getPedagogicalGradeGuidance(trimmedClass);
+    const boardGuidance = getBoardProgrammeGuidance(trimmedBoard);
+
     const ai = getGenAI();
+    if (!ai) {
+      return res.status(503).json({
+        error: "AI service unavailable: GEMINI_API_KEY is not configured.",
+      });
+    }
 
-    if (ai) {
-      try {
-        let systemPrompt = `You are a master educational curriculum author and academic textbook creator specializing in English Grammar for ${board} ${classLevel}.
-Generate rigorous, pedagogically sound content in valid JSON format.`;
+    const systemPrompt = `You are a distinguished educational curriculum author and academic textbook creator developing content for ${effectiveSubject} for ${trimmedBoard} ${trimmedClass}.
+Generate rigorous, pedagogically sound content tailored to this subject, grade level, and curriculum framework.
+${gradeGuidance}
+${boardGuidance}
+Output strictly valid JSON with no markdown wrapping.`;
 
-        if (effectiveId === "comp-7") {
-          const userPrompt = `Topic: "${topic}" (${classLevel}, ${board}).
-Generate 2 high-quality Worked Examples with step-by-step syntactic commentary.
+    let userPrompt = "";
+
+    // Canonical ID dispatch: No remapping
+    if (componentId === "comp-9") {
+      userPrompt = `Subject: "${effectiveSubject}"
+Topic / Chapter: "${trimmedTopic}"
+Grade Level: "${trimmedClass}"
+Curriculum Board: "${trimmedBoard}"
+${curriculumFramework ? `Framework Details: "${curriculumFramework}"` : ""}
+
+Generate 2 high-quality Worked Examples for this subject and topic, tailored to ${trimmedClass} students studying under the ${trimmedBoard} curriculum.
+Each example must demonstrate clear step-by-step problem modeling, logical reasoning, and a verified final solution appropriate for ${effectiveSubject}.
+
 Output JSON only with this structure:
 {
   "items": [
     {
       "id": "we-ai-1",
       "title": "Worked Example Title",
-      "problem": "Sentence with bracketed choice or transformation task",
+      "problem": "Problem statement, prompt, or question for students",
       "difficulty": "Standard",
       "steps": [
-        { "stepNumber": 1, "title": "Step title", "instruction": "Clear pedagogical step", "sampleWork": "Analysis snippet", "ruleApplied": "Rule name" },
-        { "stepNumber": 2, "title": "Step title", "instruction": "Clear pedagogical step", "sampleWork": "Analysis snippet", "ruleApplied": "Rule name" }
+        { "stepNumber": 1, "title": "Step 1 Title", "instruction": "Clear pedagogical step instruction", "sampleWork": "Modelled work or intermediate reasoning", "ruleApplied": "Rule, formula, or concept applied" },
+        { "stepNumber": 2, "title": "Step 2 Title", "instruction": "Clear pedagogical step instruction", "sampleWork": "Modelled work or intermediate reasoning", "ruleApplied": "Rule, formula, or concept applied" }
       ],
-      "finalAnswer": "Correct completed sentence",
-      "grammaticalRationale": "Precise linguistic explanation why this answer is correct",
-      "teacherNote": "Actionable classroom teaching tip"
+      "finalAnswer": "Verified final solution or answer",
+      "grammaticalRationale": "Clear pedagogical rationale explaining why this answer is correct according to the subject rules",
+      "teacherNote": "Actionable classroom teaching tip, student hesitation point, or pacing guidance"
     }
   ]
 }`;
-          const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: `${systemPrompt}\n\n${userPrompt}`,
-            config: {
-              responseMimeType: "application/json",
-            },
-          });
-          const text = response.text?.trim();
-          if (text) {
-            const parsed = JSON.parse(text);
-            return res.json({ data: parsed });
-          }
-        } else if (effectiveId === "comp-10") {
-          const userPrompt = `Topic: "${topic}" (${classLevel}, ${board}).
-Generate 2 Common Errors & Pitfalls with contrastive incorrect vs correct sentences and memory tips.
+    } else if (componentId === "comp-10") {
+      userPrompt = `Subject: "${effectiveSubject}"
+Topic / Chapter: "${trimmedTopic}"
+Grade Level: "${trimmedClass}"
+Curriculum Board: "${trimmedBoard}"
+${curriculumFramework ? `Framework Details: "${curriculumFramework}"` : ""}
+
+Generate 2 authentic Common Errors & Pitfalls for this subject and topic that ${trimmedClass} students frequently make under the ${trimmedBoard} curriculum.
+Include contrastive incorrect vs correct formulations, the conceptual misconception causing the error, an actionable prevention rule or memory tip, and diagnostic advice for teachers.
+
 Output JSON only with this structure:
 {
   "items": [
     {
       "id": "ce-ai-1",
       "title": "Error Pattern Name",
-      "incorrectSentence": "Incorrect sentence with error",
-      "correctSentence": "Correct sentence",
-      "mistakeType": "Syntactic Category",
-      "explanation": "Why learners make this mistake",
-      "ruleAnchor": "The underlying grammar rule",
-      "preventionTip": "Practical memory hook or test",
+      "incorrectSentence": "Incorrect student attempt, misconception, or error sample",
+      "correctSentence": "Correct formulation, accurate solution, or standard practice",
+      "mistakeType": "Category of misconception or error type",
+      "explanation": "Why learners make this mistake and the underlying confusion",
+      "ruleAnchor": "The authoritative rule, principle, or theorem that clarifies this",
+      "preventionTip": "Practical memory hook, verification test, or mnemonic",
       "frequency": "Critical Exam Trap",
-      "teacherNote": "Diagnostic tip for teachers"
+      "teacherNote": "Diagnostic classroom tip to detect and remediate this error early"
     }
   ]
 }`;
-          const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: `${systemPrompt}\n\n${userPrompt}`,
-            config: {
-              responseMimeType: "application/json",
-            },
-          });
-          const text = response.text?.trim();
-          if (text) {
-            const parsed = JSON.parse(text);
-            return res.json({ data: parsed });
-          }
-        } else if (effectiveId === "comp-11") {
-          const userPrompt = `Topic: "${topic}" (${classLevel}, ${board}).
-Generate 2 bite-sized Remember / Quick Tip Callout Boxes for student textbooks.
+    } else if (componentId === "comp-11") {
+      userPrompt = `Subject: "${effectiveSubject}"
+Topic / Chapter: "${trimmedTopic}"
+Grade Level: "${trimmedClass}"
+Curriculum Board: "${trimmedBoard}"
+${curriculumFramework ? `Framework Details: "${curriculumFramework}"` : ""}
+
+Generate 2 concise, memorable Remember / Quick Tip Callout Boxes for student textbooks on "${trimmedTopic}" for ${trimmedClass} (${trimmedBoard}).
+These must provide rapid student retention, high-yield takeaways, mnemonic hooks, or quick rules.
+
 Output JSON only with this structure:
 {
   "items": [
     {
       "id": "tip-ai-1",
-      "title": "Callout Title",
+      "title": "Callout Box Title",
       "tipType": "golden_rule",
-      "calloutText": "Clear memorable rule advice",
-      "memoryHook": "Catchy rhyme or mnemonic",
-      "quickFormula": "Formula string",
+      "calloutText": "Clear, memorable rule statement or high-yield summary",
+      "memoryHook": "Catchy mnemonic, rhythm, or memory anchor",
+      "quickFormula": "Quick formula, rule pattern, or shorthand structure",
       "icon": "lightbulb",
       "importance": "high",
-      "teacherNote": "Teacher pacing or emphasis note"
+      "teacherNote": "Classroom emphasis note or board callout hint"
     }
   ]
 }`;
-          const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: `${systemPrompt}\n\n${userPrompt}`,
-            config: {
-              responseMimeType: "application/json",
-            },
-          });
-          const text = response.text?.trim();
-          if (text) {
-            const parsed = JSON.parse(text);
-            return res.json({ data: parsed });
-          }
-        }
-      } catch (genErr) {
-        console.warn("AI generation failed in generate-component, using benchmark fallback:", genErr);
+    } else {
+      return res.status(400).json({
+        error: `Unsupported componentId: "${componentId}". Supported canonical IDs are comp-9 (Worked Examples), comp-10 (Common Errors & Pitfalls), and comp-11 (Remember / Tip Boxes).`,
+      });
+    }
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.8-flash",
+      contents: `${systemPrompt}\n\n${userPrompt}`,
+      config: {
+        responseMimeType: "application/json",
+      },
+    });
+
+    const text = response.text?.trim() || "";
+    if (!text) {
+      return res.status(502).json({ error: "Empty response received from AI model." });
+    }
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      const match = text.match(/\{[\s\S]*\}/);
+      if (match) {
+        parsed = JSON.parse(match[0]);
+      } else {
+        return res.status(502).json({ error: "Failed to parse JSON response from AI model.", raw: text });
       }
     }
 
-    // Benchmark fallback data
-    return res.json({
-      data: {
-        items: [],
-      },
-    });
+    return res.json({ data: parsed });
   } catch (error: any) {
     console.error("Component generation route error:", error);
     return res.status(500).json({ error: error.message || "Failed to generate component content" });

@@ -300,8 +300,11 @@ export function calculateComponentStatus(
     return component.isRequired ? 'not_started' : 'not_applicable';
   }
 
-  // 9. Worked Examples with Commentary
+  // 9. Worked Examples with Commentary (COMP-09)
   if (component.id === 'comp-9' || nameLower.includes('worked example')) {
+    if ((chapter.component09?.items?.length || 0) >= 1) {
+      return chapter.component09?.status === 'complete' ? 'complete' : 'drafting';
+    }
     const workedBlocks = chapter.sections?.flatMap((s) =>
       (s.blocks || []).filter((b) => b.type === 'worked_example')
     );
@@ -309,8 +312,11 @@ export function calculateComponentStatus(
     return 'not_started';
   }
 
-  // 10. Common Errors & Pitfalls
+  // 10. Common Errors & Pitfalls (COMP-10)
   if (component.id === 'comp-10' || nameLower.includes('error') || nameLower.includes('pitfall')) {
+    if ((chapter.component10?.items?.length || 0) >= 1) {
+      return chapter.component10?.status === 'complete' ? 'complete' : 'drafting';
+    }
     const errorBlocks = chapter.sections?.flatMap((s) =>
       (s.blocks || []).filter((b) => b.type === 'common_error')
     );
@@ -319,8 +325,11 @@ export function calculateComponentStatus(
     return 'not_started';
   }
 
-  // 11. Remember / Tip Boxes
+  // 11. Remember / Tip Boxes (COMP-11)
   if (component.id === 'comp-11' || nameLower.includes('remember') || nameLower.includes('tip')) {
+    if ((chapter.component11?.items?.length || 0) >= 1) {
+      return chapter.component11?.status === 'complete' ? 'complete' : 'drafting';
+    }
     const tipBlocks = chapter.sections?.flatMap((s) =>
       (s.blocks || []).filter((b) => b.type === 'grammar_tip' || b.type === 'remember' || b.type === 'important_note' || (b.type as string) === 'callout')
     );

@@ -60,6 +60,7 @@ import { ChapterAssessmentView } from './ChapterAssessmentView';
 import { AnswerKeyStudioView } from './AnswerKeyStudioView';
 import { ChapterAuditStudioView } from './ChapterAuditStudioView';
 import { Component06RulesAuthoring } from './Component06RulesAuthoring';
+import { ReusableComponentView } from './engine/ReusableComponentView';
 
 export interface ChapterManuscriptCanvasProps {
   chapter: StudioChapter;
@@ -2689,257 +2690,37 @@ export const ChapterManuscriptCanvas: React.FC<ChapterManuscriptCanvasProps> = (
           />
         )}
 
-        {/* Stage 7: Worked Examples Studio View */}
+        {/* Stage 7 / COMP-09: Worked Examples Studio View */}
         {effectiveView === 'worked_examples' && (
-          <div className="space-y-6">
-            <div className="p-6 rounded-2xl border border-[#CBBEAC] bg-[#FFFDF8] shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2.5 rounded-xl bg-[#5A1832] text-[#FFFDF8]">
-                    <HelpCircle className="w-6 h-6 text-[#C29A52]" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#5A1832] block">
-                      Production Stage 7
-                    </span>
-                    <h2 className="text-lg font-bold font-serif text-[#292521]">
-                      Step-by-Step Worked Examples Studio
-                    </h2>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onAddBlockToCurrentSection('worked_example')}
-                  className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#5A1832] text-[#FFFDF8] hover:bg-[#35101F] shadow-xs flex items-center space-x-1.5 transition-colors cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>+ Add Worked Example</span>
-                </button>
-              </div>
-              <p className="text-xs text-[#71685E]">
-                Step-by-step problem modeling showing student thought process, grammatical reasoning, and verified solutions.
-              </p>
-            </div>
-
-            {/* List of Worked Examples */}
-            <div className="space-y-4">
-              {chapter.sections.map((sec) => {
-                const weBlocks = sec.blocks.filter((b) => b.type === 'worked_example');
-                if (weBlocks.length === 0) return null;
-                return (
-                  <div key={sec.id} className="space-y-3">
-                    <span className="text-xs font-bold uppercase tracking-wider text-[#5A1832] block">
-                      {sec.title}
-                    </span>
-                    {weBlocks.map((wb) => (
-                      <div
-                        key={wb.id}
-                        className="p-5 rounded-2xl border border-[#CBBEAC] bg-[#FFFDF8] shadow-xs space-y-3"
-                      >
-                        <div className="flex items-center justify-between border-b border-[#CBBEAC]/50 pb-2">
-                          <span className="font-bold text-xs text-emerald-800">
-                            Problem: {wb.workedExample?.problem || 'Unspecified problem sentence'}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => onEditBlock(wb)}
-                            className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#EDE4D6] text-[#292521] hover:bg-[#CBBEAC]/40 border border-[#CBBEAC] transition-colors cursor-pointer"
-                          >
-                            Edit Steps
-                          </button>
-                        </div>
-                        <div className="space-y-2">
-                          {(wb.workedExample?.steps || []).map((st, sIdx) => (
-                            <div
-                              key={sIdx}
-                              className="p-2.5 rounded-xl bg-[#F6F0E7] text-xs flex items-start space-x-2 border border-[#CBBEAC]/60"
-                            >
-                              <span className="w-5 h-5 rounded-full bg-[#5A1832] text-[#FFFDF8] font-bold flex items-center justify-center shrink-0 text-[10px]">
-                                {st.stepNumber}
-                              </span>
-                              <div>
-                                <span className="font-bold block text-[#292521]">
-                                  {st.title}
-                                </span>
-                                <p className="text-[#71685E]">{st.instruction}</p>
-                                {st.sampleWork && (
-                                  <p className="mt-1 font-mono text-[11px] text-[#5A1832] font-semibold">
-                                    {st.sampleWork}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-900">
-                          Final Answer: {wb.workedExample?.finalAnswer}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <ReusableComponentView
+            componentId="comp-9"
+            chapter={chapter}
+            onUpdateChapter={onUpdateChapter}
+            seriesProject={seriesProject}
+            isDarkMode={false}
+          />
         )}
 
-        {/* Stage 8: Common Errors & Tips Studio View */}
+        {/* Stage 8 / COMP-10: Common Errors & Pitfalls Studio View */}
         {effectiveView === 'common_errors' && (
-          <div className="space-y-6">
-            <div className="p-6 rounded-2xl border border-[#CBBEAC] bg-[#FFFDF8] shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2.5 rounded-xl bg-[#5A1832] text-[#FFFDF8]">
-                    <AlertTriangle className="w-6 h-6 text-[#C29A52]" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#5A1832] block">
-                      Production Stage 8
-                    </span>
-                    <h2 className="text-lg font-bold font-serif text-[#292521]">
-                      Common Errors, Traps &amp; Examination Tips
-                    </h2>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onAddBlockToCurrentSection('common_error')}
-                  className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#5A1832] text-[#FFFDF8] hover:bg-[#35101F] shadow-xs flex items-center space-x-1.5 transition-colors cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>+ Add Common Error</span>
-                </button>
-              </div>
-              <p className="text-xs text-[#71685E]">
-                Inoculate students against high-frequency board examination pitfalls, false attractions, and agreement traps.
-              </p>
-            </div>
-
-            {/* List of Common Errors */}
-            <div className="space-y-4">
-              {chapter.sections.map((sec) => {
-                const ceBlocks = sec.blocks.filter(
-                  (b) => b.type === 'common_error' || b.type === 'watch_out' || b.type === 'exam_tip'
-                );
-                if (ceBlocks.length === 0) return null;
-                return (
-                  <div key={sec.id} className="space-y-3">
-                    <span className="text-xs font-bold uppercase tracking-wider text-[#5A1832] block">
-                      {sec.title}
-                    </span>
-                    {ceBlocks.map((cb) => (
-                      <div
-                        key={cb.id}
-                        className="p-5 rounded-2xl border border-[#CBBEAC] bg-[#FFFDF8] shadow-xs space-y-3"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-100 text-rose-800 border border-rose-200">
-                            {cb.commonError?.mistakeType || cb.calloutTitle || 'High-Frequency Trap'}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => onEditBlock(cb)}
-                            className="px-2 py-0.5 rounded text-xs border border-[#CBBEAC] bg-[#EDE4D6] hover:bg-[#CBBEAC]/40 text-[#292521] transition-colors cursor-pointer"
-                          >
-                            Edit Trap
-                          </button>
-                        </div>
-                        {cb.commonError ? (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200">
-                              <span className="text-rose-700 font-bold block mb-0.5">Incorrect:</span>
-                              <p className="font-serif text-sm line-through text-rose-950">
-                                "{cb.commonError.incorrectSentence}"
-                              </p>
-                            </div>
-                            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
-                              <span className="text-emerald-700 font-bold block mb-0.5">Correct:</span>
-                              <p className="font-serif text-sm font-bold text-emerald-900">
-                                "{cb.commonError.correctSentence}"
-                              </p>
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="text-xs text-[#292521]">
-                            {cb.calloutText || cb.textContent}
-                          </p>
-                        )}
-                        {cb.commonError?.explanation && (
-                          <p className="text-xs text-[#71685E] italic">
-                            Why: {cb.commonError.explanation}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <ReusableComponentView
+            componentId="comp-10"
+            chapter={chapter}
+            onUpdateChapter={onUpdateChapter}
+            seriesProject={seriesProject}
+            isDarkMode={false}
+          />
         )}
 
-        {/* Component 11: Remember & Quick Tip Boxes View */}
+        {/* Component 11 / COMP-11: Remember & Quick Tip Boxes View */}
         {effectiveView === 'tips' && (
-          <div className="space-y-6">
-            <div className="bg-[#FFFDF8] border border-[#CBBEAC] rounded-xl p-5 shadow-xs flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-[#5A1832] text-[#FFFDF8] flex items-center justify-center font-serif shadow-xs">
-                  <Sparkles className="w-5 h-5 text-[#C29A52]" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-[#5A1832]">
-                      Component 11 • Mnemonics &amp; Retention
-                    </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-medium border border-amber-200">
-                      Remember Callouts
-                    </span>
-                  </div>
-                  <h2 className="text-xl font-serif font-bold text-[#292521]">
-                    Remember &amp; Quick Tip Boxes
-                  </h2>
-                  <p className="text-xs text-[#71685E] mt-0.5">
-                    Concise mnemonic hooks, memory anchors, and quick-reference rules highlighted for rapid student retention.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Component 11 Dynamic Remember / Quick Tips */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {chapter.revisionData?.rememberPoints && chapter.revisionData.rememberPoints.length > 0 ? (
-                chapter.revisionData.rememberPoints.map((point, idx) => (
-                  <div key={idx} className="bg-[#FFFDF8] border-2 border-[#C29A52]/60 rounded-xl p-4 shadow-xs space-y-2">
-                    <div className="flex items-center space-x-2 text-[#5A1832] font-bold text-xs uppercase tracking-wide">
-                      <Award className="w-4 h-4 text-[#C29A52]" />
-                      <span>Remember Callout {idx + 1}</span>
-                    </div>
-                    <p className="text-xs font-serif text-[#292521] leading-relaxed">
-                      {point}
-                    </p>
-                  </div>
-                ))
-              ) : chapter.rules && chapter.rules.length > 0 ? (
-                chapter.rules.slice(0, 2).map((r, idx) => (
-                  <div key={idx} className="bg-[#FFFDF8] border-2 border-[#C29A52]/60 rounded-xl p-4 shadow-xs space-y-2">
-                    <div className="flex items-center space-x-2 text-[#5A1832] font-bold text-xs uppercase tracking-wide">
-                      <Award className="w-4 h-4 text-[#C29A52]" />
-                      <span>Remember: {r.ruleName}</span>
-                    </div>
-                    <p className="text-xs font-serif text-[#292521] leading-relaxed">
-                      {r.ruleStatement}
-                    </p>
-                  </div>
-                ))
-              ) : (
-                <div className="col-span-2 p-6 rounded-xl border border-dashed border-[#CBBEAC] text-center bg-[#FFFDF8]">
-                  <p className="text-xs text-[#71685E]">
-                    No quick tips or remember callouts authored yet for <strong>{chapter.title}</strong>.
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
+          <ReusableComponentView
+            componentId="comp-11"
+            chapter={chapter}
+            onUpdateChapter={onUpdateChapter}
+            seriesProject={seriesProject}
+            isDarkMode={false}
+          />
         )}
 
         {/* Component 12: Guided Practice Drills View */}

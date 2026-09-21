@@ -205,17 +205,32 @@ export function getBoardGuidance(boardNameOrSystem: string | undefined): BoardGu
     };
   }
 
-  // Default to CBSE / National Curriculum Framework (NCF)
+  if (b.includes('CBSE') || b.includes('NCF') || b.includes('NCERT')) {
+    return {
+      boardName: 'CBSE / NCF',
+      systemCode: 'CBSE',
+      curricularFramework: 'National Curriculum Framework (NCF) / CBSE Curriculum',
+      stylisticPreferences: 'Communicative and competency-based pedagogy, inductive pattern-finding, integrated exercises, and applied application.',
+      assessmentStyle: 'Competency-based evaluation, contextual questions, editing drills, and applied problem-solving.',
+      authoringPriorities: [
+        'Balance explicit principles with everyday functional application.',
+        'Provide contextual situations and authentic multi-part problems.',
+        'Align pitfalls with high-frequency misconceptions observed in national examinations.',
+      ],
+    };
+  }
+
+  // Custom / Independent / Universal Curriculum
   return {
-    boardName: 'CBSE / NCF',
-    systemCode: 'CBSE',
-    curricularFramework: 'National Curriculum Framework (NCF) / CBSE Secondary English Curriculum',
-    stylisticPreferences: 'Communicative and functional English, inductive pattern-finding, integrated grammar exercises, gap-filling, sentence reordering, and dialogue completion.',
-    assessmentStyle: 'Integrated grammar passages, editing/omission drills, sentence reordering, and applied composition rubrics.',
+    boardName: boardNameOrSystem ? `${boardNameOrSystem} (Independent / Custom)` : 'Custom / Independent Curriculum',
+    systemCode: 'Custom',
+    curricularFramework: 'Independent Institutional Curriculum Framework',
+    stylisticPreferences: 'Modular, concept-first, clear pedagogical progression, universal educational standards.',
+    assessmentStyle: 'Formative concept checks, applied problem solving, clear criteria.',
     authoringPriorities: [
-      'Balance explicit structural rules with everyday functional communication.',
-      'Provide contextual dialogues and multi-sentence passages rather than isolated phrases.',
-      'Align pitfalls with high-frequency errors observed in CBSE national board papers.',
+      'Focus on core conceptual mastery and structured progression.',
+      'Use universally accessible language and standard terminology.',
+      'Provide clear, scaffolded instructional models and diagnostic feedback.',
     ],
   };
 }
@@ -229,21 +244,24 @@ export function buildContextAwareAiPrompt(
   classLevel: string | undefined,
   board: string | undefined,
   taskDescription: string,
-  schemaPrompt: string
+  schemaPrompt: string,
+  subject?: string
 ): string {
   const grade = getGradeGuidance(classLevel);
   const boardInfo = getBoardGuidance(board);
+  const subjectName = subject && subject.trim() ? subject.trim() : 'Academic Curriculum';
 
-  return `You are a distinguished K-12 English Language & Grammar textbook author and curriculum director for VERITAS Academic Publishing.
+  return `You are a distinguished educational curriculum author and academic textbook creator for VERITAS Academic Publishing, specializing in ${subjectName}.
 
 CURRICULAR CONTEXT:
+- Subject: ${subjectName}
 - Active Board / Programme: ${boardInfo.boardName} (${boardInfo.curricularFramework})
 - Active Class Level: ${grade.classLevel} (${grade.bandLabel})
 - Pedagogical Focus: ${grade.pedagogicalFocus}
 - Tone & Voice: ${grade.toneAndVoice}
 - Cognitive Depth: ${grade.cognitiveLevel}
 - Terminology Depth: ${grade.terminologyDepth}
-- Grammar Topic: "${topic}"
+- Topic / Chapter: "${topic}"
 - Target Component: ${componentTitle}
 
 PEDAGOGICAL DIRECTIVES:
