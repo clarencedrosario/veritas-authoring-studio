@@ -257,12 +257,27 @@ export default function App() {
   }, []);
 
   // Track the last active authoring workspace before navigating to Publishing
-  const [lastAuthoringWorkspace, setLastAuthoringWorkspace] = useState<'academic' | 'novel' | 'content' | 'film'>('novel');
+  const [lastAuthoringWorkspace, setLastAuthoringWorkspace] = useState<'academic' | 'novel' | 'content' | 'film'>(() => {
+    try {
+      const saved = localStorage.getItem('veritas_last_authoring_workspace');
+      if (saved === 'academic' || saved === 'novel' || saved === 'content' || saved === 'film') {
+        return saved;
+      }
+    } catch (e) {
+      // ignore
+    }
+    return 'academic';
+  });
 
   useEffect(() => {
     const ws = getActiveWorkspace(currentTab);
     if (ws === 'academic' || ws === 'novel' || ws === 'content' || ws === 'film') {
       setLastAuthoringWorkspace(ws);
+      try {
+        localStorage.setItem('veritas_last_authoring_workspace', ws);
+      } catch (e) {
+        // ignore
+      }
     }
   }, [currentTab, getActiveWorkspace]);
 
@@ -280,12 +295,21 @@ export default function App() {
     } else if (ws === 'film') {
       setCurrentTab('script_studio');
     } else if (ws === 'publishing') {
+      const currentWs = getActiveWorkspace(currentTab);
+      if (currentWs === 'academic' || currentWs === 'novel' || currentWs === 'content' || currentWs === 'film') {
+        setLastAuthoringWorkspace(currentWs);
+        try {
+          localStorage.setItem('veritas_last_authoring_workspace', currentWs);
+        } catch (e) {
+          // ignore
+        }
+      }
       setCurrentTab('publishing_studio');
     } else if (ws === 'analytics' || ws === 'tools') {
       setCurrentTab('analytics');
     }
     setIsSecondaryExpanded(true);
-  }, []);
+  }, [currentTab, getActiveWorkspace]);
 
   // Keyboard Shortcuts: Cmd+K for Command Palette, '[' to toggle sidebar, Alt+H for Humanise
   useEffect(() => {

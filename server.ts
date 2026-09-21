@@ -1505,6 +1505,141 @@ Output pure, valid JSON only. No markdown ticks or explanation.`;
 });
 
 // ============================================================================
+// REUSABLE CHAPTER COMPONENT ENGINE: Component AI Content Generator
+// ============================================================================
+app.post("/api/chapter-studio/generate-component", async (req, res) => {
+  try {
+    const {
+      componentId = "comp-7",
+      topic = "Subject-Verb Agreement",
+      classLevel = "Class 6",
+      board = "CBSE",
+      existingCount = 0,
+    } = req.body || {};
+
+    const effectiveId = componentId === "comp-9" ? "comp-7" : componentId;
+    const ai = getGenAI();
+
+    if (ai) {
+      try {
+        let systemPrompt = `You are a master educational curriculum author and academic textbook creator specializing in English Grammar for ${board} ${classLevel}.
+Generate rigorous, pedagogically sound content in valid JSON format.`;
+
+        if (effectiveId === "comp-7") {
+          const userPrompt = `Topic: "${topic}" (${classLevel}, ${board}).
+Generate 2 high-quality Worked Examples with step-by-step syntactic commentary.
+Output JSON only with this structure:
+{
+  "items": [
+    {
+      "id": "we-ai-1",
+      "title": "Worked Example Title",
+      "problem": "Sentence with bracketed choice or transformation task",
+      "difficulty": "Standard",
+      "steps": [
+        { "stepNumber": 1, "title": "Step title", "instruction": "Clear pedagogical step", "sampleWork": "Analysis snippet", "ruleApplied": "Rule name" },
+        { "stepNumber": 2, "title": "Step title", "instruction": "Clear pedagogical step", "sampleWork": "Analysis snippet", "ruleApplied": "Rule name" }
+      ],
+      "finalAnswer": "Correct completed sentence",
+      "grammaticalRationale": "Precise linguistic explanation why this answer is correct",
+      "teacherNote": "Actionable classroom teaching tip"
+    }
+  ]
+}`;
+          const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `${systemPrompt}\n\n${userPrompt}`,
+            config: {
+              responseMimeType: "application/json",
+            },
+          });
+          const text = response.text?.trim();
+          if (text) {
+            const parsed = JSON.parse(text);
+            return res.json({ data: parsed });
+          }
+        } else if (effectiveId === "comp-10") {
+          const userPrompt = `Topic: "${topic}" (${classLevel}, ${board}).
+Generate 2 Common Errors & Pitfalls with contrastive incorrect vs correct sentences and memory tips.
+Output JSON only with this structure:
+{
+  "items": [
+    {
+      "id": "ce-ai-1",
+      "title": "Error Pattern Name",
+      "incorrectSentence": "Incorrect sentence with error",
+      "correctSentence": "Correct sentence",
+      "mistakeType": "Syntactic Category",
+      "explanation": "Why learners make this mistake",
+      "ruleAnchor": "The underlying grammar rule",
+      "preventionTip": "Practical memory hook or test",
+      "frequency": "Critical Exam Trap",
+      "teacherNote": "Diagnostic tip for teachers"
+    }
+  ]
+}`;
+          const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `${systemPrompt}\n\n${userPrompt}`,
+            config: {
+              responseMimeType: "application/json",
+            },
+          });
+          const text = response.text?.trim();
+          if (text) {
+            const parsed = JSON.parse(text);
+            return res.json({ data: parsed });
+          }
+        } else if (effectiveId === "comp-11") {
+          const userPrompt = `Topic: "${topic}" (${classLevel}, ${board}).
+Generate 2 bite-sized Remember / Quick Tip Callout Boxes for student textbooks.
+Output JSON only with this structure:
+{
+  "items": [
+    {
+      "id": "tip-ai-1",
+      "title": "Callout Title",
+      "tipType": "golden_rule",
+      "calloutText": "Clear memorable rule advice",
+      "memoryHook": "Catchy rhyme or mnemonic",
+      "quickFormula": "Formula string",
+      "icon": "lightbulb",
+      "importance": "high",
+      "teacherNote": "Teacher pacing or emphasis note"
+    }
+  ]
+}`;
+          const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `${systemPrompt}\n\n${userPrompt}`,
+            config: {
+              responseMimeType: "application/json",
+            },
+          });
+          const text = response.text?.trim();
+          if (text) {
+            const parsed = JSON.parse(text);
+            return res.json({ data: parsed });
+          }
+        }
+      } catch (genErr) {
+        console.warn("AI generation failed in generate-component, using benchmark fallback:", genErr);
+      }
+    }
+
+    // Benchmark fallback data
+    return res.json({
+      data: {
+        items: [],
+      },
+    });
+  } catch (error: any) {
+    console.error("Component generation route error:", error);
+    return res.status(500).json({ error: error.message || "Failed to generate component content" });
+  }
+});
+
+// ============================================================================
 // VERITAS ACADEMIC EDITORIAL REVIEW: Audit Clarity for Assessments & Questions
 // ============================================================================
 app.post("/api/ai/audit-clarity", async (req, res) => {

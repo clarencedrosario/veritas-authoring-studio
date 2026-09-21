@@ -970,7 +970,8 @@ export interface WorkedExampleStep {
   stepNumber: number;
   title: string;
   instruction: string;
-  sampleWork: string;
+  sampleWork?: string;
+  explanation?: string;
   ruleApplied?: string;
   note?: string;
 }
@@ -1407,6 +1408,10 @@ export interface StudioChapter {
   visuals?: any[];
   component05?: Component05Data;
   component06?: Component06Data;
+  component07?: Component07Data;
+  component10?: Component10Data;
+  component11?: Component11Data;
+  componentData?: Record<string, any>;
 }
 
 // -------------------------------------------------------------
@@ -1521,6 +1526,126 @@ export interface Component06Data {
   };
   exceptions: RuleExceptionItem[];
   teacherAnnotations?: Component06TeacherAnnotations;
+  wordCount?: number;
+  generatedAt?: string;
+  lastModified?: string;
+  generationMetadata?: {
+    board?: string;
+    grade?: string;
+    topic?: string;
+    model?: string;
+    generatedAt?: string;
+  };
+}
+
+// -------------------------------------------------------------
+// Component 7 / 9 — Step-by-Step Worked Examples Types
+// -------------------------------------------------------------
+
+export interface WorkedExampleItem {
+  id: string;
+  title: string;
+  problem: string;
+  contextOrScenario?: string;
+  difficulty?: 'Foundational' | 'Standard' | 'Advanced';
+  steps: WorkedExampleStep[];
+  finalAnswer: string;
+  grammaticalRationale?: string;
+  ruleReference?: string;
+  teacherNote?: string;
+  learnerTakeaway?: string;
+}
+
+export interface Component07TeacherAnnotations {
+  pedagogicalGoal?: string;
+  pacingMinutes?: number;
+  blackboardLayout?: string;
+  commonStudentPitfall?: string;
+}
+
+export interface Component07Data {
+  status?: 'not_started' | 'draft' | 'in_progress' | 'complete' | 'needs_review';
+  title?: string;
+  items: WorkedExampleItem[];
+  teacherAnnotations?: Component07TeacherAnnotations;
+  wordCount?: number;
+  generatedAt?: string;
+  lastModified?: string;
+  generationMetadata?: {
+    board?: string;
+    grade?: string;
+    topic?: string;
+    model?: string;
+    generatedAt?: string;
+  };
+}
+
+// -------------------------------------------------------------
+// Component 10 — Common Errors & Pitfalls Types
+// -------------------------------------------------------------
+
+export interface CommonErrorItem {
+  id: string;
+  title: string;
+  incorrectSentence: string;
+  correctSentence: string;
+  mistakeType: string;
+  explanation: string;
+  ruleAnchor: string;
+  preventionTip: string;
+  frequency?: 'High' | 'Medium' | 'Critical Exam Trap';
+  teacherNote?: string;
+}
+
+export interface Component10TeacherAnnotations {
+  diagnosticPrompt?: string;
+  remediationStrategy?: string;
+  boardExamFrequencyNote?: string;
+}
+
+export interface Component10Data {
+  status?: 'not_started' | 'draft' | 'in_progress' | 'complete' | 'needs_review';
+  title?: string;
+  items: CommonErrorItem[];
+  teacherAnnotations?: Component10TeacherAnnotations;
+  wordCount?: number;
+  generatedAt?: string;
+  lastModified?: string;
+  generationMetadata?: {
+    board?: string;
+    grade?: string;
+    topic?: string;
+    model?: string;
+    generatedAt?: string;
+  };
+}
+
+// -------------------------------------------------------------
+// Component 11 — Tips & Remember Callouts Types
+// -------------------------------------------------------------
+
+export interface TipRememberItem {
+  id: string;
+  title: string;
+  tipType: 'remember' | 'mnemonic' | 'exam_tip' | 'golden_rule' | 'shortcut';
+  calloutText: string;
+  memoryHook?: string;
+  quickFormula?: string;
+  icon?: 'award' | 'sparkles' | 'lightbulb' | 'alert' | 'key';
+  importance?: 'standard' | 'high' | 'critical';
+  teacherNote?: string;
+}
+
+export interface Component11TeacherAnnotations {
+  pacingAndEmphasis?: string;
+  blackboardBoxRecommendation?: string;
+}
+
+export interface Component11Data {
+  status?: 'not_started' | 'draft' | 'in_progress' | 'complete' | 'needs_review';
+  title?: string;
+  items: TipRememberItem[];
+  teacherAnnotations?: Component11TeacherAnnotations;
   wordCount?: number;
   generatedAt?: string;
   lastModified?: string;

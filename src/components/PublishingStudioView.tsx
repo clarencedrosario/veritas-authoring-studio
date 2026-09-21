@@ -92,50 +92,17 @@ export const PublishingStudioView: React.FC<PublishingStudioViewProps> = ({
     boardUpper.includes('CHECKPOINT') ||
     sysUpper === 'CAMBRIDGE';
 
-  const isCustomOrIndependent =
-    boardUpper.includes('CUSTOM') ||
-    boardUpper.includes('INDEPENDENT') ||
-    boardUpper.includes('GENERAL') ||
-    boardUpper.includes('COMMON CORE');
-
-  const isIndianBoard =
-    !isCambridge &&
-    !isCustomOrIndependent &&
-    (boardUpper.includes('CBSE') ||
-     boardUpper.includes('CISCE') ||
-     boardUpper.includes('ICSE') ||
-     boardUpper.includes('ISC') ||
-     sysUpper === 'CBSE' ||
-     sysUpper === 'CISCE');
-
-  // NEP 2020 may display for CISCE/ICSE/ISC or CBSE only when the active project configuration says it is applicable.
-  // Cambridge and Custom/Independent must NOT automatically display NEP 2020.
-  const isNepApplicable = Boolean(
-    isIndianBoard &&
-    (
-      (activeAcademicProject as any).isNepAligned === true ||
-      (activeAcademicProject as any).nepApplicable === true ||
-      (activeAcademicProject as any).curriculumFramework?.toUpperCase().includes('NEP') ||
-      (activeAcademicProject as any).pedagogicalFramework?.toUpperCase().includes('NEP') ||
-      (activeAcademicProject.notes || '').toUpperCase().includes('NEP') ||
-      (activeAcademicProject.subtitle || '').toUpperCase().includes('NEP') ||
-      (activeAcademicProject.curriculumProfile || '').toUpperCase().includes('NEP') ||
-      ((grammarProject as any).curriculumFramework || '').toUpperCase().includes('NEP') ||
-      (grammarProject.frameworkProfiles || []).some(
-        (fp) => ((fp.educationSystem as string) === bookContext.activeSystemId || (fp as any).systemId === bookContext.activeSystemId) &&
-          ((fp as any).frameworkName?.toUpperCase().includes('NEP') || (fp.notes || '').toUpperCase().includes('NEP') || (fp.frameworkDocument || '').toUpperCase().includes('NEP'))
-      )
-    )
-  );
+  // Use the active academic project's real curriculum framework / pedagogical framework / curriculum profile
+  const academicProjectAny = activeAcademicProject as any;
+  const frameworkAlignmentLabel =
+    activeAcademicProject.curriculumProfile ||
+    academicProjectAny.curriculumFramework ||
+    academicProjectAny.pedagogicalFramework ||
+    (isCambridge
+      ? (activeAcademicProject.programme ? `Cambridge • ${activeAcademicProject.programme}` : 'Cambridge Curriculum Framework')
+      : (activeAcademicProject.board ? `${activeAcademicProject.board} Curriculum Framework` : 'Curriculum Framework'));
 
   const academicClassDisplay = activeAcademicProject.classLevel || activeAcademicProject.classOrStage || grammarProject.selectedClass;
-
-  const frameworkAlignmentLabel = isNepApplicable
-    ? 'NEP 2020 Pedagogical Alignment'
-    : (activeAcademicProject.curriculumProfile ||
-       (isCambridge
-         ? (activeAcademicProject.programme ? `Cambridge • ${activeAcademicProject.programme}` : 'Cambridge Curriculum Framework')
-         : `${activeAcademicProject.board} Curriculum Framework`));
 
   const currentClassKey = academicClassDisplay as GrammarClassLevel;
   const currentBook = grammarProject.books?.[currentClassKey];
@@ -302,7 +269,7 @@ export const PublishingStudioView: React.FC<PublishingStudioViewProps> = ({
                 <div className="p-8 rounded-xl border border-[#CBBEAC]/60 bg-[#FBF9F5] text-[#292521] font-serif space-y-6 shadow-inner max-w-3xl mx-auto">
                   <div className="border-b border-[#9A7438]/40 pb-4 text-center">
                     <div className="text-[11px] font-mono tracking-widest text-[#9A7438] uppercase">
-                      Veritas Academic Press &bull; {activeAcademicProject.board} Series
+                      {grammarProject.seriesTitle || 'Veritas Academic Series'} &bull; {activeAcademicProject.board ? `${activeAcademicProject.board} Edition` : 'Academic Edition'}
                     </div>
                     <h1 className="text-2xl font-bold text-[#35101F] mt-1">
                       {activeAcademicProject.bookTitle}
@@ -314,28 +281,38 @@ export const PublishingStudioView: React.FC<PublishingStudioViewProps> = ({
 
                   <div className="space-y-4 text-xs font-sans leading-relaxed text-[#3a3530]">
                     <div className="p-3 rounded-lg bg-[#EDE4D6]/50 border border-[#CBBEAC]">
-                      {isNepApplicable ? (
-                        <>
-                          <span className="font-bold text-[#5A1832]">NEP 2020 Competency Statement:</span> This volume integrates experiential syntax analysis, contextual cloze tests, and multi-tiered assessments conforming strictly to {activeAcademicProject.board} regulations.
-                        </>
-                      ) : (
-                        <>
-                          <span className="font-bold text-[#5A1832]">{activeAcademicProject.board} Curriculum Alignment:</span> This volume integrates structured syntactic inquiry, contextual language analysis, and formative assessments conforming strictly to {activeAcademicProject.board} {activeAcademicProject.programme ? `(${activeAcademicProject.programme})` : 'curriculum'} specifications.
-                        </>
-                      )}
+                      <span className="font-bold text-[#5A1832]">
+                        {academicProjectAny.curriculumFramework || academicProjectAny.pedagogicalFramework || `${activeAcademicProject.board || 'Academic'} Curriculum`} Alignment:
+                      </span>{' '}
+                      {activeAcademicProject.notes ||
+                        `This volume for ${academicClassDisplay} integrates structured syntactic inquiry, contextual language analysis, and formative assessments conforming strictly to ${activeAcademicProject.board || 'standard'} ${activeAcademicProject.programme ? `(${activeAcademicProject.programme})` : ''} curriculum specifications.`}
                     </div>
 
                     <div className="text-sm font-serif font-bold text-[#35101F]">
-                      Sample Chapter Unit Structure:
+                      Coursebook Syllabus Structure ({activeTopics.length} {activeTopics.length === 1 ? 'Chapter' : 'Chapters'}):
                     </div>
-                    <ol className="list-decimal pl-5 space-y-1.5 font-mono text-[11px] text-[#5A1832]">
-                      <li>COMP-01: Core Concept Definition &amp; Etymological Root</li>
-                      <li>COMP-02: Structural Sentence Blueprint &amp; Syntax Diagram</li>
-                      <li>COMP-03: Rule Invariant &amp; Common Learner Fallacies</li>
-                      <li>COMP-04: Guided Differentiated Practice Exercises</li>
-                      <li>COMP-05: High-Order Board Exam Question Bank</li>
-                      <li>COMP-06: Formative Assessment &amp; Rubric Key</li>
-                    </ol>
+                    {activeTopics.length > 0 ? (
+                      <ol className="list-decimal pl-5 space-y-1.5 font-sans text-xs text-[#5A1832]">
+                        {activeTopics.slice(0, 8).map((t, idx) => {
+                          const topicAny = t as any;
+                          return (
+                            <li key={t.id || idx}>
+                              <span className="font-semibold">{t.title}</span>
+                              {topicAny.subtitle && <span className="text-[#71685E] text-[11px]"> — {topicAny.subtitle}</span>}
+                            </li>
+                          );
+                        })}
+                        {activeTopics.length > 8 && (
+                          <li className="list-none text-[11px] text-[#71685E] italic">
+                            + {activeTopics.length - 8} more chapters in syllabus
+                          </li>
+                        )}
+                      </ol>
+                    ) : (
+                      <div className="text-xs text-[#71685E] italic">
+                        No chapters registered yet for this book volume.
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -356,7 +333,7 @@ export const PublishingStudioView: React.FC<PublishingStudioViewProps> = ({
                   <div className="p-4 rounded-xl border border-[#CBBEAC] bg-[#EDE4D6]/40 dark:bg-[#35101F]/40 space-y-2">
                     <div className="font-bold text-[#5A1832] dark:text-[#C29A52]">Preface &amp; Curriculum Rationale</div>
                     <p className="text-[#71685E] dark:text-[#D8CCBC]">
-                      Designed to nurture grammatical agility, conceptual mastery, and articulate written expression for {academicClassDisplay} students under {activeAcademicProject.board} standards.
+                      Designed to nurture grammatical agility, conceptual mastery, and articulate written expression for {academicClassDisplay} students under {activeAcademicProject.board || 'established curriculum'} standards.
                     </p>
                   </div>
                 </div>
