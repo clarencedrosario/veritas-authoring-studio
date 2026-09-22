@@ -339,6 +339,9 @@ export function calculateComponentStatus(
 
   // 12. Guided Practice
   if (component.id === 'comp-12' || nameLower.includes('guided practice')) {
+    if ((chapter.component12?.items?.length || 0) >= 1) {
+      return chapter.component12?.status === 'complete' ? 'complete' : 'drafting';
+    }
     const hasDrill = chapter.sections?.some((s) =>
       s.id !== 'sec-concept-discovery' &&
       !s.title?.toLowerCase().includes('discovery') &&

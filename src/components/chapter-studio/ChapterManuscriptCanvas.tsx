@@ -2713,7 +2713,7 @@ export const ChapterManuscriptCanvas: React.FC<ChapterManuscriptCanvasProps> = (
         )}
 
         {/* Component 11 / COMP-11: Remember & Quick Tip Boxes View */}
-        {effectiveView === 'tips' && (
+        {(effectiveView === 'tips' || activeArchitectureItemId === 'comp-11') && (
           <ReusableComponentView
             componentId="comp-11"
             chapter={chapter}
@@ -2723,77 +2723,15 @@ export const ChapterManuscriptCanvas: React.FC<ChapterManuscriptCanvasProps> = (
           />
         )}
 
-        {/* Component 12: Guided Practice Drills View */}
-        {effectiveView === 'guided_practice' && (
-          <div className="space-y-6">
-            <div className="bg-[#FFFDF8] border border-[#CBBEAC] rounded-xl p-5 shadow-xs flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-[#5A1832] text-[#FFFDF8] flex items-center justify-center font-serif shadow-xs">
-                  <FileText className="w-5 h-5 text-[#C29A52]" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-[#5A1832]">
-                      Component 12 • Scaffolding &amp; Feedback
-                    </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 font-medium border border-blue-200">
-                      Guided Practice (Drill A)
-                    </span>
-                  </div>
-                  <h2 className="text-xl font-serif font-bold text-[#292521]">
-                    Guided Practice &amp; Check for Understanding
-                  </h2>
-                  <p className="text-xs text-[#71685E] mt-0.5">
-                    Teacher-led scaffolded exercises featuring visible hints, model answers, and immediate syntactic feedback.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-[#FFFDF8] border border-[#CBBEAC] rounded-xl p-5 space-y-4 shadow-xs">
-              {chapter.exercises && chapter.exercises.length > 0 ? (
-                <div className="border border-[#CBBEAC] rounded-xl p-4 bg-[#EDE4D6]/40 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-serif font-bold text-sm text-[#35101F]">
-                      {chapter.exercises[0].title || 'Exercise A: Guided Foundation'}
-                    </h4>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold">
-                      Scaffolded Tier 1
-                    </span>
-                  </div>
-                  <p className="text-xs font-serif text-[#292521] italic">
-                    {chapter.exercises[0].instructions || 'Work through each item following the step-by-step model.'}
-                  </p>
-
-                  <div className="space-y-2 pt-2">
-                    {chapter.exercises[0].questions && chapter.exercises[0].questions.length > 0 ? (
-                      chapter.exercises[0].questions.slice(0, 4).map((q, qIdx) => (
-                        <div key={q.id || qIdx} className="p-3 rounded-lg bg-[#FFFDF8] border border-[#CBBEAC] flex items-center justify-between text-xs">
-                          <div>
-                            <span className="font-bold text-[#5A1832] mr-2">{qIdx + 1}.</span>
-                            <span className="font-serif">{q.prompt || q.blanksSentence || q.originalSentence}</span>
-                          </div>
-                          {q.correctAnswer && (
-                            <span className="font-mono text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 shrink-0 ml-2">
-                              {q.correctAnswer}
-                            </span>
-                          )}
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-xs text-[#71685E] italic">No question items added to Exercise A yet.</p>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="p-6 rounded-xl border border-dashed border-[#CBBEAC] text-center bg-[#FFFDF8]">
-                  <p className="text-xs text-[#71685E]">
-                    No practice exercises created yet for <strong>{chapter.title}</strong>.
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
+        {/* Component 12 / COMP-12: Guided Practice Drills View */}
+        {(effectiveView === 'guided_practice' || activeArchitectureItemId === 'comp-12') && (
+          <ReusableComponentView
+            componentId="comp-12"
+            chapter={chapter}
+            onUpdateChapter={onUpdateChapter}
+            seriesProject={seriesProject}
+            isDarkMode={false}
+          />
         )}
 
         {/* Component 19: Application & Challenge Problems View */}

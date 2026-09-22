@@ -1555,12 +1555,14 @@ app.post("/api/chapter-studio/generate-component", async (req, res) => {
   try {
     const {
       componentId,
+      action = "generate",
       topic,
       classLevel,
       board,
       subject,
       curriculumFramework,
       existingCount = 0,
+      currentItem,
     } = req.body || {};
 
     // 1. Strict neutral validation: require real context from active chapter, never invent academic defaults
@@ -1689,9 +1691,150 @@ Output JSON only with this structure:
     }
   ]
 }`;
+    } else if (componentId === "comp-12") {
+      const activePrompt = currentItem?.prompt || trimmedTopic;
+
+      if (action === "suggest-hint") {
+        userPrompt = `Subject: "${effectiveSubject}"
+Topic / Chapter: "${trimmedTopic}"
+Grade Level: "${trimmedClass}"
+Curriculum Board: "${trimmedBoard}"
+Problem / Question Prompt: "${activePrompt}"
+
+Generate a targeted, supportive pedagogical hint for a student encountering this problem. The hint must guide their inquiry or point them toward the governing principle without giving away the direct answer.
+Output JSON:
+{
+  "hint": "Clear student-facing scaffolding hint"
+}`;
+      } else if (action === "suggest-answer") {
+        userPrompt = `Subject: "${effectiveSubject}"
+Topic / Chapter: "${trimmedTopic}"
+Grade Level: "${trimmedClass}"
+Curriculum Board: "${trimmedBoard}"
+Problem / Question Prompt: "${activePrompt}"
+
+Provide the authoritative verified answer and a complete model response showing expected student step-by-step formatting.
+Output JSON:
+{
+  "answer": "Exact verified correct answer",
+  "modelResponse": "Complete model solution showing working or step formatting"
+}`;
+      } else if (action === "generate-feedback") {
+        userPrompt = `Subject: "${effectiveSubject}"
+Topic / Chapter: "${trimmedTopic}"
+Grade Level: "${trimmedClass}"
+Curriculum Board: "${trimmedBoard}"
+Problem / Question Prompt: "${activePrompt}"
+Answer: "${currentItem?.answer || ""}"
+
+Generate clear diagnostic pedagogical feedback explaining why this answer is correct, how to avoid common misconceptions, and what rule governs it.
+Output JSON:
+{
+  "explanation": "Clear pedagogical explanation and feedback"
+}`;
+      } else if (action === "simplify-instruction") {
+        userPrompt = `Subject: "${effectiveSubject}"
+Grade Level: "${trimmedClass}"
+Original Instruction: "${currentItem?.instruction || "Analyze the problem and complete the required task."}"
+
+Simplify this instruction so it is immediately accessible and concise for a ${trimmedClass} student.
+Output JSON:
+{
+  "instruction": "Simplified, direct student instruction"
+}`;
+      } else if (action === "increase-difficulty") {
+        userPrompt = `Subject: "${effectiveSubject}"
+Topic / Chapter: "${trimmedTopic}"
+Grade Level: "${trimmedClass}"
+Current Prompt: "${activePrompt}"
+
+Elevate the cognitive rigor and analytical depth of this problem for ${trimmedClass} students, requiring multi-step reasoning or edge case consideration.
+Output JSON:
+{
+  "prompt": "Enhanced, more rigorous problem prompt"
+}`;
+      } else if (action === "decrease-difficulty") {
+        userPrompt = `Subject: "${effectiveSubject}"
+Topic / Chapter: "${trimmedTopic}"
+Grade Level: "${trimmedClass}"
+Current Prompt: "${activePrompt}"
+
+Add scaffolding to this question prompt to make it more accessible, breaking it into smaller cognitive checkpoints or providing clearer cues.
+Output JSON:
+{
+  "prompt": "Accessible, scaffolded problem prompt"
+}`;
+      } else {
+        // Standard Guided Practice generation
+        userPrompt = `Subject: "${effectiveSubject}"
+Topic / Chapter: "${trimmedTopic}"
+Grade Level: "${trimmedClass}"
+Curriculum Board: "${trimmedBoard}"
+${curriculumFramework ? `Framework Details: "${curriculumFramework}"` : ""}
+
+Generate 3 high-quality Guided Practice Drill items for "${trimmedTopic}" tailored to ${trimmedClass} (${trimmedBoard}).
+Guided practice serves as the low-stakes cognitive bridge between worked examples and independent exercises.
+Progress the items logically:
+- Item 1: High Support (clear prompt, supportive hint, modelled response)
+- Item 2: Medium Support (structured guidance, guiding hint, verified answer)
+- Item 3: Low Support / Transition to Independent (authentic problem, concise hint, verified answer)
+
+Every item must have a unique stable ID (e.g. "gp-ai-1", "gp-ai-2", "gp-ai-3"), a verified answer bound strictly to that ID, pedagogical feedback, and diagnostic teacher guidance.
+
+Output JSON only with this structure:
+{
+  "items": [
+    {
+      "id": "gp-ai-1",
+      "instruction": "Specific, actionable task instruction",
+      "prompt": "The core problem, question, or sentence prompt to solve",
+      "stimulus": "Optional context, short passage, or problem scenario if needed",
+      "hint": "Student-facing scaffolding hint or inquiry trigger",
+      "scaffoldingLevel": "High Support",
+      "modelResponse": "Formatted model response showing expected working",
+      "answer": "Exact verified correct answer",
+      "explanation": "Clear explanation of the reasoning and underlying rule",
+      "difficulty": "Foundational",
+      "teacherNote": "Diagnostic classroom tip or common student hesitation to watch for",
+      "studentVisible": true,
+      "teacherVisible": true
+    },
+    {
+      "id": "gp-ai-2",
+      "instruction": "Specific, actionable task instruction",
+      "prompt": "The core problem, question, or sentence prompt to solve",
+      "stimulus": "",
+      "hint": "Student-facing scaffolding hint",
+      "scaffoldingLevel": "Medium Support",
+      "modelResponse": "",
+      "answer": "Exact verified correct answer",
+      "explanation": "Clear explanation of the reasoning and underlying rule",
+      "difficulty": "Standard",
+      "teacherNote": "Diagnostic classroom tip",
+      "studentVisible": true,
+      "teacherVisible": true
+    },
+    {
+      "id": "gp-ai-3",
+      "instruction": "Specific, actionable task instruction",
+      "prompt": "The core problem, question, or sentence prompt to solve",
+      "stimulus": "",
+      "hint": "Light scaffolding hint",
+      "scaffoldingLevel": "Low Support",
+      "modelResponse": "",
+      "answer": "Exact verified correct answer",
+      "explanation": "Clear explanation of the reasoning and underlying rule",
+      "difficulty": "Standard",
+      "teacherNote": "Diagnostic classroom tip",
+      "studentVisible": true,
+      "teacherVisible": true
+    }
+  ]
+}`;
+      }
     } else {
       return res.status(400).json({
-        error: `Unsupported componentId: "${componentId}". Supported canonical IDs are comp-9 (Worked Examples), comp-10 (Common Errors & Pitfalls), and comp-11 (Remember / Tip Boxes).`,
+        error: `Unsupported componentId: "${componentId}". Supported canonical IDs are comp-9 (Worked Examples), comp-10 (Common Errors & Pitfalls), comp-11 (Remember / Tip Boxes), and comp-12 (Guided Practice Drills).`,
       });
     }
 

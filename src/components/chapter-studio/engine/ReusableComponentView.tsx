@@ -5,9 +5,11 @@ import {
   Component07Data,
   Component10Data,
   Component11Data,
+  Component12Data,
   WorkedExampleItem,
   CommonErrorItem,
   TipRememberItem,
+  GuidedPracticeItem,
   ArchitectureComponentStatus,
 } from '../../../types';
 import { ChapterComponentDefinition, ViewDisplayMode, ComponentStatus } from './types';
@@ -16,6 +18,7 @@ import { ChapterComponentShell } from './ChapterComponentShell';
 import { WorkedExamplesEditor } from './sub-editors/WorkedExamplesEditor';
 import { CommonErrorsEditor } from './sub-editors/CommonErrorsEditor';
 import { TipsRememberEditor } from './sub-editors/TipsRememberEditor';
+import { GuidedPracticeEditor } from './sub-editors/GuidedPracticeEditor';
 
 interface ReusableComponentViewProps {
   componentId: string; // e.g. 'comp-9', 'comp-10', 'comp-11'
@@ -241,6 +244,58 @@ export const ReusableComponentView: React.FC<ReusableComponentViewProps> = ({
     };
   }, [chapter.component11, chapter.sections, chapter.revisionData?.rememberPoints]);
 
+  // 4. Guided Practice Drills Data (COMP-12)
+  const guidedPracticeData: Component12Data = useMemo(() => {
+    if (chapter.component12 && chapter.component12.items && chapter.component12.items.length > 0) {
+      return chapter.component12;
+    }
+
+    // Recover from existing practice drills or try_this blocks in sections if any
+    const existingBlocks =
+      chapter.sections
+        ?.flatMap((s) => s.blocks || [])
+        .filter(
+          (b) =>
+            (b.type as string) === 'practice_drill' ||
+            (b.type as string) === 'try_this' ||
+            b.type === 'activity' ||
+            (b.type === 'practice' && !b.title?.toLowerCase().includes('discovery'))
+        ) || [];
+
+    if (existingBlocks.length > 0) {
+      const recoveredItems: GuidedPracticeItem[] = existingBlocks.map((b, idx) => {
+        const blk = b as any;
+        return {
+          id: b.id || `gp-rec-${idx}`,
+          instruction: blk.content?.instruction || blk.instruction || 'Complete the practice exercise showing step reasoning.',
+          prompt: blk.content?.prompt || blk.textContent || blk.title || `Drill Question ${idx + 1}`,
+          stimulus: blk.content?.stimulus || blk.content?.context || '',
+          hint: blk.content?.hint || blk.hint || 'Review the core rule before answering.',
+          scaffoldingLevel: 'Medium Support',
+          modelResponse: blk.content?.modelResponse || '',
+          answer: blk.content?.answer || blk.content?.solution || '',
+          explanation: blk.content?.explanation || '',
+          difficulty: 'Standard',
+          teacherNote: blk.content?.teacherNote || blk.teacherGuidance || '',
+          studentVisible: true,
+          teacherVisible: true,
+        };
+      });
+
+      return {
+        status: 'draft',
+        title: 'Guided Practice & Scaffolded Checkpoints',
+        items: recoveredItems,
+      };
+    }
+
+    return {
+      status: 'not_started',
+      title: 'Guided Practice & Scaffolded Checkpoints',
+      items: [],
+    };
+  }, [chapter.component12, chapter.sections]);
+
   // -------------------------------------------------------------
   // STATUS & STATS COMPUTATION (ISOLATED PER COMPONENT ID)
   // -------------------------------------------------------------
@@ -263,15 +318,20 @@ export const ReusableComponentView: React.FC<ReusableComponentViewProps> = ({
       if ((tipsData.items?.length || 0) > 0) return 'complete';
       return tipsData.status || 'not_started';
     }
+    if (componentId === 'comp-12') {
+      if ((guidedPracticeData.items?.length || 0) > 0) return 'complete';
+      return guidedPracticeData.status || 'not_started';
+    }
     return 'not_started';
-  }, [chapter.architectureState, componentId, workedExamplesData, commonErrorsData, tipsData]);
+  }, [chapter.architectureState, componentId, workedExamplesData, commonErrorsData, tipsData, guidedPracticeData]);
 
   const itemCount = useMemo(() => {
     if (componentId === 'comp-9' || componentId === 'comp-7') return workedExamplesData.items?.length || 0;
     if (componentId === 'comp-10') return commonErrorsData.items?.length || 0;
     if (componentId === 'comp-11') return tipsData.items?.length || 0;
+    if (componentId === 'comp-12') return guidedPracticeData.items?.length || 0;
     return 0;
-  }, [componentId, workedExamplesData, commonErrorsData, tipsData]);
+  }, [componentId, workedExamplesData, commonErrorsData, tipsData, guidedPracticeData]);
 
   const wordCount = useMemo(() => {
     if (componentId === 'comp-9' || componentId === 'comp-7') {
@@ -290,8 +350,17 @@ export const ReusableComponentView: React.FC<ReusableComponentViewProps> = ({
       const text = (tipsData.items || []).map((it) => `${it.title} ${it.calloutText} ${it.memoryHook || ''}`).join(' ');
       return text.trim() ? text.trim().split(/\s+/).length : 0;
     }
+    if (componentId === 'comp-12') {
+      const text = (guidedPracticeData.items || [])
+        .map(
+          (it) =>
+            `${it.instruction || ''} ${it.prompt} ${it.stimulus || ''} ${it.hint || ''} ${it.answer} ${it.explanation || ''}`
+        )
+        .join(' ');
+      return text.trim() ? text.trim().split(/\s+/).length : 0;
+    }
     return 0;
-  }, [componentId, workedExamplesData, commonErrorsData, tipsData]);
+  }, [componentId, workedExamplesData, commonErrorsData, tipsData, guidedPracticeData]);
 
   // -------------------------------------------------------------
   // SYNCHRONIZATION BACK TO CHAPTER (STRICT COMPONENT ISOLATION)
@@ -406,6 +475,42 @@ export const ReusableComponentView: React.FC<ReusableComponentViewProps> = ({
     [chapter, onUpdateChapter]
   );
 
+  const handleUpdateGuidedPractice = useCallback(
+    (updatedData: Component12Data) => {
+      const newStatus = (updatedData.items || []).length > 0 ? 'complete' : 'not_started';
+      const updatedChapter: StudioChapter = {
+        ...chapter,
+        component12: {
+          ...updatedData,
+          status: newStatus,
+          wordCount:
+            updatedData.items?.reduce(
+              (acc, it) =>
+                acc +
+                (it.prompt?.split(' ').length || 0) +
+                (it.answer?.split(' ').length || 0) +
+                (it.hint?.split(' ').length || 0),
+              0
+            ) || 0,
+        },
+        architectureState: {
+          ...chapter.architectureState,
+          customizations: {
+            ...(chapter.architectureState?.customizations || {}),
+            'comp-12': {
+              componentId: 'comp-12',
+              ...(chapter.architectureState?.customizations?.['comp-12'] || {}),
+              status: newStatus,
+            },
+          },
+        },
+      };
+
+      onUpdateChapter(updatedChapter);
+    },
+    [chapter, onUpdateChapter]
+  );
+
   const handleStatusChange = (newStatus: ComponentStatus) => {
     const archStatus: ArchitectureComponentStatus =
       newStatus === 'complete'
@@ -450,6 +555,12 @@ export const ReusableComponentView: React.FC<ReusableComponentViewProps> = ({
       handleUpdateTips({
         status: 'not_started',
         title: 'Remember / Quick Tip Boxes & Mnemonics',
+        items: [],
+      });
+    } else if (componentId === 'comp-12') {
+      handleUpdateGuidedPractice({
+        status: 'not_started',
+        title: 'Guided Practice & Scaffolded Checkpoints',
         items: [],
       });
     }
@@ -517,6 +628,15 @@ export const ReusableComponentView: React.FC<ReusableComponentViewProps> = ({
             handleUpdateTips({
               ...tipsData,
               items: [...(tipsData.items || []), ...result.data.items],
+              status: 'complete',
+            });
+            setIsAiGenerating(false);
+            return;
+          }
+          if (componentId === 'comp-12' && result.data.items) {
+            handleUpdateGuidedPractice({
+              ...guidedPracticeData,
+              items: [...(guidedPracticeData.items || []), ...result.data.items],
               status: 'complete',
             });
             setIsAiGenerating(false);
@@ -624,6 +744,44 @@ export const ReusableComponentView: React.FC<ReusableComponentViewProps> = ({
         items: [...(tipsData.items || []), ...fallbackTips],
         status: 'complete',
       });
+    } else if (componentId === 'comp-12') {
+      const fallbackGuidedPractice: GuidedPracticeItem[] = [
+        {
+          id: `gp-gen-${Date.now()}-1`,
+          instruction: `Examine the given situation and apply the fundamental principle governing "${displayTopic}".`,
+          prompt: `Scaffolded problem evaluating foundational mechanics for "${displayTopic}" (${activeClassLevel}, ${activeBoard}).`,
+          stimulus: `Curriculum stimulus aligned with ${activeBoard} standards for ${subjectLabel}.`,
+          hint: `Recall the core rule for ${displayTopic}. Isolate the key condition before determining your solution.`,
+          scaffoldingLevel: 'High Support',
+          modelResponse: `Model response showing step-by-step reasoning for ${displayTopic}.`,
+          answer: `Authoritative verified solution for ${displayTopic}.`,
+          explanation: `Pedagogical explanation explaining why this solution is valid under ${activeBoard} guidelines.`,
+          difficulty: 'Foundational',
+          teacherNote: `Classroom diagnostic note: check if students confuse boundary conditions.`,
+          studentVisible: true,
+          teacherVisible: true,
+        },
+        {
+          id: `gp-gen-${Date.now()}-2`,
+          instruction: `Complete the problem independently and justify your answer.`,
+          prompt: `Standard practice question evaluating student transfer of "${displayTopic}".`,
+          hint: `Check for modifiers or edge cases that might influence the outcome.`,
+          scaffoldingLevel: 'Medium Support',
+          modelResponse: '',
+          answer: `Verified answer for item 2.`,
+          explanation: `Systematic rationale verifying concordance with ${activeBoard} curriculum.`,
+          difficulty: 'Standard',
+          teacherNote: `Assess learner confidence and transition to independent practice.`,
+          studentVisible: true,
+          teacherVisible: true,
+        },
+      ];
+
+      handleUpdateGuidedPractice({
+        ...guidedPracticeData,
+        items: [...(guidedPracticeData.items || []), ...fallbackGuidedPractice],
+        status: 'complete',
+      });
     }
 
     setIsAiGenerating(false);
@@ -684,6 +842,19 @@ export const ReusableComponentView: React.FC<ReusableComponentViewProps> = ({
             onChange={handleUpdateTips}
             viewMode={viewMode}
             isDarkMode={isDarkMode}
+          />
+        )}
+
+        {componentId === 'comp-12' && (
+          <GuidedPracticeEditor
+            data={guidedPracticeData}
+            onChange={handleUpdateGuidedPractice}
+            viewMode={viewMode}
+            isDarkMode={isDarkMode}
+            activeSubject={activeSubject}
+            activeClassLevel={activeClassLevel}
+            activeBoard={activeBoard}
+            topic={chapter.title}
           />
         )}
       </ChapterComponentShell>

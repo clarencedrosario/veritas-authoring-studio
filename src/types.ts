@@ -1412,6 +1412,7 @@ export interface StudioChapter {
   component09?: Component07Data;
   component10?: Component10Data;
   component11?: Component11Data;
+  component12?: Component12Data;
   componentData?: Record<string, any>;
 }
 
@@ -1654,6 +1655,55 @@ export interface Component11Data {
     board?: string;
     grade?: string;
     topic?: string;
+    model?: string;
+    generatedAt?: string;
+  };
+}
+
+// -------------------------------------------------------------
+// Component 12 — Guided Practice & Scaffolded Drills Types
+// -------------------------------------------------------------
+
+export type ScaffoldingLevel = 'High Support' | 'Medium Support' | 'Low Support' | 'Independent';
+
+export interface GuidedPracticeItem {
+  id: string; // Stable question/item ID — never relying solely on array position
+  instruction?: string; // Specific item or drill instruction
+  prompt: string; // The core problem, question, or task prompt
+  stimulus?: string; // Optional context, passage, data table, scenario, or mathematical expression
+  hint?: string; // Student-facing scaffolding hint or guiding inquiry
+  scaffoldingLevel?: ScaffoldingLevel; // High Support / Medium Support / Low Support / Independent
+  modelResponse?: string; // Sample solution or model response showing expected formatting
+  answer: string; // The verified answer bound strictly to this question's stable id
+  explanation?: string; // Pedagogical feedback and rationale
+  difficulty?: 'Foundational' | 'Standard' | 'Advanced';
+  teacherNote?: string; // Diagnostic observation, common student hesitation, or remediation tip
+  studentVisible?: boolean; // Controls Student Edition visibility (defaults to true)
+  teacherVisible?: boolean; // Controls Teacher Edition visibility (defaults to true)
+}
+
+export interface Component12TeacherAnnotations {
+  scaffoldingStrategy?: string;
+  pacingMinutes?: number;
+  diagnosticRubric?: string;
+  commonHesitations?: string[];
+  remediationAdvice?: string;
+}
+
+export interface Component12Data {
+  status?: 'not_started' | 'draft' | 'in_progress' | 'complete' | 'needs_review';
+  title?: string;
+  instructions?: string; // General section instruction
+  items: GuidedPracticeItem[];
+  teacherAnnotations?: Component12TeacherAnnotations;
+  wordCount?: number;
+  generatedAt?: string;
+  lastModified?: string;
+  generationMetadata?: {
+    board?: string;
+    grade?: string;
+    topic?: string;
+    subject?: string;
     model?: string;
     generatedAt?: string;
   };

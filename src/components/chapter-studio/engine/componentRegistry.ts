@@ -569,12 +569,57 @@ export const CHAPTER_COMPONENT_REGISTRY: Record<string, ChapterComponentDefiniti
     badgeColor: '#5A1832',
     pedagogicalRole: 'Low-stakes immediate transfer activity validating comprehension before independent exercises.',
     aiPromptConfig: {
-      systemRole: 'Scaffolded Exercise Author',
-      taskPromptTemplate: 'Create guided practice questions with supportive hints.',
-      constraints: ['Provide hints for the first 2 questions', 'Scaffold step by step'],
-      expectedJsonFormat: '{ "questions": any[] }',
+      systemRole: 'Scaffolded Academic Exercise Author',
+      taskPromptTemplate: 'Create scaffolded guided practice questions with supportive hints, model responses, verified answers, and diagnostic teacher notes.',
+      constraints: [
+        'Support multiple scaffolding tiers: High Support, Medium Support, and Low Support',
+        'Every question must have a stable ID and a verified answer',
+        'Provide actionable diagnostic notes for teachers',
+        'Adapt cognitive complexity to grade band without hardcoded subject bias',
+      ],
+      expectedJsonFormat: '{ "items": GuidedPracticeItem[] }',
     },
-    validationRules: [],
+    validationRules: [
+      {
+        id: 'has-guided-practice',
+        label: 'At least one guided drill authored',
+        check: (ch) => {
+          const c12Items = ch.component12?.items || [];
+          return {
+            valid: c12Items.length > 0,
+            message: 'At least one guided practice drill with scaffolding must be authored',
+          };
+        },
+      },
+      {
+        id: 'guided-practice-answers',
+        label: 'All questions have answers / model responses',
+        check: (ch) => {
+          const c12Items = ch.component12?.items || [];
+          if (c12Items.length === 0) return { valid: true };
+          const allHaveAnswers = c12Items.every(
+            (it) => (it.answer && it.answer.trim().length > 0) || (it.modelResponse && it.modelResponse.trim().length > 0)
+          );
+          return {
+            valid: allHaveAnswers,
+            message: 'Every guided practice drill must have an authoritative verified answer or model response',
+          };
+        },
+      },
+      {
+        id: 'has-scaffolding-hints',
+        label: 'Scaffolding hints provided',
+        check: (ch) => {
+          const c12Items = ch.component12?.items || [];
+          if (c12Items.length === 0) return { valid: true };
+          const hasHints = c12Items.some((it) => it.hint && it.hint.trim().length > 0);
+          return {
+            valid: hasHints,
+            message: 'Provide student-facing scaffolding hints to support guided learning',
+          };
+        },
+      },
+    ],
     exportRules: {
       headingLevel: 3,
       includeInStudentEdition: true,
