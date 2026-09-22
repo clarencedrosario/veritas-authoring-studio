@@ -1,290 +1,939 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   GraduationCap,
   Sparkles,
   Plus,
-  Printer,
-  ExternalLink,
-  Award,
-  CheckCircle2,
+  Trash2,
+  Edit3,
+  Check,
+  X,
+  Eye,
+  EyeOff,
+  ChevronUp,
+  ChevronDown,
+  AlertCircle,
+  FileText,
   Clock,
-  FileCheck,
-  Layers,
-  HelpCircle,
+  Award,
   BookOpen,
   ArrowRight,
+  Layers,
+  Copy,
+  Printer,
 } from 'lucide-react';
-import { StudioChapter, GrammarTestSeries, GrammarQuestion } from '../../types';
+import { StudioChapter, GrammarQuestion, GrammarTestSeries, GrammarTestSection } from '../../types';
+
+export type AssessmentPaper = Omit<GrammarTestSeries, 'classLevel'> & {
+  classLevel?: any;
+  targetClass?: string;
+};
+export type AssessmentSection = GrammarTestSection;
 
 export interface ChapterAssessmentViewProps {
   chapter: StudioChapter;
   onUpdateChapter: (updated: StudioChapter) => void;
-  onNavigateToStage?: (stageId: string) => void;
-  isDarkMode: boolean;
+  seriesProject?: any;
+  onNavigateToStage?: (stage: string) => void;
+  isDarkMode?: boolean;
 }
 
 export const ChapterAssessmentView: React.FC<ChapterAssessmentViewProps> = ({
   chapter,
   onUpdateChapter,
+  seriesProject,
   onNavigateToStage,
-  isDarkMode,
+  isDarkMode = false,
 }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'questions' | 'rubrics'>('overview');
-  const [isGenerating, setIsGenerating] = useState(false);
+  // Active academic context from chapter and seriesProject
+  const chapterAny = chapter as any;
+  const activeClassLevel = useMemo(() => {
+    return (
+      chapterAny.targetClass ||
+      chapterAny.classLevel ||
+      seriesProject?.selectedClass ||
+      'Class 6'
+    );
+  }, [chapterAny.targetClass, chapterAny.classLevel, seriesProject?.selectedClass]);
 
-  // Derive questions from chapter exercises if chapterTest isn't explicitly set
-  const allExerciseQuestions = chapter.exercises?.flatMap((ex) => ex.questions) || [];
-  const testMarks = 25;
-  const testDurationMinutes = 45;
+  const activeBoard = useMemo(() => {
+    return (
+      chapterAny.curriculumFramework ||
+      chapterAny.board ||
+      chapterAny.curriculumBoard ||
+      seriesProject?.activeSystemId ||
+      seriesProject?.targetBoard ||
+      'CISCE'
+    );
+  }, [
+    chapterAny.curriculumFramework,
+    chapterAny.board,
+    chapterAny.curriculumBoard,
+    seriesProject?.activeSystemId,
+    seriesProject?.targetBoard,
+  ]);
 
-  const assessmentQuestions: GrammarQuestion[] = [
-    {
-      id: 'test-q1',
-      type: 'mcq',
-      prompt: 'Identify the sentence with strictly accurate subject-verb concord:',
-      difficulty: 'Medium',
-      marks: 1,
-      options: [
-        'A) The list of participants have been displayed on the notice board.',
-        'B) Neither the captain nor the sailors was able to navigate the reef.',
-        'C) The commander, along with his brave officers, has been decorated.',
-        'D) Five thousand rupees are too high a price for this dictionary.',
-      ],
-      correctAnswer: 'C) The commander, along with his brave officers, has been decorated.',
-      explanation:
-        '"Along with his brave officers" is parenthetical; the singular head noun "commander" takes singular "has been".',
-      conceptTested: 'Parenthetical Modifiers',
-      bloomLevel: 'Analyzing',
-    },
-    {
-      id: 'test-q2',
-      type: 'fill_in_blanks',
-      prompt: 'Complete the sentence with the correct form of the verb in brackets:',
-      blanksSentence: 'Ten kilometres ___ (is / are) a testing distance for amateur runners.',
-      difficulty: 'Easy',
-      marks: 1,
-      correctAnswer: 'is',
-      explanation: 'Quantities of distance functioning as a single collective measurement take a singular verb.',
-      conceptTested: 'Units of Measurement',
-      bloomLevel: 'Remembering',
-    },
-    {
-      id: 'test-q3',
-      type: 'error_correction',
-      prompt: 'Detect the concord error and rewrite the sentence correctly:',
-      originalSentence: 'The bouquet of scarlet roses were presented to the chief guest.',
-      correctedSentence: 'The bouquet of scarlet roses was presented to the chief guest.',
-      difficulty: 'Medium',
-      marks: 2,
-      correctAnswer: 'was presented',
-      explanation: 'Head noun "bouquet" is singular; "of scarlet roses" is an intervening prepositional phrase.',
-      conceptTested: 'Intervening Prepositional Phrases',
-      bloomLevel: 'Evaluating',
-    },
-    {
-      id: 'test-q4',
-      type: 'transformation',
-      prompt: 'Synthesize the two sentences using "Neither...nor", ensuring strict proximity concord:',
-      originalSentence: 'The teacher was not present. The students were not present.',
-      correctedSentence: 'Neither the teacher nor the students were present in the hall.',
-      difficulty: 'Hard',
-      marks: 3,
-      correctAnswer: 'Neither the teacher nor the students were present in the hall.',
-      explanation: 'In neither...nor, the verb agrees with the closer plural subject "students".',
-      conceptTested: 'Correlative Conjunctions',
-      bloomLevel: 'Creating',
-    },
-    {
-      id: 'test-q5',
-      type: 'short_answer',
-      prompt:
-        'Explain why British/CISCE English permits "The jury were divided in their opinions", while requiring "The jury has reached its verdict".',
-      difficulty: 'Hard',
-      marks: 4,
-      correctAnswer:
-        'When collective nouns act with unified agency, singular concord applies; when members act individually or in discord, plural concord is mandated.',
-      explanation: 'Collective Noun Split Concord.',
-      conceptTested: 'Collective Nouns',
-      bloomLevel: 'Evaluating',
-    },
-  ];
+  const activeSubject = useMemo(() => {
+    return chapterAny.subject || seriesProject?.subject || 'English Grammar & Composition';
+  }, [chapterAny.subject, seriesProject]);
 
-  const handleBuildFromBank = () => {
-    setIsGenerating(true);
-    setTimeout(() => {
-      setIsGenerating(false);
-    }, 800);
+  // Read or initialize canonical assessment test
+  const activeTest = chapter.chapterTest;
+
+  const [activeTab, setActiveTab] = useState<'paper' | 'rubrics' | 'stats'>('paper');
+  const [isTeacherView, setIsTeacherView] = useState(true);
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isCreatingTest, setIsCreatingTest] = useState(false);
+
+  // Question editing / adding modal state
+  const [editingQuestion, setEditingQuestion] = useState<GrammarQuestion | null>(null);
+  const [isAddingQuestion, setIsAddingQuestion] = useState(false);
+  const [targetSectionId, setTargetSectionId] = useState<string>('sec-a');
+
+  // Helper to persist test updates
+  const persistTest = (test: AssessmentPaper) => {
+    onUpdateChapter({
+      ...chapter,
+      chapterTest: {
+        ...test,
+        classLevel: (test.classLevel || test.targetClass || activeClassLevel || 'Class 6') as any,
+      },
+      lastSaved: new Date().toISOString(),
+    });
   };
+
+  // 1. Create Assessment Button handler (prevent double-clicks, initialize canonical paper)
+  const handleCreateAssessment = () => {
+    if (isCreatingTest) return;
+    setIsCreatingTest(true);
+
+    const newPaper: AssessmentPaper = {
+      id: `paper-${Date.now()}`,
+      title: `${chapter.title} — Chapter Mastery Assessment`,
+      targetClass: activeClassLevel,
+      totalMarks: 25,
+      durationMinutes: 45,
+      instructions: [
+        'Attempt all questions carefully.',
+        'Marks for each question are indicated in brackets against it.',
+        'Adhere strictly to standard grammatical concord and correct orthography.',
+        'Do not alter the fundamental meaning in sentence transformation questions.',
+      ],
+      boardTarget: activeBoard,
+      sections: [
+        {
+          id: 'sec-a',
+          title: 'Section A: Objective Identification & Recall',
+          instructions: 'Choose or state the grammatically accurate option.',
+          marksAllocation: 5,
+          questions: [
+            {
+              id: 'q-sva-1',
+              type: 'mcq',
+              prompt: 'Identify the sentence exhibiting strictly accurate grammatical concord:',
+              options: [
+                'A) The list of participating schools have been posted on the bulletin board.',
+                'B) Neither the captain nor the crew members was able to navigate the reef.',
+                'C) The commander, along with his gallant officers, has received the medal.',
+                'D) Ten thousand rupees are too exorbitant a price for this dictionary.',
+              ],
+              correctAnswer: 'C) The commander, along with his gallant officers, has received the medal.',
+              explanation:
+                '"Along with his gallant officers" is an intervening parenthetical adjunct; the singular head noun "commander" takes the singular verb "has received".',
+              marks: 1,
+              difficulty: 'Medium',
+              cognitiveLevel: 'Analysing',
+              conceptTested: 'Intervening Parenthetical Phrases',
+            },
+            {
+              id: 'q-sva-2',
+              type: 'fill_in_blanks',
+              prompt: 'Complete the sentence with the appropriate verb from brackets:',
+              blanksSentence: 'Ten kilometres ___ [is / are] a demanding distance for novice runners.',
+              correctAnswer: 'is',
+              explanation:
+                'Expressions of distance, measurement, or monetary amounts denoting a single collective unit take a singular verb.',
+              marks: 1,
+              difficulty: 'Easy',
+              cognitiveLevel: 'Remembering',
+              conceptTested: 'Units of Measurement',
+            },
+          ],
+        },
+        {
+          id: 'sec-b',
+          title: 'Section B: Syntactic Application & Error Analysis',
+          instructions: 'Rewrite the sentences or rectify the underlined concord discrepancies.',
+          marksAllocation: 10,
+          questions: [
+            {
+              id: 'q-sva-3',
+              type: 'error_correction',
+              prompt: 'Detect the error of concord and rewrite the sentence correctly:',
+              originalSentence: 'The bouquet of scarlet roses were presented to the dignitary.',
+              correctedSentence: 'The bouquet of scarlet roses was presented to the dignitary.',
+              correctAnswer: 'was presented',
+              explanation:
+                'The head noun is singular "bouquet"; the intervening plural prepositional phrase "of scarlet roses" does not alter the verb requirement.',
+              marks: 2,
+              difficulty: 'Medium',
+              cognitiveLevel: 'Evaluating',
+              conceptTested: 'Prepositional Phrase Distractors',
+            },
+            {
+              id: 'q-sva-4',
+              type: 'transformation',
+              prompt: 'Synthesize the pair of sentences using "Neither...nor", maintaining proximity concord:',
+              originalSentence: 'The instructor was not present. The students were not present.',
+              correctedSentence: 'Neither the instructor nor the students were present in the laboratory.',
+              correctAnswer: 'Neither the instructor nor the students were present in the laboratory.',
+              explanation:
+                'In correlative pairings with "neither...nor", the verb agrees with the closer subject noun ("students" -> plural "were").',
+              marks: 3,
+              difficulty: 'Hard',
+              cognitiveLevel: 'Applying',
+              conceptTested: 'Correlative Conjunction Concord',
+            },
+          ],
+        },
+      ],
+    };
+
+    persistTest(newPaper);
+    setIsCreatingTest(false);
+  };
+
+  // 2. Generate Assessment with AI
+  const handleAiGenerateAssessment = async () => {
+    setIsAiGenerating(true);
+    setErrorMessage(null);
+
+    const topic = chapter.title || 'Subject-Verb Agreement';
+    if (!activeClassLevel || !activeBoard) {
+      setErrorMessage('Academic project context (Class Level and Curriculum Board) is required.');
+      setIsAiGenerating(false);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/chapter-studio/generate-component', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          componentId: 'comp-21',
+          topic,
+          classLevel: activeClassLevel,
+          board: activeBoard,
+          subject: activeSubject,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'Failed to generate assessment');
+      }
+
+      const generatedTest = data.data;
+      if (generatedTest && generatedTest.sections) {
+        const fullPaper: AssessmentPaper = {
+          id: `paper-ai-${Date.now()}`,
+          title: generatedTest.title || `${topic} — Mastery Assessment Test`,
+          targetClass: activeClassLevel,
+          totalMarks: generatedTest.totalMarks || 25,
+          durationMinutes: generatedTest.durationMinutes || 45,
+          instructions: generatedTest.instructions || [
+            'Read each question carefully before attempting.',
+            'Marks for each question are indicated against it.',
+            'Maintain grammatical concord and clean presentation.',
+          ],
+          boardTarget: activeBoard,
+          sections: generatedTest.sections.map((sec: any, sIdx: number) => ({
+            id: sec.id || `sec-${sIdx + 1}`,
+            title: sec.title || `Section ${String.fromCharCode(65 + sIdx)}`,
+            instructions: sec.instructions || 'Attempt all questions in this section.',
+            marksAllocation: sec.marksAllocation || 10,
+            questions: (sec.questions || []).map((q: any, qIdx: number) => ({
+              id: q.id || `q-ai-${sIdx}-${qIdx}`,
+              type: q.type || 'mcq',
+              prompt: q.prompt || '',
+              options: q.options || undefined,
+              blanksSentence: q.blanksSentence || undefined,
+              originalSentence: q.originalSentence || undefined,
+              correctAnswer: q.correctAnswer || '',
+              explanation: q.explanation || '',
+              marks: q.marks || 1,
+              difficulty: q.difficulty || 'Medium',
+              cognitiveLevel: q.cognitiveLevel || 'Applying',
+              conceptTested: q.conceptTested || topic,
+            })),
+          })),
+        };
+        persistTest(fullPaper);
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Error communicating with AI service');
+    } finally {
+      setIsAiGenerating(false);
+    }
+  };
+
+  // 3. Import Questions from Chapter Exercises
+  const handleImportFromExercises = () => {
+    const exerciseQuestions = chapter.exercises?.flatMap((ex) => ex.questions) || [];
+    if (exerciseQuestions.length === 0) {
+      setErrorMessage('No questions found in chapter exercises to import.');
+      return;
+    }
+
+    const importedPaper: AssessmentPaper = {
+      id: `paper-imp-${Date.now()}`,
+      title: `${chapter.title} — Cumulative Assessment`,
+      targetClass: activeClassLevel,
+      totalMarks: exerciseQuestions.reduce((sum, q) => sum + (q.marks || 1), 0),
+      durationMinutes: 45,
+      instructions: [
+        'Attempt all questions.',
+        'Marks are indicated against each question.',
+        'Review your answers thoroughly before submission.',
+      ],
+      boardTarget: activeBoard,
+      sections: [
+        {
+          id: 'sec-a',
+          title: 'Section A: Exercise Pool Assessment',
+          instructions: 'Standard chapter assessment derived from exercise repertoire.',
+          marksAllocation: exerciseQuestions.reduce((sum, q) => sum + (q.marks || 1), 0),
+          questions: exerciseQuestions.slice(0, 10).map((q, idx) => ({
+            ...q,
+            id: `imp-${q.id || idx}`,
+          })),
+        },
+      ],
+    };
+
+    persistTest(importedPaper);
+  };
+
+  // Question Management Helpers
+  const handleMoveQuestion = (sectionId: string, qIndex: number, direction: 'up' | 'down') => {
+    if (!activeTest) return;
+    const updatedSections = activeTest.sections.map((sec) => {
+      if (sec.id !== sectionId) return sec;
+      const targetIdx = direction === 'up' ? qIndex - 1 : qIndex + 1;
+      if (targetIdx < 0 || targetIdx >= sec.questions.length) return sec;
+      const reordered = [...sec.questions];
+      const temp = reordered[qIndex];
+      reordered[qIndex] = reordered[targetIdx];
+      reordered[targetIdx] = temp;
+      return { ...sec, questions: reordered };
+    });
+    persistTest({ ...activeTest, sections: updatedSections });
+  };
+
+  const handleDeleteQuestion = (sectionId: string, qId: string) => {
+    if (!activeTest) return;
+    const updatedSections = activeTest.sections.map((sec) => {
+      if (sec.id !== sectionId) return sec;
+      return {
+        ...sec,
+        questions: sec.questions.filter((q) => q.id !== qId),
+      };
+    });
+    persistTest({ ...activeTest, sections: updatedSections });
+  };
+
+  const handleSaveQuestion = (sectionId: string, question: GrammarQuestion) => {
+    if (!activeTest) return;
+    const updatedSections = activeTest.sections.map((sec) => {
+      if (sec.id !== sectionId) return sec;
+      const exists = sec.questions.some((q) => q.id === question.id);
+      let newQuestions: GrammarQuestion[];
+      if (exists) {
+        newQuestions = sec.questions.map((q) => (q.id === question.id ? question : q));
+      } else {
+        newQuestions = [...sec.questions, question];
+      }
+      return { ...sec, questions: newQuestions };
+    });
+    persistTest({ ...activeTest, sections: updatedSections });
+    setEditingQuestion(null);
+    setIsAddingQuestion(false);
+  };
+
+  // Compute stats
+  const allQuestions = activeTest ? activeTest.sections.flatMap((s) => s.questions) : [];
+  const calculatedTotalMarks = allQuestions.reduce((sum, q) => sum + (q.marks || 1), 0);
+
+  // If no test is created yet, show the action launchpad
+  if (!activeTest || activeTest.sections.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-[#FFFDF8] border border-[#CBBEAC] rounded-xl p-8 text-center space-y-5 shadow-xs">
+          <div className="w-16 h-16 rounded-2xl bg-[#5A1832] text-[#FFFDF8] flex items-center justify-center mx-auto shadow-md">
+            <GraduationCap className="w-8 h-8 text-[#C29A52]" />
+          </div>
+
+          <div className="max-w-xl mx-auto space-y-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#5A1832]">
+              Component 21 • Summative Mastery Assessment
+            </span>
+            <h2 className="text-2xl font-serif font-bold text-[#35101F]">
+              No Assessment Paper Configured for {chapter.title}
+            </h2>
+            <p className="text-xs text-[#71685E] leading-relaxed">
+              Create a standardized, tiered examination paper measuring learner retention, transfer, and syntactic precision aligned to {activeBoard} ({activeClassLevel}).
+            </p>
+          </div>
+
+          {errorMessage && (
+            <div className="max-w-md mx-auto p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+            {/* Primary Action: + Create Assessment */}
+            <button
+              type="button"
+              onClick={handleCreateAssessment}
+              disabled={isCreatingTest}
+              className="h-11 px-6 rounded-xl bg-[#5A1832] hover:bg-[#35101F] text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4 text-[#C29A52]" />
+              <span>+ Create Assessment Test</span>
+            </button>
+
+            {/* Secondary Action: Generate with AI */}
+            <button
+              type="button"
+              onClick={handleAiGenerateAssessment}
+              disabled={isAiGenerating}
+              className="h-11 px-5 rounded-xl bg-[#EDE4D6] hover:bg-[#CBBEAC]/40 border border-[#CBBEAC] text-[#5A1832] text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+            >
+              <Sparkles className="w-4 h-4 text-[#C29A52]" />
+              <span>{isAiGenerating ? 'Generating 25-Mark Paper...' : 'Generate Test with AI'}</span>
+            </button>
+
+            {/* Tertiary Action: Import from Exercises */}
+            <button
+              type="button"
+              onClick={handleImportFromExercises}
+              className="h-11 px-5 rounded-xl bg-[#FFFDF8] hover:bg-[#F6F0E7] border border-[#CBBEAC] text-[#71685E] text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all cursor-pointer"
+            >
+              <Copy className="w-4 h-4 text-[#71685E]" />
+              <span>Import from Chapter Exercises</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="bg-[#FFFDF8] border border-[#CBBEAC] rounded-xl p-5 shadow-xs">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-[#5A1832] text-[#FFFDF8] flex items-center justify-center font-serif shadow-xs">
-              <GraduationCap className="w-5 h-5 text-[#C29A52]" />
+      {/* Header Bar */}
+      <div className="bg-[#FFFDF8] border border-[#CBBEAC] rounded-xl p-5 shadow-xs flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-[#5A1832] text-[#FFFDF8] flex items-center justify-center font-serif shadow-xs">
+            <GraduationCap className="w-5 h-5 text-[#C29A52]" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-[#5A1832]">
+                Component 21 • Mastery Assessment
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#EDE4D6] text-[#5A1832] font-semibold border border-[#CBBEAC]">
+                {activeBoard} • {activeClassLevel}
+              </span>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-[#5A1832]">
-                  Production Stage 11 • Summative Assessment
-                </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 font-semibold border border-blue-300">
-                  CISCE Examination Format
-                </span>
-              </div>
-              <h2 className="text-xl font-serif font-bold text-[#35101F]">
-                Chapter Assessment Test Studio
-              </h2>
-              <p className="text-xs text-[#71685E] mt-0.5">
-                Generate, balance, and preview standardized end-of-chapter mastery tests connected to the VERITAS Question Bank and Assessment Builder.
-              </p>
+            <h2 className="text-xl font-serif font-bold text-[#35101F]">
+              {activeTest.title}
+            </h2>
+            <div className="flex items-center gap-4 text-xs text-[#71685E] mt-0.5">
+              <span className="flex items-center gap-1 font-mono font-medium">
+                <Clock className="w-3.5 h-3.5 text-[#C29A52]" />
+                {activeTest.durationMinutes || 45} Mins
+              </span>
+              <span className="flex items-center gap-1 font-mono font-medium">
+                <Award className="w-3.5 h-3.5 text-[#C29A52]" />
+                {calculatedTotalMarks} / {activeTest.totalMarks || 25} Marks
+              </span>
+              <span>•</span>
+              <span>{allQuestions.length} Questions across {activeTest.sections.length} Section(s)</span>
             </div>
           </div>
+        </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleBuildFromBank}
-              disabled={isGenerating}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#EDE4D6] hover:bg-[#CBBEAC]/40 text-[#5A1832] text-xs font-semibold rounded-lg border border-[#CBBEAC] transition-colors cursor-pointer"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-[#C29A52]" />
-              <span>{isGenerating ? 'Balancing Specs...' : 'Build from Question Bank'}</span>
-            </button>
+        <div className="flex items-center gap-2">
+          {/* Student vs Teacher Preview Toggle */}
+          <button
+            type="button"
+            onClick={() => setIsTeacherView(!isTeacherView)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors cursor-pointer ${
+              isTeacherView
+                ? 'bg-[#5A1832] border-[#5A1832] text-[#FFFDF8]'
+                : 'bg-[#FFFDF8] border-[#CBBEAC] text-[#5A1832] hover:bg-[#EDE4D6]'
+            }`}
+          >
+            {isTeacherView ? <Eye className="w-3.5 h-3.5 text-[#C29A52]" /> : <EyeOff className="w-3.5 h-3.5" />}
+            <span>{isTeacherView ? 'Teacher Edition (Full Marking Key)' : 'Student Edition (Exam Paper)'}</span>
+          </button>
 
-            <button
-              onClick={() => window.print()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#5A1832] hover:bg-[#35101F] text-[#FFFDF8] text-xs font-medium rounded-lg shadow-xs transition-colors cursor-pointer"
-            >
-              <Printer className="w-3.5 h-3.5 text-[#C29A52]" />
-              <span>Print Preview</span>
-            </button>
-          </div>
+          {/* Add Question Button */}
+          <button
+            type="button"
+            onClick={() => {
+              setTargetSectionId(activeTest.sections[0]?.id || 'sec-a');
+              setEditingQuestion({
+                id: `q-${Date.now()}`,
+                type: 'mcq',
+                prompt: '',
+                options: ['A) Option 1', 'B) Option 2', 'C) Option 3', 'D) Option 4'],
+                correctAnswer: '',
+                explanation: '',
+                marks: 1,
+                difficulty: 'Medium',
+                cognitiveLevel: 'Applying',
+                conceptTested: chapter.title,
+              });
+              setIsAddingQuestion(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#5A1832] hover:bg-[#35101F] text-[#FFFDF8] text-xs font-bold rounded-lg shadow-xs transition-colors cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5 text-[#C29A52]" />
+            <span>+ Add Question</span>
+          </button>
         </div>
       </div>
 
-      {/* Test Specification Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-[#FFFDF8] border border-[#CBBEAC] rounded-xl p-4 shadow-xs">
-          <div className="flex items-center gap-2 text-[#71685E] text-xs font-medium">
-            <Award className="w-4 h-4 text-[#5A1832]" />
-            <span>Total Marks</span>
-          </div>
-          <div className="text-2xl font-serif font-bold text-[#35101F] mt-1">
-            25 Marks
-          </div>
-          <div className="text-[11px] text-[#71685E] mt-0.5">Weighted Assessment</div>
-        </div>
-
-        <div className="bg-[#FFFDF8] border border-[#CBBEAC] rounded-xl p-4 shadow-xs">
-          <div className="flex items-center gap-2 text-[#71685E] text-xs font-medium">
-            <Clock className="w-4 h-4 text-[#5A1832]" />
-            <span>Target Duration</span>
-          </div>
-          <div className="text-2xl font-serif font-bold text-[#35101F] mt-1">
-            45 Mins
-          </div>
-          <div className="text-[11px] text-[#71685E] mt-0.5">1 Class Period</div>
-        </div>
-
-        <div className="bg-[#FFFDF8] border border-[#CBBEAC] rounded-xl p-4 shadow-xs">
-          <div className="flex items-center gap-2 text-[#71685E] text-xs font-medium">
-            <Layers className="w-4 h-4 text-[#5A1832]" />
-            <span>Question Types</span>
-          </div>
-          <div className="text-2xl font-serif font-bold text-[#35101F] mt-1">
-            5 Modalities
-          </div>
-          <div className="text-[11px] text-[#71685E] mt-0.5">MCQ, Fill, Error, Transform, Short</div>
-        </div>
-
-        <div className="bg-[#FFFDF8] border border-[#CBBEAC] rounded-xl p-4 shadow-xs">
-          <div className="flex items-center gap-2 text-[#71685E] text-xs font-medium">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <span>Concord Coverage</span>
-          </div>
-          <div className="text-2xl font-serif font-bold text-emerald-800 mt-1">
-            100%
-          </div>
-          <div className="text-[11px] text-[#71685E] mt-0.5">All 7 Core Rules Assessed</div>
-        </div>
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-[#CBBEAC] pb-1">
+        <button
+          type="button"
+          onClick={() => setActiveTab('paper')}
+          className={`px-4 py-2 text-xs font-bold rounded-t-lg transition-colors cursor-pointer ${
+            activeTab === 'paper'
+              ? 'bg-[#FFFDF8] text-[#5A1832] border-t-2 border-x border-[#CBBEAC]'
+              : 'text-[#71685E] hover:text-[#292521]'
+          }`}
+        >
+          Assessment Question Paper
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('rubrics')}
+          className={`px-4 py-2 text-xs font-bold rounded-t-lg transition-colors cursor-pointer ${
+            activeTab === 'rubrics'
+              ? 'bg-[#FFFDF8] text-[#5A1832] border-t-2 border-x border-[#CBBEAC]'
+              : 'text-[#71685E] hover:text-[#292521]'
+          }`}
+        >
+          Evaluation Rubrics &amp; Marking Scheme
+        </button>
       </div>
 
-      {/* Assessment Question Paper Preview */}
-      <div className="bg-[#FFFDF8] border border-[#CBBEAC] rounded-xl p-6 shadow-xs space-y-6 font-serif">
-        {/* Paper Header */}
-        <div className="text-center pb-4 border-b-2 border-[#5A1832]/30 space-y-1">
-          <div className="text-xs uppercase tracking-widest text-[#71685E] font-sans font-bold">
-            CISCE Examination Series • Class 6 Classical Grammar
-          </div>
-          <h3 className="text-xl font-bold text-[#35101F]">
-            Chapter 1: Subject–Verb Agreement Mastery Assessment
-          </h3>
-          <div className="flex justify-center gap-6 text-xs text-[#71685E] font-sans pt-1 font-medium">
-            <span>Time Allowed: 45 Minutes</span>
-            <span>Maximum Marks: 25</span>
-          </div>
+      {/* Error Notice */}
+      {errorMessage && (
+        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
+          <span>{errorMessage}</span>
         </div>
+      )}
 
-        {/* Paper Instructions */}
-        <div className="p-3 bg-[#F6F0E7] border border-[#CBBEAC] rounded-lg text-xs font-sans text-[#292521] space-y-1">
-          <span className="font-bold text-[#35101F]">General Instructions:</span>
-          <p>1. Attempt all questions. Marks for each question are indicated in brackets.</p>
-          <p>2. Pay meticulous attention to spelling, punctuation, and grammatical concord.</p>
-          <p>3. In transformation questions, do not alter the fundamental meaning of the sentence.</p>
-        </div>
+      {/* Tab Content: Paper */}
+      {activeTab === 'paper' && (
+        <div className="bg-[#FFFDF8] border border-[#CBBEAC] rounded-xl p-6 shadow-xs space-y-6 font-serif">
+          {/* Formal Exam Banner */}
+          <div className="text-center pb-4 border-b-2 border-[#5A1832]/30 space-y-1">
+            <div className="text-xs uppercase tracking-widest text-[#71685E] font-sans font-bold">
+              {activeBoard} Examination Standards • {activeClassLevel}
+            </div>
+            <h3 className="text-xl font-bold text-[#35101F]">
+              {activeTest.title}
+            </h3>
+            <div className="flex justify-center gap-6 text-xs text-[#71685E] font-sans pt-1 font-medium">
+              <span>Time Allowed: {activeTest.durationMinutes || 45} Minutes</span>
+              <span>Maximum Marks: {calculatedTotalMarks}</span>
+            </div>
+          </div>
 
-        {/* Questions List */}
-        <div className="space-y-6 pt-2">
-          {assessmentQuestions.map((q, idx) => (
-            <div key={q.id} className="space-y-2 pb-4 border-b border-[#CBBEAC]/50 last:border-0">
-              <div className="flex items-start justify-between gap-3">
-                <div className="text-sm text-[#292521] font-medium">
-                  <span className="font-bold text-[#5A1832] mr-2">Q{idx + 1}.</span>
-                  <span>{q.prompt}</span>
+          {/* Instructions Box */}
+          <div className="p-3 bg-[#F6F0E7] border border-[#CBBEAC] rounded-lg text-xs font-sans text-[#292521] space-y-1">
+            <span className="font-bold text-[#35101F]">General Examination Instructions:</span>
+            {activeTest.instructions.map((inst, idx) => (
+              <p key={idx}>{idx + 1}. {inst}</p>
+            ))}
+          </div>
+
+          {/* Sections & Questions */}
+          <div className="space-y-8 pt-2">
+            {activeTest.sections.map((sec, secIdx) => (
+              <div key={sec.id} className="space-y-4">
+                {/* Section Header */}
+                <div className="flex items-center justify-between border-b border-[#5A1832]/20 pb-2">
+                  <div>
+                    <h4 className="text-base font-serif font-bold text-[#35101F]">
+                      {sec.title}
+                    </h4>
+                    {sec.instructions && (
+                      <p className="text-xs font-sans text-[#71685E] italic">
+                        {sec.instructions}
+                      </p>
+                    )}
+                  </div>
+                  <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-[#EDE4D6] text-[#5A1832]">
+                    Allocated: {sec.questions.reduce((s, q) => s + (q.marks || 1), 0)} Marks
+                  </span>
                 </div>
-                <span className="text-xs font-sans font-bold text-[#71685E] shrink-0">
-                  [{q.marks} {q.marks === 1 ? 'Mark' : 'Marks'}]
-                </span>
-              </div>
 
-              {q.options && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pl-6 pt-1 font-sans text-xs">
-                  {q.options.map((opt, i) => (
-                    <div key={i} className="p-2 rounded bg-[#F6F0E7] border border-[#CBBEAC] text-[#292521]">
-                      {opt}
+                {/* Questions */}
+                <div className="space-y-5">
+                  {sec.questions.map((q, qIdx) => (
+                    <div
+                      key={q.id}
+                      className="group relative bg-[#FFFDF8] hover:bg-[#FDFBF7] p-4 rounded-lg border border-[#CBBEAC]/60 transition-all space-y-2.5"
+                    >
+                      {/* Top question line */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="text-sm text-[#292521] font-medium leading-relaxed">
+                          <span className="font-bold text-[#5A1832] mr-2">
+                            Q{qIdx + 1}.
+                          </span>
+                          <span>{q.prompt}</span>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs font-sans font-bold text-[#71685E]">
+                            [{q.marks || 1} {q.marks === 1 ? 'Mark' : 'Marks'}]
+                          </span>
+
+                          {/* Reorder & Action Controls */}
+                          <div className="flex items-center gap-0.5 opacity-80 group-hover:opacity-100">
+                            <button
+                              type="button"
+                              onClick={() => handleMoveQuestion(sec.id, qIdx, 'up')}
+                              disabled={qIdx === 0}
+                              className="p-1 text-[#71685E] hover:text-[#5A1832] disabled:opacity-20 cursor-pointer"
+                              title="Move Question Up"
+                            >
+                              <ChevronUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveQuestion(sec.id, qIdx, 'down')}
+                              disabled={qIdx === sec.questions.length - 1}
+                              className="p-1 text-[#71685E] hover:text-[#5A1832] disabled:opacity-20 cursor-pointer"
+                              title="Move Question Down"
+                            >
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTargetSectionId(sec.id);
+                                setEditingQuestion(q);
+                                setIsAddingQuestion(false);
+                              }}
+                              className="p-1 text-[#71685E] hover:text-[#5A1832] cursor-pointer"
+                              title="Edit Question"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteQuestion(sec.id, q.id)}
+                              className="p-1 text-rose-600 hover:text-rose-800 cursor-pointer"
+                              title="Delete Question"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Blanks format */}
+                      {q.blanksSentence && (
+                        <div className="pl-6 pt-1 text-sm italic text-[#292521]">
+                          "{q.blanksSentence}"
+                        </div>
+                      )}
+
+                      {/* Original Sentence for error correction / transformation */}
+                      {q.originalSentence && (
+                        <div className="pl-6 pt-1 text-xs text-[#71685E] font-sans">
+                          Specimen: <span className="font-serif italic text-[#292521]">"{q.originalSentence}"</span>
+                        </div>
+                      )}
+
+                      {/* Multiple Choice Options */}
+                      {q.options && q.options.length > 0 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-6 pt-1 font-sans text-xs">
+                          {q.options.map((opt, oIdx) => (
+                            <div
+                              key={oIdx}
+                              className={`p-2 rounded border transition-colors ${
+                                isTeacherView && q.correctAnswer && opt.includes(q.correctAnswer)
+                                  ? 'bg-emerald-50 border-emerald-300 text-emerald-950 font-bold'
+                                  : 'bg-[#F6F0E7] border-[#CBBEAC] text-[#292521]'
+                              }`}
+                            >
+                              {opt}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Student Edition Write-in lines */}
+                      {!isTeacherView && (
+                        <div className="pl-6 pt-2 space-y-2">
+                          <div className="border-b border-dashed border-[#CBBEAC] h-6" />
+                          {q.marks && q.marks > 1 && (
+                            <div className="border-b border-dashed border-[#CBBEAC] h-6" />
+                          )}
+                        </div>
+                      )}
+
+                      {/* Teacher Edition Answer Key & Explanation Pill */}
+                      {isTeacherView && (
+                        <div className="pl-6 pt-2 space-y-1.5 font-sans">
+                          <div className="p-2.5 rounded bg-emerald-50/70 border border-emerald-200 text-xs text-emerald-950 flex flex-wrap items-center gap-2">
+                            <span className="font-bold uppercase tracking-wider text-emerald-900 text-[10px] bg-emerald-100 px-1.5 py-0.5 rounded">
+                              Answer Key:
+                            </span>
+                            <span className="font-serif font-bold text-sm">
+                              {q.correctAnswer}
+                            </span>
+                          </div>
+                          {q.explanation && (
+                            <p className="text-[11px] text-[#71685E] italic pl-1">
+                              <span className="font-semibold not-italic">Rationale: </span>
+                              {q.explanation}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-3 text-[10px] text-[#71685E] pt-0.5">
+                            <span>Concept: {q.conceptTested || chapter.title}</span>
+                            <span>•</span>
+                            <span>Cognitive Level: {q.bloomLevel || q.cognitiveLevel || 'Applying'}</span>
+                            <span>•</span>
+                            <span>Difficulty: {q.difficulty || 'Medium'}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
-              )}
-
-              {q.blanksSentence && (
-                <div className="pl-6 pt-1 text-sm italic text-[#292521]">
-                  "{q.blanksSentence}"
-                </div>
-              )}
-
-              {q.originalSentence && (
-                <div className="pl-6 pt-1 text-xs text-[#71685E] font-sans">
-                  Original: <span className="font-serif italic text-[#292521]">"{q.originalSentence}"</span>
-                </div>
-              )}
-
-              {/* Teacher/Editor Metadata Pill */}
-              <div className="pl-6 pt-1 flex items-center gap-3 text-[10px] font-sans text-[#71685E]">
-                <span>Concept: {q.conceptTested}</span>
-                <span>•</span>
-                <span>Cognitive Level: {q.bloomLevel}</span>
-                <span>•</span>
-                <span className="text-emerald-800 font-semibold">
-                  Key: {q.correctAnswer}
-                </span>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Tab Content: Rubrics */}
+      {activeTab === 'rubrics' && (
+        <div className="bg-[#FFFDF8] border border-[#CBBEAC] rounded-xl p-6 shadow-xs space-y-6">
+          <div className="border-b border-[#CBBEAC] pb-3">
+            <h3 className="text-lg font-serif font-bold text-[#35101F]">
+              Comprehensive Evaluation Rubrics &amp; Marking Guidance
+            </h3>
+            <p className="text-xs text-[#71685E] mt-0.5">
+              Standardized objective and subjective marking bands ensuring uniform grading criteria across evaluators.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200 space-y-2">
+              <span className="text-xs font-bold text-emerald-900 uppercase">
+                Full Marks (100%)
+              </span>
+              <p className="text-xs text-emerald-950 leading-relaxed font-serif">
+                Exact grammatical concord strictly applied. No orthographic or punctuation errors. Sentence retains original semantic intent in transformations.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 space-y-2">
+              <span className="text-xs font-bold text-amber-900 uppercase">
+                Partial Credit (50%)
+              </span>
+              <p className="text-xs text-amber-950 leading-relaxed font-serif">
+                Correct finite verb identified, but minor transcription or punctuation slip. Proximity concord recognized in correlative conjunctions with partial syntactic error.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl bg-rose-50/70 border border-rose-200 space-y-2">
+              <span className="text-xs font-bold text-rose-900 uppercase">
+                Zero Credit (0%)
+              </span>
+              <p className="text-xs text-rose-950 leading-relaxed font-serif">
+                Failure of subject-verb concord. Selecting the intervening distractor noun. Altering the core grammatical meaning of the specimen sentence.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add / Edit Question Modal */}
+      {(isAddingQuestion || editingQuestion) && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#FFFDF8] border border-[#CBBEAC] rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#CBBEAC] pb-3">
+              <h3 className="text-base font-serif font-bold text-[#35101F]">
+                {isAddingQuestion ? 'Add New Assessment Question' : 'Edit Assessment Question'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingQuestion(null);
+                  setIsAddingQuestion(false);
+                }}
+                className="text-[#71685E] hover:text-[#5A1832] cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {editingQuestion && (
+              <div className="space-y-3 text-xs">
+                <div>
+                  <label className="font-bold text-[#5A1832] block mb-1">
+                    Question Type:
+                  </label>
+                  <select
+                    value={editingQuestion.type}
+                    onChange={(e) =>
+                      setEditingQuestion({ ...editingQuestion, type: e.target.value as any })
+                    }
+                    className="w-full p-2 rounded-lg bg-[#F6F0E7] border border-[#CBBEAC] text-[#292521]"
+                  >
+                    <option value="mcq">Multiple Choice Question (MCQ)</option>
+                    <option value="fill_in_blanks">Fill in Blanks</option>
+                    <option value="error_correction">Error Correction</option>
+                    <option value="transformation">Sentence Transformation</option>
+                    <option value="short_answer">Short Answer / Subjective</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-[#5A1832] block mb-1">
+                    Question Prompt:
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={editingQuestion.prompt}
+                    onChange={(e) =>
+                      setEditingQuestion({ ...editingQuestion, prompt: e.target.value })
+                    }
+                    placeholder="Enter examination question prompt..."
+                    className="w-full p-2 rounded-lg bg-[#F6F0E7] border border-[#CBBEAC] text-[#292521] font-serif"
+                  />
+                </div>
+
+                {editingQuestion.type === 'fill_in_blanks' && (
+                  <div>
+                    <label className="font-bold text-[#5A1832] block mb-1">
+                      Blanks Sentence (e.g. "The cat ___ [sleep/sleeps]"):
+                    </label>
+                    <input
+                      type="text"
+                      value={editingQuestion.blanksSentence || ''}
+                      onChange={(e) =>
+                        setEditingQuestion({ ...editingQuestion, blanksSentence: e.target.value })
+                      }
+                      className="w-full p-2 rounded-lg bg-[#F6F0E7] border border-[#CBBEAC] text-[#292521]"
+                    />
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-[#5A1832] block mb-1">Marks:</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={10}
+                      value={editingQuestion.marks || 1}
+                      onChange={(e) =>
+                        setEditingQuestion({
+                          ...editingQuestion,
+                          marks: parseInt(e.target.value, 10) || 1,
+                        })
+                      }
+                      className="w-full p-2 rounded-lg bg-[#F6F0E7] border border-[#CBBEAC] text-[#292521]"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-[#5A1832] block mb-1">Difficulty:</label>
+                    <select
+                      value={editingQuestion.difficulty || 'Medium'}
+                      onChange={(e) =>
+                        setEditingQuestion({
+                          ...editingQuestion,
+                          difficulty: e.target.value as any,
+                        })
+                      }
+                      className="w-full p-2 rounded-lg bg-[#F6F0E7] border border-[#CBBEAC] text-[#292521]"
+                    >
+                      <option value="Easy">Easy</option>
+                      <option value="Medium">Medium</option>
+                      <option value="Hard">Hard</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-bold text-emerald-900 block mb-1">
+                    Verified Correct Answer:
+                  </label>
+                  <input
+                    type="text"
+                    value={editingQuestion.correctAnswer || ''}
+                    onChange={(e) =>
+                      setEditingQuestion({ ...editingQuestion, correctAnswer: e.target.value })
+                    }
+                    placeholder="Exact correct answer key..."
+                    className="w-full p-2 rounded-lg bg-emerald-50/70 border border-emerald-300 text-emerald-950 font-serif font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-[#5A1832] block mb-1">
+                    Teacher Explanation / Grammatical Rationale:
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={editingQuestion.explanation || ''}
+                    onChange={(e) =>
+                      setEditingQuestion({ ...editingQuestion, explanation: e.target.value })
+                    }
+                    placeholder="Pedagogical explanation justifying the answer..."
+                    className="w-full p-2 rounded-lg bg-[#F6F0E7] border border-[#CBBEAC] text-[#292521]"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-3 border-t border-[#CBBEAC]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingQuestion(null);
+                      setIsAddingQuestion(false);
+                    }}
+                    className="px-4 py-2 rounded-lg bg-[#EDE4D6] hover:bg-[#CBBEAC]/50 text-[#71685E] font-bold cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSaveQuestion(targetSectionId, editingQuestion)}
+                    className="px-4 py-2 rounded-lg bg-[#5A1832] hover:bg-[#35101F] text-white font-bold cursor-pointer"
+                  >
+                    Save Question
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

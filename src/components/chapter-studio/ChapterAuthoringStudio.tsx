@@ -29,6 +29,7 @@ import { BoardAdaptModal } from './BoardAdaptModal';
 import {
   resolveActiveBookArchitecture,
   calculateArchitectureCompletionStats,
+  createChapterFromArchitecture,
 } from './architecture/chapterArchitectureBridge';
 import { ChapterArchitectureCustomizerModal } from './architecture/ChapterArchitectureCustomizerModal';
 import { ArchitectureUpdateReviewModal } from './architecture/ArchitectureUpdateReviewModal';
@@ -89,18 +90,52 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
   // Initialize StudioChapter from topic (or use demo rich chapter if it's Subject-Verb Agreement)
   const targetClass = (initialTopic.classLevel || seriesProject.selectedClass || 'Class 6') as GrammarClassLevel;
   const targetSystem = (seriesProject.activeSystemId || seriesProject.targetBoard || 'CBSE') as CurriculumSystemId;
+  const [currentTopic, setCurrentTopic] = useState<GrammarTopic>(initialTopic);
   const [chapter, setChapter] = useState<StudioChapter>(() =>
     convertTopicToStudioChapter(initialTopic, targetClass, targetSystem, seriesProject.activeEditionId)
   );
 
   // Synchronize chapter state when initial topic or active book project changes
   useEffect(() => {
+    setCurrentTopic(initialTopic);
     const cls = (initialTopic.classLevel || seriesProject.selectedClass || 'Class 6') as GrammarClassLevel;
     const sys = (seriesProject.activeSystemId || seriesProject.targetBoard || 'CBSE') as CurriculumSystemId;
     const converted = convertTopicToStudioChapter(initialTopic, cls, sys, seriesProject.activeEditionId);
     setChapter(converted);
     setActiveSectionId(converted.sections[0]?.id || '');
   }, [initialTopic.id, initialTopic.classLevel, seriesProject.activeBookProjectId, seriesProject.selectedClass, seriesProject.activeSystemId]);
+
+  // List of all chapters in the active book
+  const allCurrentBookTopics: GrammarTopic[] = useMemo(() => {
+    const book = seriesProject.books[targetClass] || Object.values(seriesProject.books)[0];
+    return book?.topics && book.topics.length > 0 ? book.topics : [currentTopic];
+  }, [seriesProject.books, targetClass, currentTopic]);
+
+  const chaptersList = useMemo(() => {
+    return allCurrentBookTopics.map((t, idx) => ({
+      id: t.id,
+      order: t.order || idx + 1,
+      title: t.title,
+      category: t.category,
+    }));
+  }, [allCurrentBookTopics]);
+
+  // Add Chapter Modal state
+  const [showAddChapterModal, setShowAddChapterModal] = useState(false);
+  const [newChapterTitleInput, setNewChapterTitleInput] = useState('');
+  const [newChapterCategoryInput, setNewChapterCategoryInput] = useState('Syntax & Concord');
+
+  const handleSelectChapter = (topicId: string) => {
+    const foundTopic = allCurrentBookTopics.find((t) => t.id === topicId);
+    if (!foundTopic) return;
+    setCurrentTopic(foundTopic);
+    const cls = (foundTopic.classLevel || seriesProject.selectedClass || 'Class 6') as GrammarClassLevel;
+    const sys = (seriesProject.activeSystemId || seriesProject.targetBoard || 'CBSE') as CurriculumSystemId;
+    const converted = convertTopicToStudioChapter(foundTopic, cls, sys, seriesProject.activeEditionId);
+    setChapter(converted);
+    setActiveSectionId(converted.sections[0]?.id || '');
+    setActiveView('setup');
+  };
 
   // Active navigation view state
   const [activeView, setActiveView] = useState<string>('setup');
@@ -427,7 +462,8 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
     setChapter(updatedChapter);
 
     // Sync back to underlying GrammarTopic
-    const updatedTopic = syncStudioChapterToTopic(updatedChapter, initialTopic);
+    const updatedTopic = syncStudioChapterToTopic(updatedChapter, currentTopic);
+    setCurrentTopic(updatedTopic);
 
     // Find and update the topic in seriesProject
     const updatedBooks = { ...seriesProject.books };
@@ -448,6 +484,100 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
       ...seriesProject,
       books: updatedBooks,
     });
+  };
+
+  // Add Chapter to Book (adheres to: A BOOK HAS NO FIXED NUMBER OF CHAPTERS)
+  const handleAddNewChapter = (title: string, category?: string) => {
+    const chapTitle = title.trim() || `Chapter ${allCurrentBookTopics.length + 1}: New Grammar Study`;
+    const cat = category?.trim() || 'Syntax & Concord';
+    const nextNum = allCurrentBookTopics.length + 1;
+    const newTopicId = `top-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+
+    const newStudioChapter = createChapterFromArchitecture(
+      activeArchitecture,
+      newTopicId,
+      chapTitle,
+      nextNum,
+      targetClass,
+      targetSystem
+    );
+    newStudioChapter.category = cat;
+
+    const newTopic: GrammarTopic = {
+      id: newTopicId,
+      order: nextNum,
+      title: chapTitle,
+      category: cat,
+      classLevel: targetClass,
+      curriculumSystemId: targetSystem,
+      overview: `Academic study of ${chapTitle} adhering to canonical book architecture.`,
+      learningObjectives: [
+        `Understand foundational grammatical rules of ${chapTitle}`,
+        `Apply structural rules in sentence formation`,
+        `Identify and rectify common errors in board examinations`,
+      ],
+      definitions: [
+        {
+          id: `def-${newTopicId}-1`,
+          term: chapTitle,
+          partOfSpeechOrCategory: cat,
+          ageAppropriateExplanation: `Essential grammatical explanation of ${chapTitle} for ${targetClass}.`,
+          rules: [`Core standard rule for ${chapTitle}.`],
+          examples: [
+            {
+              sentence: `Illustrative sentence demonstrating ${chapTitle}.`,
+              note: 'Standard declarative application.',
+            },
+          ],
+        },
+      ],
+      notesAndTheoryMarkdown: `# ${chapTitle}\n\nDetailed pedagogical notes and syntactic theory conforming to standard book architecture.`,
+      exercises: newStudioChapter.exercises.map((ex) => ({
+        id: `ex-${newTopicId}-${ex.letter}`,
+        title: ex.title,
+        instructions: ex.instructions || 'Complete the following grammatical practice items.',
+        targetType: ((ex as any).targetType as any) || 'mixed',
+        tier: ((ex as any).tier as any) || 'mixed',
+        difficulty: 'Medium' as const,
+        questions: ex.questions || [],
+        maxMarks: ex.questions?.length || 10,
+      })),
+      testSeries: [],
+      studioChapter: newStudioChapter,
+    };
+
+    const bookKey = targetClass;
+    const currentBook = seriesProject.books[bookKey] || Object.values(seriesProject.books)[0];
+    if (currentBook) {
+      const updatedTopics = [...currentBook.topics, newTopic];
+      const targetUnitId = currentBook.units[0]?.id;
+      const updatedUnits = currentBook.units.map((u, idx) => {
+        if (idx === 0 || u.id === targetUnitId) {
+          return { ...u, chapterIds: [...u.chapterIds, newTopicId] };
+        }
+        return u;
+      });
+
+      const updatedSeriesProject = {
+        ...seriesProject,
+        books: {
+          ...seriesProject.books,
+          [bookKey]: {
+            ...currentBook,
+            topics: updatedTopics,
+            units: updatedUnits,
+          },
+        },
+      };
+
+      onUpdateSeriesProject(updatedSeriesProject);
+      setCurrentTopic(newTopic);
+      setChapter(newStudioChapter);
+      setActiveSectionId(newStudioChapter.sections[0]?.id || '');
+      setActiveView('setup');
+      setShowAddChapterModal(false);
+      setNewChapterTitleInput('');
+    }
   };
 
   // Section handling
@@ -1030,6 +1160,10 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
               onToggleCompact={() => setIsHeaderCompacted(true)}
               onToggleFocusMaximized={handleToggleFocusMaximized}
               isFocusMaximized={isFocusMaximized}
+              chapters={chaptersList}
+              activeChapterId={currentTopic.id}
+              onSelectChapter={handleSelectChapter}
+              onAddChapter={() => setShowAddChapterModal(true)}
             />
           </div>
         </>
@@ -1040,6 +1174,7 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
         <ChapterStudioMenuBar
           onWriteChapter={handleWriteChapter}
           isWritingChapter={isWritingChapter}
+          onAddChapter={() => setShowAddChapterModal(true)}
           onOpenChapterInfo={() => setActiveView('setup')}
           onOpenChapterArchitecture={() => setShowArchitectureCustomizer(true)}
           onOpenLearningObjectives={() => setActiveView('objectives')}
@@ -1151,6 +1286,10 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
               }}
               onOpenArchitectureCustomizer={() => setShowArchitectureCustomizer(true)}
               onToggleCollapse={() => setIsNavCollapsed(true)}
+              chapters={chaptersList}
+              activeTopicId={currentTopic.id}
+              onSelectChapter={handleSelectChapter}
+              onAddChapter={() => setShowAddChapterModal(true)}
               isDarkMode={false}
             />
 
@@ -1382,6 +1521,95 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
         onRestoreSnapshot={(restored) => handleUpdateChapter(restored)}
         isDarkMode={false}
       />
+
+      {/* Add Chapter to Book Modal */}
+      {showAddChapterModal && (
+        <div className="fixed inset-0 z-50 bg-[#292521]/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-2xl bg-[#FFFDF8] border border-[#CBBEAC] shadow-2xl p-5 text-[#292521] space-y-4 animate-in fade-in zoom-in-95 duration-100">
+            <div className="flex items-center justify-between border-b border-[#CBBEAC]/70 pb-3">
+              <div className="flex items-center space-x-2">
+                <span className="p-1.5 rounded-lg bg-[#5A1832] text-[#F6F0E7]">
+                  <BookOpen className="w-4 h-4 text-[#C29A52]" />
+                </span>
+                <div>
+                  <h3 className="font-serif font-bold text-sm text-[#35101F]">Add Chapter to Book</h3>
+                  <p className="text-[10px] text-[#71685E]">
+                    {targetClass} • Chapter {allCurrentBookTopics.length + 1}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddChapterModal(false)}
+                className="p-1 rounded-lg text-[#71685E] hover:text-[#292521] hover:bg-[#EDE4D6] transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block text-[11px] font-bold text-[#5A1832] uppercase tracking-wider mb-1">
+                  Chapter Title
+                </label>
+                <input
+                  type="text"
+                  value={newChapterTitleInput}
+                  onChange={(e) => setNewChapterTitleInput(e.target.value)}
+                  placeholder="e.g. Non-Finite Verbs: Infinitives, Gerunds &amp; Participles"
+                  className="w-full rounded-xl border border-[#CBBEAC] bg-[#F6F0E7]/50 px-3 py-2 text-xs text-[#292521] focus:outline-none focus:border-[#5A1832] focus:bg-[#FFFDF8]"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-[#5A1832] uppercase tracking-wider mb-1">
+                  Grammar Category
+                </label>
+                <select
+                  value={newChapterCategoryInput}
+                  onChange={(e) => setNewChapterCategoryInput(e.target.value)}
+                  className="w-full rounded-xl border border-[#CBBEAC] bg-[#F6F0E7]/50 px-3 py-2 text-xs text-[#292521] focus:outline-none focus:border-[#5A1832] focus:bg-[#FFFDF8]"
+                >
+                  <option value="Syntax & Concord">Syntax &amp; Concord</option>
+                  <option value="Morphology & Parts of Speech">Morphology &amp; Parts of Speech</option>
+                  <option value="Verb Tenses & Aspect">Verb Tenses &amp; Aspect</option>
+                  <option value="Active & Passive Voice">Active &amp; Passive Voice</option>
+                  <option value="Direct & Indirect Speech">Direct &amp; Indirect Speech</option>
+                  <option value="Clauses & Sentence Structure">Clauses &amp; Sentence Structure</option>
+                  <option value="Vocabulary & Semantics">Vocabulary &amp; Semantics</option>
+                  <option value="Punctuation & Mechanics">Punctuation &amp; Mechanics</option>
+                </select>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-[#EDE4D6]/60 border border-[#CBBEAC]/80 text-[11px] text-[#71685E] space-y-1">
+                <div className="font-bold text-[#5A1832]">Architectural Inheritance Notice:</div>
+                <div>
+                  This new chapter will automatically inherit all 24 pedagogical components configured for this book, including concept discovery, worked examples, tiered exercises, and teacher annotations.
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end space-x-2 pt-2 border-t border-[#CBBEAC]/60">
+              <button
+                type="button"
+                onClick={() => setShowAddChapterModal(false)}
+                className="px-3 py-1.5 rounded-xl border border-[#CBBEAC] text-xs font-semibold text-[#71685E] hover:bg-[#EDE4D6] transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAddNewChapter(newChapterTitleInput, newChapterCategoryInput)}
+                className="px-4 py-1.5 rounded-xl bg-[#5A1832] text-[#FFFDF8] text-xs font-bold hover:bg-[#35101F] shadow-sm flex items-center space-x-1.5 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 text-[#C29A52]" />
+                <span>Create &amp; Author Chapter</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

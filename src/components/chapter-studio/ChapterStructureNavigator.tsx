@@ -76,6 +76,10 @@ export interface ChapterStructureNavigatorProps {
   onOpenArchitectureCustomizer?: () => void;
   onOpenUpdateReview?: () => void;
   onToggleCollapse?: () => void;
+  chapters?: { id: string; order: number; title: string }[];
+  activeTopicId?: string;
+  onSelectChapter?: (topicId: string) => void;
+  onAddChapter?: () => void;
   isDarkMode: boolean;
 }
 
@@ -127,6 +131,10 @@ export const ChapterStructureNavigator: React.FC<ChapterStructureNavigatorProps>
   onOpenArchitectureCustomizer,
   onOpenUpdateReview,
   onToggleCollapse,
+  chapters = [],
+  activeTopicId,
+  onSelectChapter,
+  onAddChapter,
   isDarkMode,
 }) => {
   const [navigatorMode, setNavigatorMode] = useState<'architecture' | 'stages'>('architecture');
@@ -325,6 +333,33 @@ export const ChapterStructureNavigator: React.FC<ChapterStructureNavigatorProps>
             )}
           </div>
         </div>
+
+        {/* Chapter Switcher & Add Chapter button */}
+        {chapters && chapters.length > 0 && (
+          <div className="flex items-center gap-1 pt-0.5 pb-1">
+            <select
+              value={activeTopicId || chapter.id}
+              onChange={(e) => onSelectChapter?.(e.target.value)}
+              className="flex-1 min-w-0 text-[11px] font-bold bg-[#FFFDF8] border border-[#CBBEAC] rounded-lg px-2 py-1 text-[#5A1832] truncate focus:outline-none cursor-pointer shadow-2xs"
+            >
+              {chapters.map((ch, idx) => (
+                <option key={ch.id || idx} value={ch.id}>
+                  Ch {ch.order || idx + 1}: {ch.title}
+                </option>
+              ))}
+            </select>
+            {onAddChapter && (
+              <button
+                type="button"
+                onClick={onAddChapter}
+                className="p-1 rounded-lg bg-[#5A1832] text-[#FFFDF8] hover:bg-[#35101F] shadow-2xs cursor-pointer shrink-0 transition-colors"
+                title="Add Chapter to Book"
+              >
+                <Plus className="w-3.5 h-3.5 text-[#C29A52]" />
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Inherited from Book Architecture Badge */}
         <div className="flex items-center justify-between text-[10px] font-mono">

@@ -58,6 +58,7 @@ import { ChapterSummaryRevisionView } from './ChapterSummaryRevisionView';
 import { TeacherAuthorNotesView } from './TeacherAuthorNotesView';
 import { ChapterAssessmentView } from './ChapterAssessmentView';
 import { AnswerKeyStudioView } from './AnswerKeyStudioView';
+import { ChapterChallengeDrillView } from './ChapterChallengeDrillView';
 import { ChapterAuditStudioView } from './ChapterAuditStudioView';
 import { Component06RulesAuthoring } from './Component06RulesAuthoring';
 import { ReusableComponentView } from './engine/ReusableComponentView';
@@ -2554,89 +2555,6 @@ export const ChapterManuscriptCanvas: React.FC<ChapterManuscriptCanvasProps> = (
           </div>
         )}
 
-        {/* Answer Key View */}
-        {effectiveView === 'answer_key' && (
-          <div
-            className="p-6 rounded-2xl border border-[#CBBEAC] space-y-4 bg-[#FFFDF8] shadow-xs text-[#292521]"
-          >
-            <div className="flex items-center justify-between border-b border-[#CBBEAC]/50 pb-2">
-              <h3 className="font-bold text-sm text-[#35101F]">
-                Aggregated Chapter Answer Key &amp; Subjective Evaluation Rubrics
-              </h3>
-              <span className="text-xs text-[#71685E] font-semibold">
-                {chapter.answerKey?.length || 0} answer entries
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              {(chapter.answerKey || []).map((ak) => (
-                <div
-                  key={ak.id}
-                  className="p-4 rounded-xl border border-[#CBBEAC] bg-[#F6F0E7] space-y-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs text-[#5A1832]">
-                      {ak.exerciseLetterOrNumber} • Q{ak.questionNumber}
-                    </span>
-                    <span className="font-mono text-[10px] uppercase px-2 py-0.5 rounded bg-[#EDE4D6] text-[#5A1832] font-bold border border-[#CBBEAC]">
-                      {ak.questionType}
-                    </span>
-                  </div>
-
-                  <p className="font-medium text-[#292521] text-xs">
-                    Prompt: {ak.promptSummary}
-                  </p>
-
-                  <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-300 text-xs">
-                    <span className="font-bold text-emerald-900 mr-2">
-                      Correct:
-                    </span>
-                    <span className="font-semibold text-emerald-950">
-                      {ak.correctAnswer}
-                    </span>
-                    {ak.acceptableAlternatives && ak.acceptableAlternatives.length > 0 && (
-                      <p className="text-[11px] text-[#292521] mt-1 font-medium">
-                        Acceptable Alternatives: {ak.acceptableAlternatives.join('; ')}
-                      </p>
-                    )}
-                  </div>
-
-                  <p className="text-[11px] text-[#71685E] italic font-medium">
-                    Rationale: {ak.grammarRationale}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Teacher Notes View */}
-        {(effectiveView === 'teacher_notes' || effectiveView === 'teacher_guide') && (
-          <div
-            className="p-6 rounded-2xl border border-[#CBBEAC] space-y-4 bg-[#FFFDF8] shadow-xs text-[#292521]"
-          >
-            <h3 className="font-bold text-sm text-[#35101F]">
-              Teacher Guide &amp; Instructor Lesson Notes
-            </h3>
-            <textarea
-              rows={8}
-              value={
-                typeof chapter.teacherNotes === 'string'
-                  ? chapter.teacherNotes
-                  : chapter.teacherNotes?.pedagogicalNotes || ''
-              }
-              onChange={(e) =>
-                onUpdateChapter({
-                  ...chapter,
-                  teacherNotes: e.target.value,
-                })
-              }
-              placeholder="Recommended period breakdown, common student pitfalls to anticipate, diagnostic warm-ups..."
-              className="w-full p-3 rounded-xl border border-[#CBBEAC] bg-[#F6F0E7] text-[#292521] text-xs font-mono leading-relaxed focus:outline-none focus:ring-1 focus:ring-[#C29A52]"
-            />
-          </div>
-        )}
-
         {/* Stage 5: Concepts & Rules Studio View (COMP-06 Canonical View) */}
         {(effectiveView === 'rules' || effectiveView === 'concepts') && (
           <div className="space-y-6">
@@ -2737,116 +2655,51 @@ export const ChapterManuscriptCanvas: React.FC<ChapterManuscriptCanvasProps> = (
 
         {/* Component 19: Application & Challenge Problems View */}
         {effectiveView === 'challenge' && (
-          <div className="space-y-6">
-            <div className="bg-[#FFFDF8] border border-[#CBBEAC] rounded-xl p-5 shadow-xs flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-[#5A1832] text-[#FFFDF8] flex items-center justify-center font-serif shadow-xs">
-                  <Award className="w-5 h-5 text-[#C29A52]" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-[#5A1832]">
-                      Component 19 • Higher-Order Thinking
-                    </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 font-medium border border-purple-200">
-                      HOTS &amp; Olympiad
-                    </span>
-                  </div>
-                  <h2 className="text-xl font-serif font-bold text-[#292521]">
-                    Application &amp; Challenge Drills
-                  </h2>
-                  <p className="text-xs text-[#71685E] mt-0.5">
-                    Challenging syntactic tasks, error spotters, and contextual application problems pushing students beyond rote memorization into structural analysis.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-[#FFFDF8] border border-[#CBBEAC] rounded-xl p-5 space-y-4 shadow-xs">
-              {chapter.challengeProblems && chapter.challengeProblems.length > 0 ? (
-                <div className="space-y-3">
-                  {chapter.challengeProblems.map((cp, idx) => (
-                    <div key={cp.id || idx} className="p-4 rounded-xl border border-[#CBBEAC] bg-[#EDE4D6]/50 space-y-2">
-                      <h4 className="font-serif font-bold text-sm text-[#35101F]">
-                        Challenge {idx + 1}: {cp.title}
-                      </h4>
-                      <p className="text-xs font-serif text-[#292521] leading-relaxed">
-                        {cp.prompt}
-                      </p>
-                      {cp.modelAnswer && (
-                        <div className="p-3 bg-[#FFFDF8] rounded-lg border border-[#CBBEAC] text-xs font-mono text-[#5A1832]">
-                          Model Solution: {cp.modelAnswer}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : chapter.exercises?.find((e) => e.progression === 'challenge') ? (
-                (() => {
-                  const chEx = chapter.exercises.find((e) => e.progression === 'challenge')!;
-                  return (
-                    <div className="p-4 rounded-xl border border-[#CBBEAC] bg-[#EDE4D6]/50 space-y-2">
-                      <h4 className="font-serif font-bold text-sm text-[#35101F]">
-                        {chEx.title}
-                      </h4>
-                      <p className="text-xs font-serif text-[#292521] leading-relaxed">
-                        {chEx.instructions}
-                      </p>
-                      <div className="space-y-2 pt-2">
-                        {chEx.questions?.map((q, qIdx) => (
-                          <div key={q.id || qIdx} className="p-3 bg-[#FFFDF8] rounded-lg border border-[#CBBEAC] text-xs">
-                            <span className="font-bold text-[#5A1832] mr-2">{qIdx + 1}.</span>
-                            <span className="font-serif">{q.prompt || q.blanksSentence}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })()
-              ) : (
-                <div className="p-6 rounded-xl border border-dashed border-[#CBBEAC] text-center bg-[#FFFDF8]">
-                  <p className="text-xs text-[#71685E]">
-                    No Olympiad or challenge tasks authored yet for <strong>{chapter.title}</strong>.
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
+          <ChapterChallengeDrillView
+            chapter={chapter}
+            onUpdateChapter={onUpdateChapter}
+            seriesProject={seriesProject}
+            isDarkMode={false}
+          />
         )}
 
-        {/* Stage 11: Chapter Assessment Test Studio View */}
+        {/* Component 21: Chapter Assessment Test Studio View */}
         {(effectiveView === 'assessment' || effectiveView === 'test') && (
           <ChapterAssessmentView
             chapter={chapter}
             onUpdateChapter={onUpdateChapter}
+            seriesProject={seriesProject}
             onNavigateToStage={(stage) => onSelectView && onSelectView(stage)}
             isDarkMode={false}
           />
         )}
 
-        {/* Stage 12: Answer Key & Rubrics Studio View */}
+        {/* Component 22: Answer Key & Rubrics Studio View */}
         {effectiveView === 'answer_key' && (
           <AnswerKeyStudioView
             chapter={chapter}
             onUpdateChapter={onUpdateChapter}
+            seriesProject={seriesProject}
             isDarkMode={false}
           />
         )}
 
-        {/* Stage 13: Chapter Summary / Revision Studio View */}
+        {/* Component 20: Chapter Summary / Revision Studio View */}
         {effectiveView === 'summary' && (
           <ChapterSummaryRevisionView
             chapter={chapter}
             onUpdateChapter={onUpdateChapter}
+            seriesProject={seriesProject}
             isDarkMode={false}
           />
         )}
 
-        {/* Stage 14: Teacher & Author Notes Studio View */}
+        {/* Component 23: Teacher & Author Notes Studio View */}
         {(effectiveView === 'teacher_notes' || effectiveView === 'teacher_guide') && (
           <TeacherAuthorNotesView
             chapter={chapter}
             onUpdateChapter={onUpdateChapter}
+            seriesProject={seriesProject}
             isDarkMode={false}
           />
         )}

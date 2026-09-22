@@ -1794,7 +1794,11 @@ export interface TeacherAuthorNoteRecord {
     | 'expected_misconception'
     | 'differentiation_suggestion'
     | 'remediation'
-    | 'extension_activity';
+    | 'extension_activity'
+    | 'pacing_guide'
+    | 'common_pitfall'
+    | 'differentiation'
+    | 'pedagogical_background';
   title: string;
   content: string;
   visibility: 'internal_only' | 'teacher_edition' | 'student_edition';
@@ -1805,6 +1809,7 @@ export interface TeacherAuthorNoteRecord {
 export interface ChapterRevisionData {
   rulesAtAGlance: Array<{ ruleTitle: string; summary: string }>;
   keyConcepts: string[];
+  whatYouLearned?: string[];
   commonMistakes: Array<{ mistake: string; correction: string; why: string }>;
   rememberPoints: string[];
   keyVocabulary: Array<{ term: string; definition: string }>;

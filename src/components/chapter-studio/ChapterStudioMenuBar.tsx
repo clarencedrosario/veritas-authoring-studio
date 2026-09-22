@@ -44,6 +44,7 @@ export interface ChapterStudioMenuBarProps {
   onWriteChapter: () => void;
   isWritingChapter?: boolean;
   // Chapter menu actions
+  onAddChapter?: () => void;
   onOpenChapterInfo: () => void;
   onOpenChapterArchitecture: () => void;
   onOpenLearningObjectives: () => void;
@@ -85,6 +86,7 @@ export interface ChapterStudioMenuBarProps {
 export const ChapterStudioMenuBar: React.FC<ChapterStudioMenuBarProps> = ({
   onWriteChapter,
   isWritingChapter = false,
+  onAddChapter,
   onOpenChapterInfo,
   onOpenChapterArchitecture,
   onOpenLearningObjectives,
@@ -191,6 +193,19 @@ export const ChapterStudioMenuBar: React.FC<ChapterStudioMenuBarProps> = ({
 
         {activeDropdown === 'chapter' && (
           <div className="absolute left-0 top-full mt-1 w-56 rounded-xl shadow-xl border border-[#CBBEAC] bg-[#FFFDF8] p-1.5 z-50 text-[#292521] animate-in fade-in zoom-in-95 duration-75">
+            {onAddChapter && (
+              <button
+                type="button"
+                onClick={() => {
+                  onAddChapter();
+                  closeMenu();
+                }}
+                className="w-full text-left px-2.5 py-1.5 rounded-lg bg-[#5A1832] text-[#FFFDF8] hover:bg-[#35101F] flex items-center space-x-2 text-xs font-bold mb-1 shadow-2xs cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 text-[#C29A52]" />
+                <span>+ Add Chapter to Book</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {

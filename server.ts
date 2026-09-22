@@ -2002,9 +2002,254 @@ Output JSON only with this structure:
     }
   ]
 }`;
+    } else if (componentId === "comp-19") {
+      userPrompt = `Subject: "${effectiveSubject}"
+Topic / Chapter: "${trimmedTopic}"
+Grade Level: "${trimmedClass}"
+Curriculum Board: "${trimmedBoard}"
+${curriculumFramework ? `Framework Details: "${curriculumFramework}"` : ""}
+
+Generate 3 high-order thinking / Olympiad / competition-level challenge problems on "${trimmedTopic}" tailored for ${trimmedClass} (${trimmedBoard}).
+These problems must test deep conceptual application, syntactic ambiguities, multi-step structural analysis, or challenging exception cases that go beyond standard routine drills.
+
+Output JSON only with this structure:
+{
+  "challengeProblems": [
+    {
+      "id": "chal-ai-1",
+      "title": "Descriptive Challenge Title",
+      "prompt": "Rigorous problem statement presenting an authentic linguistic puzzle or complex scenario",
+      "hint": "Guiding analytical hint directing student attention to underlying grammatical structure",
+      "modelAnswer": "Complete, verified model solution",
+      "grammaticalRationale": "Step-by-step grammatical analysis and breakdown of the governing rule",
+      "commonPitfall": "The deceptive trap or false pattern students commonly fall into",
+      "marks": 3,
+      "difficulty": "Hard",
+      "cognitiveLevel": "Evaluating"
+    }
+  ]
+}`;
+    } else if (componentId === "comp-20") {
+      userPrompt = `Subject: "${effectiveSubject}"
+Topic / Chapter: "${trimmedTopic}"
+Grade Level: "${trimmedClass}"
+Curriculum Board: "${trimmedBoard}"
+${curriculumFramework ? `Framework Details: "${curriculumFramework}"` : ""}
+
+Generate a comprehensive, crystal-clear Chapter Summary and Review consolidation for "${trimmedTopic}" for ${trimmedClass} (${trimmedBoard}).
+Include:
+1. "rulesAtAGlance": 4–5 core rules summarizing the chapter mechanics, each with a clear rule title, rule statement, specimen example, and diagnostic trap.
+2. "whatYouLearned": 4 high-yield bullet takeaways.
+3. "commonMistakes": 3 authentic student errors with the mistake, the correction, and why it is wrong.
+4. "keyVocabulary": 4 essential grammatical terms with definitions.
+5. "quickCheckQuestions": 3 rapid self-test questions with verified answers.
+6. "selfAssessmentChecklist": 4 "I can..." competency statements.
+
+Output JSON only with this structure:
+{
+  "rulesAtAGlance": [
+    {
+      "rule": "Rule title",
+      "summary": "Clear, concise rule formulation",
+      "example": "Exemplary sentence illustrating the rule",
+      "trap": "Common pitfall to avoid"
+    }
+  ],
+  "whatYouLearned": [
+    "Key takeaway point 1"
+  ],
+  "commonMistakes": [
+    {
+      "mistake": "Sample incorrect formulation",
+      "correction": "Sample correct formulation",
+      "why": "Clear grammatical explanation of the error"
+    }
+  ],
+  "keyVocabulary": [
+    {
+      "term": "Term name",
+      "definition": "Clear pedagogical definition"
+    }
+  ],
+  "quickCheckQuestions": [
+    {
+      "prompt": "Rapid review question prompt",
+      "answer": "Verified correct answer"
+    }
+  ],
+  "selfAssessmentChecklist": [
+    {
+      "statement": "I can identify and apply...",
+      "canDo": true
+    }
+  ]
+}
+`;
+    } else if (componentId === "comp-21") {
+      userPrompt = `Subject: "${effectiveSubject}"
+Topic / Chapter: "${trimmedTopic}"
+Grade Level: "${trimmedClass}"
+Curriculum Board: "${trimmedBoard}"
+${curriculumFramework ? `Framework Details: "${curriculumFramework}"` : ""}
+
+Generate a rigorous, standardized 25-mark Chapter Mastery Assessment Test on "${trimmedTopic}" for ${trimmedClass} (${trimmedBoard}).
+The assessment must be balanced across Bloom's Taxonomy (Remembering, Understanding, Applying, Analyzing, Evaluating) and reflect the formal examination style of ${trimmedBoard}.
+Duration: 45 minutes. Total Marks: 25.
+
+Include 3 structured sections:
+- Section A: Objective & Identification (MCQs / Underlining, 5 marks)
+- Section B: Application & Fill in Blanks (FIB with bracketed choices / Cloze, 8 marks)
+- Section C: Synthesis, Transformation & Editing (Sentence rewriting / Error correction / Short response, 12 marks)
+
+Every question must have an explicit verified correctAnswer, concise grammar explanation, marks, and difficulty.
+
+Output JSON only with this structure:
+{
+  "title": "${trimmedTopic} — Mastery Assessment Test",
+  "totalMarks": 25,
+  "durationMinutes": 45,
+  "instructions": [
+    "Read each question carefully before attempting.",
+    "Marks for each question are indicated against it.",
+    "Write legibly and adhere strictly to grammatical accuracy."
+  ],
+  "sections": [
+    {
+      "id": "sec-a",
+      "title": "Section A: Objective Identification",
+      "instructions": "Choose or identify the correct option.",
+      "marksAllocation": 5,
+      "questions": [
+        {
+          "id": "q-test-1",
+          "type": "mcq",
+          "prompt": "Question prompt",
+          "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
+          "correctAnswer": "A) Option 1",
+          "explanation": "Clear grammatical rationale",
+          "marks": 1,
+          "difficulty": "Easy",
+          "cognitiveLevel": "Remembering"
+        }
+      ]
+    },
+    {
+      "id": "sec-b",
+      "title": "Section B: Conceptual Application",
+      "instructions": "Complete each sentence with the appropriate choice in brackets.",
+      "marksAllocation": 8,
+      "questions": [
+        {
+          "id": "q-test-6",
+          "type": "fill_in_blanks",
+          "prompt": "Statement with blank ___ [choice 1 / choice 2]",
+          "blanksSentence": "Statement with blank ___ [choice 1 / choice 2]",
+          "correctAnswer": "choice 1",
+          "explanation": "Clear explanation",
+          "marks": 1,
+          "difficulty": "Medium",
+          "cognitiveLevel": "Understanding"
+        }
+      ]
+    },
+    {
+      "id": "sec-c",
+      "title": "Section C: Transformation, Editing & Composition",
+      "instructions": "Rewrite the sentences or correct errors as directed.",
+      "marksAllocation": 12,
+      "questions": [
+        {
+          "id": "q-test-14",
+          "type": "error_correction",
+          "prompt": "Detect the error and rewrite correctly: [sentence with error]",
+          "correctAnswer": "Corrected sentence",
+          "explanation": "Rule rationale",
+          "marks": 2,
+          "difficulty": "Hard",
+          "cognitiveLevel": "Analyzing"
+        }
+      ]
+    }
+  ]
+}
+`;
+    } else if (componentId === "comp-22") {
+      userPrompt = `Subject: "${effectiveSubject}"
+Topic / Chapter: "${trimmedTopic}"
+Grade Level: "${trimmedClass}"
+Curriculum Board: "${trimmedBoard}"
+${curriculumFramework ? `Framework Details: "${curriculumFramework}"` : ""}
+
+Generate a complete, authoritative Teacher's Answer Key & Subjective Evaluation Rubrics for the chapter "${trimmedTopic}" for ${trimmedClass} (${trimmedBoard}).
+Provide exhaustive solutions, acceptable alternative answers, grammatical rationale, and partial credit scoring guidelines.
+
+Output JSON only with this structure:
+{
+  "answerKey": [
+    {
+      "id": "ak-1",
+      "exerciseLetterOrNumber": "Exercise A",
+      "questionNumber": 1,
+      "questionType": "identification",
+      "promptSummary": "Summary of prompt tested",
+      "correctAnswer": "Verified correct answer",
+      "acceptableAlternatives": ["Valid alternative 1"],
+      "grammarRationale": "Precise grammatical justification and rule reference",
+      "partialCreditGuidance": "Full credit (1.0) for exact form; 0 credit for incorrect agreement."
+    }
+  ],
+  "generalScoringRubric": {
+    "fullCredit": "Exact syntactic compliance with specified constraints",
+    "partialCredit": "Correct concept recognized but minor spelling or tense slip",
+    "zeroCredit": "Conceptual failure or violation of governing grammatical rule"
+  }
+}
+`;
+    } else if (componentId === "comp-23") {
+      userPrompt = `Subject: "${effectiveSubject}"
+Topic / Chapter: "${trimmedTopic}"
+Grade Level: "${trimmedClass}"
+Curriculum Board: "${trimmedBoard}"
+${curriculumFramework ? `Framework Details: "${curriculumFramework}"` : ""}
+
+Generate comprehensive, professional Teacher Guide & Lesson Pacing Notes for "${trimmedTopic}" for ${trimmedClass} (${trimmedBoard}).
+Include:
+1. "learningObjectives": 3 key objectives.
+2. "prerequisites": Prior knowledge needed before this chapter.
+3. "pacingGuide": 4-period instructional breakdown (Period 1: Discovery & Concept, Period 2: Rules & Worked Examples, Period 3: Guided & Independent Practice, Period 4: Challenge & Assessment).
+4. "teachingStrategies": 3 practical instructional methods / analogies.
+5. "commonMisconceptions": 3 common traps and how teachers should address them.
+6. "differentiatedInstruction": Remedial support strategies and extension/enrichment activities.
+7. "classroomActivities": 2 engaging oral or whiteboard activities.
+8. "whiteboardLayout": Layout cues for blackboard / whiteboard summary.
+9. "assessmentAdvice": Diagnostic tips for grading tests and student feedback.
+
+Output JSON only with this structure:
+{
+  "learningObjectives": ["Objective 1", "Objective 2"],
+  "prerequisites": "Description of prerequisite concepts",
+  "pacingGuide": [
+    { "period": 1, "topic": "Inductive Discovery & Core Concept", "duration": "40 mins", "activities": "Warm-up drill and inductive exploration" },
+    { "period": 2, "topic": "Formal Rules & Modelled Analysis", "duration": "40 mins", "activities": "Walk through worked examples and identify traps" },
+    { "period": 3, "topic": "Scaffolded & Independent Practice", "duration": "40 mins", "activities": "Exercises A–C and peer correction" },
+    { "period": 4, "topic": "Olympiad Challenge & Assessment", "duration": "40 mins", "activities": "Mastery assessment test and self-reflection" }
+  ],
+  "teachingStrategies": ["Strategy 1", "Strategy 2"],
+  "commonMisconceptions": [
+    { "misconception": "Common student misunderstanding", "intervention": "Targeted corrective explanation" }
+  ],
+  "differentiatedInstruction": {
+    "remedial": "Support strategies for struggling students",
+    "extension": "Enrichment activities for advanced learners"
+  },
+  "classroomActivities": ["Activity 1", "Activity 2"],
+  "whiteboardLayout": "Suggested whiteboard organization during direct instruction",
+  "assessmentAdvice": "Key indicators of student mastery to look for"
+}
+`;
     } else {
       return res.status(400).json({
-        error: `Unsupported componentId: "${componentId}". Supported canonical IDs are comp-9 through comp-18 (Teaching, Guided Practice, and Formal Practice Exercises A–E + Supplemental).`,
+        error: `Unsupported componentId: "${componentId}". Supported canonical IDs are comp-9 through comp-23 (Worked Examples, Common Errors, Tips, Guided Practice, Exercises A–E, Supplemental, Challenge/Olympiad Drills, Chapter Summary, Mastery Assessment, Answer Key, and Teacher Notes).`,
       });
     }
 

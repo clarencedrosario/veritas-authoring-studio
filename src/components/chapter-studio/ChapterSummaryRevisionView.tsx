@@ -21,6 +21,7 @@ import { CANONICAL_SVA_REVISION_DATA } from '../../utils/chapterStudioData';
 export interface ChapterSummaryRevisionViewProps {
   chapter: StudioChapter;
   onUpdateChapter: (updated: StudioChapter) => void;
+  seriesProject?: any;
   isDarkMode: boolean;
 }
 
@@ -167,6 +168,7 @@ export function getInitialRevisionDataForChapter(chapter: StudioChapter): Chapte
 export const ChapterSummaryRevisionView: React.FC<ChapterSummaryRevisionViewProps> = ({
   chapter,
   onUpdateChapter,
+  seriesProject,
   isDarkMode,
 }) => {
   const revision = getInitialRevisionDataForChapter(chapter);
@@ -176,6 +178,8 @@ export const ChapterSummaryRevisionView: React.FC<ChapterSummaryRevisionViewProp
   >('rules_glance');
 
   const [isEditing, setIsEditing] = useState(false);
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const updateRevision = (updater: (prev: ChapterRevisionData) => ChapterRevisionData) => {
     const updated = updater(revision);
@@ -183,6 +187,86 @@ export const ChapterSummaryRevisionView: React.FC<ChapterSummaryRevisionViewProp
       ...chapter,
       revisionData: updated,
     });
+  };
+
+  const handleAiGenerateSummary = async () => {
+    setIsAiGenerating(true);
+    setErrorMessage(null);
+
+    const chapterAny = chapter as any;
+    const classLevel =
+      chapterAny.targetClass ||
+      chapterAny.classLevel ||
+      seriesProject?.selectedClass ||
+      'Class 6';
+    const board =
+      chapterAny.curriculumFramework ||
+      chapterAny.board ||
+      chapterAny.curriculumBoard ||
+      seriesProject?.activeSystemId ||
+      seriesProject?.targetBoard ||
+      'CISCE';
+    const subject = chapterAny.subject || seriesProject?.subject || 'English Grammar & Composition';
+    const topic = chapter.title || 'Subject-Verb Agreement';
+
+    try {
+      const res = await fetch('/api/chapter-studio/generate-component', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          componentId: 'comp-20',
+          topic,
+          classLevel,
+          board,
+          subject,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'Failed to generate chapter summary');
+      }
+
+      const generated = data.data;
+      if (generated) {
+        const updatedRevision: ChapterRevisionData = {
+          rulesAtAGlance: (generated.rulesAtAGlance || []).map((r: any) => ({
+            ruleTitle: r.rule || r.ruleTitle || 'Rule',
+            summary: r.summary || '',
+            example: r.example || undefined,
+            trap: r.trap || undefined,
+          })),
+          whatYouLearned: generated.whatYouLearned || revision.whatYouLearned,
+          commonMistakes: (generated.commonMistakes || []).map((cm: any) => ({
+            mistake: cm.mistake || '',
+            correction: cm.correction || '',
+            why: cm.why || '',
+          })),
+          keyVocabulary: (generated.keyVocabulary || []).map((kv: any) => ({
+            term: kv.term || '',
+            definition: kv.definition || '',
+          })),
+          quickCheckQuestions: (generated.quickCheckQuestions || []).map((qc: any) => ({
+            prompt: qc.prompt || '',
+            answer: qc.answer || '',
+          })),
+          selfAssessmentChecklist: (generated.selfAssessmentChecklist || []).map((sa: any) => ({
+            statement: sa.statement || '',
+            canDo: sa.canDo ?? true,
+          })),
+          keyConcepts: generated.keyConcepts || revision.keyConcepts || [chapter.title, 'Syntax', 'Grammar'],
+          rememberPoints: generated.rememberPoints || revision.rememberPoints || [],
+          revisionExercises: generated.revisionExercises || revision.revisionExercises || [],
+          challengeQuestions: generated.challengeQuestions || revision.challengeQuestions || [],
+        };
+
+        updateRevision(() => updatedRevision);
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Error generating summary');
+    } finally {
+      setIsAiGenerating(false);
+    }
   };
 
   return (
@@ -213,6 +297,16 @@ export const ChapterSummaryRevisionView: React.FC<ChapterSummaryRevisionViewProp
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleAiGenerateSummary}
+              disabled={isAiGenerating}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#5A1832] hover:bg-[#35101F] text-[#FFFDF8] text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[#C29A52]" />
+              <span>{isAiGenerating ? 'Synthesizing...' : 'AI Generate Summary'}</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setIsEditing(!isEditing)}

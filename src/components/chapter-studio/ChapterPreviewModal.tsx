@@ -24,6 +24,7 @@ import {
   Hash,
   Database,
   Cpu,
+  Key,
 } from 'lucide-react';
 import { StudioChapter } from '../../types';
 import { TextbookMarkdown } from '../common/TextbookMarkdown';
@@ -1669,6 +1670,91 @@ export const ChapterPreviewModal: React.FC<ChapterPreviewModalProps> = ({
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* COMP-22: Chapter Answer Key & Model Rationale (TEACHER EDITION ONLY) */}
+              {previewMode === 'teacher' && (
+                <div className="space-y-6 pt-8 border-t-2 border-emerald-300 font-sans bg-emerald-50/40 p-6 rounded-2xl border border-emerald-200">
+                  <div className="flex items-center space-x-2">
+                    <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-700">
+                      <Key className="w-5 h-5" />
+                    </span>
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-900 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
+                          COMP-22 • Teacher Master Edition
+                        </span>
+                      </div>
+                      <h2 className="text-2xl font-bold font-serif text-emerald-950 mt-1">
+                        Answer Key &amp; Model Rationale
+                      </h2>
+                      <p className="text-xs text-emerald-800">
+                        Prescriptive solutions, diagnostic error notes, syntactic rationales, and marking allocations. Hidden from Student Edition.
+                      </p>
+                    </div>
+                  </div>
+
+                  {chapter.answerKey && chapter.answerKey.length > 0 ? (
+                    <div className="space-y-3">
+                      {chapter.answerKey.map((item, akIdx) => (
+                        <div
+                          key={item.id || akIdx}
+                          className="p-3.5 rounded-xl bg-[#FFFDF8] border border-emerald-200 shadow-2xs space-y-1.5 text-xs"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-emerald-900 font-mono">
+                              {item.exerciseLetterOrNumber ? `Ex ${item.exerciseLetterOrNumber}` : ''} Q{item.questionNumber}: {item.ruleApplied ? `[${item.ruleApplied}]` : ''}
+                            </span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                              {item.markingGuidance || '1 Mark'}
+                            </span>
+                          </div>
+                          <div className="font-serif font-bold text-emerald-950">
+                            Answer: {item.correctAnswer}
+                          </div>
+                          {item.grammarRationale && (
+                            <div className="text-[#71685E] italic text-[11px]">
+                              Grammar Rationale: {item.grammarRationale}
+                            </div>
+                          )}
+                          {item.promptSummary && (
+                            <div className="text-amber-800 text-[11px]">
+                              Prompt: {item.promptSummary}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {chapter.exercises?.map((ex) => (
+                        <div key={ex.id} className="p-3.5 rounded-xl bg-[#FFFDF8] border border-emerald-200 shadow-2xs space-y-2 text-xs">
+                          <h4 className="font-bold uppercase tracking-wider text-emerald-900 border-b border-emerald-100 pb-1">
+                            {ex.title || `Exercise ${ex.letter}`} Solutions
+                          </h4>
+                          <div className="space-y-1.5">
+                            {ex.questions?.map((q, idx) => (
+                              <div key={q.id || idx} className="p-2 rounded bg-emerald-50/50 border border-emerald-100">
+                                <div className="flex items-start justify-between gap-2">
+                                  <span className="font-bold text-[#5A1832]">Q{idx + 1}. {q.prompt || q.blanksSentence || q.originalSentence}</span>
+                                  <span className="font-mono text-[10px] text-emerald-800 font-bold shrink-0">[{q.marks || 1} M]</span>
+                                </div>
+                                <div className="font-serif font-bold text-emerald-900 mt-1">
+                                  Answer: {q.correctAnswer || 'Consult master rubric'}
+                                </div>
+                                {q.rationale && (
+                                  <div className="text-[11px] text-[#71685E] italic mt-0.5">
+                                    Rationale: {q.rationale}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
