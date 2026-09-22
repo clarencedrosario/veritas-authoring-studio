@@ -36,6 +36,7 @@ export interface ExerciseStudioViewProps {
   onSaveToQuestionBank?: (exercise: StudioExercise) => void;
   isDarkMode?: boolean;
   onOpenVisualStudio?: (visualId?: string) => void;
+  activeComponentId?: string;
 }
 
 export type StudioSubView = 'authoring' | 'coverage_matrix' | 'student_preview' | 'teacher_preview';
@@ -49,6 +50,7 @@ export const ExerciseStudioView: React.FC<ExerciseStudioViewProps> = ({
   onSaveToQuestionBank,
   isDarkMode = false,
   onOpenVisualStudio,
+  activeComponentId,
 }) => {
   // Construct fallback synthetic chapter if not directly provided
   const activeChapter: StudioChapter = useMemo(() => {
@@ -145,6 +147,28 @@ export const ExerciseStudioView: React.FC<ExerciseStudioViewProps> = ({
   // Currently selected exercise
   const currentExercise =
     activeExercises.find((ex) => ex.id === selectedExerciseId) || activeExercises[0];
+
+  // Synchronize exercise selection with activeComponentId from canonical chapter architecture
+  useEffect(() => {
+    if (!activeComponentId) return;
+    const compMap: Record<string, { letter: string; index: number }> = {
+      'comp-13': { letter: 'A', index: 0 },
+      'comp-14': { letter: 'B', index: 1 },
+      'comp-15': { letter: 'C', index: 2 },
+      'comp-16': { letter: 'D', index: 3 },
+      'comp-17': { letter: 'E', index: 4 },
+      'comp-18': { letter: 'F', index: 5 },
+    };
+    const target = compMap[activeComponentId];
+    if (target) {
+      const match = activeExercises.find(
+        (ex, idx) => ex.letter === target.letter || idx === target.index
+      );
+      if (match) {
+        setSelectedExerciseId(match.id);
+      }
+    }
+  }, [activeComponentId, activeExercises]);
 
   // Live Audit findings
   const chapterForAudit: StudioChapter = {
@@ -386,6 +410,9 @@ export const ExerciseStudioView: React.FC<ExerciseStudioViewProps> = ({
             availableExercises={activeExercises}
             onMoveQuestionToExercise={handleMoveQuestionToExercise}
             onSaveToQuestionBank={handleSaveQuestionToBank}
+            chapter={activeChapter}
+            activeComponentId={activeComponentId}
+            seriesProject={seriesProject}
           />
 
           {/* RIGHT COLUMN: PROPERTIES & CURRICULUM INTELLIGENCE (320px) */}

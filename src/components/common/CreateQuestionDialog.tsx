@@ -58,36 +58,26 @@ export const CreateQuestionDialog: React.FC<CreateQuestionDialogProps> = ({
 
   // MCQ state
   const [mcqOptions, setMcqOptions] = useState<string[]>([
-    'Neither the headmaster nor the tutors were in attendance.',
-    'Neither the headmaster nor the tutors was in attendance.',
-    'Both the headmaster nor the tutors was in attendance.',
-    'Either the headmaster and tutors are in attendance.',
+    'Option A',
+    'Option B',
+    'Option C',
+    'Option D',
   ]);
   const [mcqCorrectIndex, setMcqCorrectIndex] = useState<number>(0);
 
   // Transformation state
-  const [originalSentence, setOriginalSentence] = useState(
-    'Neither the teacher nor the students was present in the auditorium.'
-  );
-  const [transformationInstruction, setTransformationInstruction] = useState(
-    'Begin with: Neither the students...'
-  );
-  const [transformedAnswer, setTransformedAnswer] = useState(
-    'Neither the students nor the teacher was present in the auditorium.'
-  );
+  const [originalSentence, setOriginalSentence] = useState('');
+  const [transformationInstruction, setTransformationInstruction] = useState('');
+  const [transformedAnswer, setTransformedAnswer] = useState('');
 
   // Error Correction state
-  const [errorSentence, setErrorSentence] = useState(
-    'The committee have decided to adjourn the formal assembly.'
-  );
-  const [errorSnippet, setErrorSnippet] = useState('have');
-  const [correctionSnippet, setCorrectionSnippet] = useState('has');
+  const [errorSentence, setErrorSentence] = useState('');
+  const [errorSnippet, setErrorSnippet] = useState('');
+  const [correctionSnippet, setCorrectionSnippet] = useState('');
 
   // Fill in blanks / Short answer state
-  const [blanksSentence, setBlanksSentence] = useState(
-    'Each of the candidates ___ (has/have) submitted the required thesis.'
-  );
-  const [directAnswer, setDirectAnswer] = useState('has');
+  const [blanksSentence, setBlanksSentence] = useState('');
+  const [directAnswer, setDirectAnswer] = useState('');
 
   // Error validation feedback
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -104,15 +94,15 @@ export const CreateQuestionDialog: React.FC<CreateQuestionDialogProps> = ({
       // Pre-fill sensible default prompt based on type if empty
       if (!prompt) {
         if (preselectedType === 'mcq') {
-          setPrompt('Identify the sentence that observes correct grammatical concord:');
+          setPrompt('Select the correct option from the choices given below:');
         } else if (preselectedType === 'transformation') {
-          setPrompt('Rewrite the following sentence according to the given instructions without altering its core meaning:');
+          setPrompt('Rewrite or transform the following according to the given instructions:');
         } else if (preselectedType === 'error_correction') {
-          setPrompt('Identify the grammatical error in the sentence and provide the correct replacement:');
+          setPrompt('Identify the error in the statement and provide the rectified replacement:');
         } else if (preselectedType === 'fill_in_blanks') {
-          setPrompt('Fill in the blank with the appropriate finite verb form:');
+          setPrompt('Fill in the blank with the appropriate term or value:');
         } else {
-          setPrompt('Provide the prescriptive grammatical rule and justification for this construction:');
+          setPrompt('Answer the following question citing relevant principles or reasoning:');
         }
       }
     }
@@ -123,19 +113,19 @@ export const CreateQuestionDialog: React.FC<CreateQuestionDialogProps> = ({
     setQuestionType(newType);
     setValidationError(null);
     if (newType === 'mcq') {
-      setPrompt('Identify the sentence that observes correct grammatical concord:');
+      setPrompt('Select the correct option from the choices given below:');
       setMarks(1);
     } else if (newType === 'transformation') {
-      setPrompt('Rewrite the following sentence according to the given instructions without altering its core meaning:');
+      setPrompt('Rewrite or transform the following according to the given instructions:');
       setMarks(1);
     } else if (newType === 'error_correction') {
-      setPrompt('Identify the grammatical error in the sentence and provide the correct replacement:');
+      setPrompt('Identify the error in the statement and provide the rectified replacement:');
       setMarks(1);
     } else if (newType === 'fill_in_blanks') {
-      setPrompt('Fill in the blank with the appropriate finite verb form:');
+      setPrompt('Fill in the blank with the appropriate term or value:');
       setMarks(1);
     } else {
-      setPrompt('Provide the prescriptive grammatical rule and justification for this construction:');
+      setPrompt('Answer the following question citing relevant principles or reasoning:');
       setMarks(2);
     }
   };
@@ -164,8 +154,8 @@ export const CreateQuestionDialog: React.FC<CreateQuestionDialogProps> = ({
       correctAnswer = validOptions[mcqCorrectIndex] || validOptions[0];
       distractorExplanations = validOptions.map((_, i) =>
         i === mcqCorrectIndex
-          ? 'Complies fully with standard grammatical concord.'
-          : 'Syntactically discordant with subject-verb concord principles.'
+          ? 'Verified correct answer adhering to core principles.'
+          : 'Plausible distractor addressing common misconceptions.'
       );
     } else if (questionType === 'transformation') {
       if (!transformedAnswer.trim()) {
@@ -206,7 +196,7 @@ export const CreateQuestionDialog: React.FC<CreateQuestionDialogProps> = ({
       distractorExplanations,
       explanation:
         explanation.trim() ||
-        'Adheres to standard prescriptive English grammar rules regarding agreement, inflection, and syntax.',
+        'Verified correct response adhering to standard curriculum objectives and subject principles.',
       originalSentence:
         questionType === 'transformation'
           ? originalSentence.trim()

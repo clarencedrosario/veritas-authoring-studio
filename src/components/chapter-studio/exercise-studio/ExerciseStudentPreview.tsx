@@ -84,7 +84,7 @@ export const ExerciseStudentPreview: React.FC<ExerciseStudentPreviewProps> = ({
       <div className="w-full max-w-4xl bg-[#FFFDF9] border border-[#D4AF37]/50 shadow-md rounded-lg p-8 sm:p-12 space-y-8 font-serif text-[#292521]">
         {/* Running Book Header */}
         <div className="border-b-2 border-[#8C2435] pb-3 flex items-center justify-between text-xs text-[#7A6E5F] uppercase tracking-widest font-bold">
-          <span>{chapter.curriculumBoard || chapter.systemId || 'CBSE'} ENGLISH GRAMMAR &bull; {chapter.equivalentClass || 'CLASS 6'}</span>
+          <span>{chapter.curriculumBoard || chapter.systemId || 'CURRICULUM'} &bull; {chapter.subject || 'ACADEMIC COURSE'} &bull; {chapter.equivalentClass || 'CLASS 6'}</span>
           <span>CHAPTER {chapter.chapterNumber || 1} &bull; PRACTICE EXERCISES</span>
         </div>
 

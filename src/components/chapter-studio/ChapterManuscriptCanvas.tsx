@@ -2483,6 +2483,7 @@ export const ChapterManuscriptCanvas: React.FC<ChapterManuscriptCanvasProps> = (
               onSaveToQuestionBank={onSaveToQuestionBank}
               isDarkMode={false}
               onOpenVisualStudio={onOpenVisualStudio}
+              activeComponentId={activeArchitectureItemId || undefined}
             />
           </div>
         )}

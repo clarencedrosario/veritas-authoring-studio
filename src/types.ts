@@ -664,6 +664,12 @@ export interface GrammarQuestion {
   developmentalTier?: ExerciseDevelopmentalTier;
   openEndedCriteria?: OpenEndedAnswerCriteria;
   exerciseId?: string;
+  acceptedAnswers?: string[];
+  curriculumLinks?: string[];
+  studentVisible?: boolean;
+  teacherVisible?: boolean;
+  sourceQuestionBankId?: string;
+  metadata?: Record<string, any>;
 }
 
 export type CognitiveLevel =
@@ -845,6 +851,7 @@ export interface GrammarTopic {
   title: string;
   category: string;
   classLevel: GrammarClassLevel;
+  chapterNumber?: number;
   overview?: string;
   learningObjectives?: string[];
   differentiatedObjectives?: {
@@ -1399,6 +1406,7 @@ export interface StudioChapter {
   productionHistory?: ProductionHistoryItem[];
   snapshots?: ChapterSnapshot[];
   curriculumBoard?: string;
+  subject?: string;
   status?: string;
   qualityScore?: number;
   academicQualityScore?: number;

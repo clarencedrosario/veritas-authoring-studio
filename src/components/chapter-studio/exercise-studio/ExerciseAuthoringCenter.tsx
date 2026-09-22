@@ -3,7 +3,7 @@
 // Section 5, 24: Dominant middle column for exercise & question editing
 // =============================================================
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   StudioExercise,
   GrammarQuestion,
@@ -19,8 +19,13 @@ import {
   AccuracyAuditStatus,
   AccuracyAnswerStatus,
   AuditConfidence,
+  StudioChapter,
+  GrammarSeriesProject,
 } from '../../../types';
 import { auditQuestionClarity, auditQuestionAccuracy } from '../../../utils/editorialAuditApi';
+import { CreateQuestionDialog } from '../../common/CreateQuestionDialog';
+import { ImportFromQuestionBankModal } from './ImportFromQuestionBankModal';
+import { CHAPTER_COMPONENT_REGISTRY } from '../engine/componentRegistry';
 import {
   Plus,
   Trash2,
@@ -51,6 +56,7 @@ import {
   SlidersHorizontal,
   ShieldCheck,
   BadgeCheck,
+  Edit3,
 } from 'lucide-react';
 
 interface ExerciseAuthoringCenterProps {
@@ -63,6 +69,9 @@ interface ExerciseAuthoringCenterProps {
   availableExercises?: StudioExercise[];
   onMoveQuestionToExercise?: (questionId: string, targetExerciseId: string) => void;
   onSaveToQuestionBank?: (question: GrammarQuestion) => void;
+  chapter?: StudioChapter;
+  activeComponentId?: string;
+  seriesProject?: GrammarSeriesProject;
 }
 
 const QUESTION_TYPES: { type: QuestionType; label: string; group: string }[] = [
@@ -91,6 +100,9 @@ export const ExerciseAuthoringCenter: React.FC<ExerciseAuthoringCenterProps> = (
   availableExercises,
   onMoveQuestionToExercise,
   onSaveToQuestionBank,
+  chapter,
+  activeComponentId,
+  seriesProject,
 }) => {
   const [expandedQuestionId, setExpandedQuestionId] = useState<string | null>(
     exercise.questions?.[0]?.id || null
@@ -99,6 +111,29 @@ export const ExerciseAuthoringCenter: React.FC<ExerciseAuthoringCenterProps> = (
   const [savedToBankIds, setSavedToBankIds] = useState<Set<string>>(new Set());
   const [sentToQuizIds, setSentToQuizIds] = useState<Set<string>>(new Set());
   const [sentToAssessmentIds, setSentToAssessmentIds] = useState<Set<string>>(new Set());
+
+  // Question Creation & Import Modals
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [createDialogType, setCreateDialogType] = useState<QuestionType>('mcq');
+  const [isImportBankOpen, setIsImportBankOpen] = useState(false);
+
+  // Granular Question AI Actions
+  const [runningAiActionForQId, setRunningAiActionForQId] = useState<Record<string, string>>({});
+  const [activeActionMenuQId, setActiveActionMenuQId] = useState<string | null>(null);
+  const [aiAmbiguityReport, setAiAmbiguityReport] = useState<
+    Record<
+      string,
+      {
+        isAmbiguous: boolean;
+        report: string;
+        improvedPrompt?: string;
+        recommendations?: string[];
+      }
+    >
+  >({});
+
+  // Rapid double-click guard
+  const isAddingRef = useRef(false);
 
   // Clarity Audit State
   const [auditingQIds, setAuditingQIds] = useState<Set<string>>(new Set());
@@ -325,8 +360,14 @@ export const ExerciseAuthoringCenter: React.FC<ExerciseAuthoringCenterProps> = (
     });
   };
 
-  // Add a new question
+  // Add a new question with double-click guard
   const handleAddQuestion = (type: QuestionType = 'identify_underline') => {
+    if (isAddingRef.current) return;
+    isAddingRef.current = true;
+    setTimeout(() => {
+      isAddingRef.current = false;
+    }, 400);
+
     const newQId = `q-${exercise.id}-${Date.now()}`;
     const newQ: GrammarQuestion = {
       id: newQId,
@@ -340,8 +381,8 @@ export const ExerciseAuthoringCenter: React.FC<ExerciseAuthoringCenterProps> = (
       marks: 1,
       difficulty: exercise.difficulty || 'Medium',
       tier: 'standard',
-      conceptTested: exercise.grammarRuleCoverage?.[0] || 'Grammar Rule Application',
-      curriculumObjective: exercise.learningObjective || 'Demonstrate grammatical competence.',
+      conceptTested: exercise.grammarRuleCoverage?.[0] || 'Core Concept Application',
+      curriculumObjective: exercise.learningObjective || 'Demonstrate subject competence.',
       cognitiveLevel: 'Understanding',
       explanation: '',
       grammarRationale: '',
@@ -351,8 +392,111 @@ export const ExerciseAuthoringCenter: React.FC<ExerciseAuthoringCenterProps> = (
     onUpdateExercise({
       ...exercise,
       questions: [...questions, newQ],
+      questionCount: questions.length + 1,
     });
     setExpandedQuestionId(newQId);
+  };
+
+  // Run contextual AI Action on an individual question
+  const handleRunQuestionAiAction = async (qIndex: number, actionName: string) => {
+    const targetQ = questions[qIndex];
+    if (!targetQ) return;
+    setRunningAiActionForQId((prev) => ({ ...prev, [targetQ.id]: actionName }));
+    setActiveActionMenuQId(null);
+
+    try {
+      const response = await fetch('/api/chapter-studio/question-ai-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: actionName,
+          question: targetQ,
+          exerciseContext: {
+            title: exercise.title,
+            letter: exercise.letter,
+            instructions: exercise.instructions,
+            developmentalTier: exercise.developmentalTier,
+          },
+          topic: chapter?.title || exercise.title,
+          classLevel: chapter?.equivalentClass || 'Class 6',
+          board: chapter?.curriculumBoard || 'CISCE',
+          subject: chapter?.subject || 'Academic Curriculum',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Question AI action returned status ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (actionName === 'generate_similar') {
+        if (data.question) {
+          const newQ: GrammarQuestion = {
+            ...targetQ,
+            ...data.question,
+            id: `q-${exercise.id}-${Date.now()}`,
+          };
+          const nextQuestions = [...questions];
+          nextQuestions.splice(qIndex + 1, 0, newQ);
+          onUpdateExercise({
+            ...exercise,
+            questions: nextQuestions,
+            questionCount: nextQuestions.length,
+          });
+          setExpandedQuestionId(newQ.id);
+        }
+      } else if (actionName === 'generate_distractors') {
+        if (data.options) {
+          handleUpdateQuestion(qIndex, {
+            ...targetQ,
+            options: data.options,
+            distractorExplanations: data.distractorExplanations,
+          });
+        }
+      } else if (actionName === 'generate_answer' || actionName === 'generate_explanation') {
+        handleUpdateQuestion(qIndex, {
+          ...targetQ,
+          correctAnswer: data.correctAnswer || targetQ.correctAnswer,
+          modelAnswer: data.modelAnswer || targetQ.modelAnswer,
+          explanation: data.explanation || targetQ.explanation,
+          markingPoints: data.markingPoints || targetQ.markingPoints,
+        });
+      } else if (actionName === 'increase_difficulty' || actionName === 'decrease_difficulty') {
+        if (data.question) {
+          handleUpdateQuestion(qIndex, {
+            ...targetQ,
+            ...data.question,
+          });
+        }
+      } else if (actionName === 'improve_question') {
+        if (data.improvedPrompt) {
+          handleUpdateQuestion(qIndex, {
+            ...targetQ,
+            prompt: data.improvedPrompt,
+            instruction: data.improvedInstruction || targetQ.instruction,
+          });
+        }
+      } else if (actionName === 'check_ambiguity') {
+        setAiAmbiguityReport((prev) => ({
+          ...prev,
+          [targetQ.id]: {
+            isAmbiguous: data.isAmbiguous,
+            report: data.ambiguityReport,
+            improvedPrompt: data.improvedPrompt,
+            recommendations: data.editorialRecommendations,
+          },
+        }));
+      }
+    } catch (err: any) {
+      console.error('Question AI action error:', err);
+    } finally {
+      setRunningAiActionForQId((prev) => {
+        const next = { ...prev };
+        delete next[targetQ.id];
+        return next;
+      });
+    }
   };
 
   // Duplicate a question
@@ -403,6 +547,25 @@ export const ExerciseAuthoringCenter: React.FC<ExerciseAuthoringCenterProps> = (
     });
   };
 
+  // Map exercise to canonical architecture component (COMP-13 through COMP-18)
+  const canonicalComp = React.useMemo(() => {
+    if (activeComponentId && CHAPTER_COMPONENT_REGISTRY[activeComponentId]) {
+      return CHAPTER_COMPONENT_REGISTRY[activeComponentId];
+    }
+    const letter = (exercise.letter || 'A').toUpperCase();
+    const map: Record<string, string> = {
+      A: 'comp-13',
+      B: 'comp-14',
+      C: 'comp-15',
+      D: 'comp-16',
+      E: 'comp-17',
+      F: 'comp-18',
+      G: 'comp-18',
+    };
+    const cId = map[letter] || 'comp-13';
+    return CHAPTER_COMPONENT_REGISTRY[cId];
+  }, [activeComponentId, exercise.letter]);
+
   return (
     <div
       id="exercise-authoring-center"
@@ -412,6 +575,26 @@ export const ExerciseAuthoringCenter: React.FC<ExerciseAuthoringCenterProps> = (
       {/* TOP EXERCISE METADATA BAR                                     */}
       {/* ------------------------------------------------------------- */}
       <div className="bg-[#F6F0E7] border-b border-[#D8CBB9] p-4 sticky top-0 z-10 shadow-xs">
+        {/* Canonical Architecture Component Banner */}
+        {canonicalComp && (
+          <div className="mb-3 px-3 py-2 bg-[#EDE4D6]/80 rounded-lg border border-[#C29A52]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#8C2435] text-white">
+                {canonicalComp.id.toUpperCase()}
+              </span>
+              <span className="font-serif font-bold text-[#35101F]">
+                {canonicalComp.title}
+              </span>
+              <span className="text-[#7A6E5F] text-[11px] hidden md:inline">
+                &bull; {canonicalComp.description}
+              </span>
+            </div>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-[#8C2435] bg-[#FAF7F2] px-2 py-0.5 rounded border border-[#C29A52]/40 shrink-0">
+              Canonical Architecture
+            </span>
+          </div>
+        )}
+
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-3">
           <div className="flex items-center gap-2">
             <span className="w-8 h-8 rounded font-serif font-bold text-base bg-[#8C2435] text-[#FAF7F2] flex items-center justify-center shadow-xs">
@@ -520,6 +703,86 @@ export const ExerciseAuthoringCenter: React.FC<ExerciseAuthoringCenterProps> = (
             )}
           </div>
         )}
+
+        {/* Quick Add Question Toolbar */}
+        <div className="mt-3 pt-3 border-t border-[#D8CBB9] flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center flex-wrap gap-1.5">
+            <span className="text-[11px] font-serif font-bold text-[#7A6E5F] mr-1">Quick Add:</span>
+            <button
+              type="button"
+              onClick={() => handleAddQuestion('mcq')}
+              className="px-2.5 py-1 text-xs font-serif font-bold text-[#8C2435] bg-[#FAF7F2] hover:bg-[#F2ECE1] border border-[#D4AF37]/50 rounded shadow-2xs transition-all cursor-pointer"
+            >
+              + MCQ
+            </button>
+            <button
+              type="button"
+              onClick={() => handleAddQuestion('fill_in_blanks')}
+              className="px-2.5 py-1 text-xs font-serif font-bold text-[#8C2435] bg-[#FAF7F2] hover:bg-[#F2ECE1] border border-[#D4AF37]/50 rounded shadow-2xs transition-all cursor-pointer"
+            >
+              + Fill Blanks
+            </button>
+            <button
+              type="button"
+              onClick={() => handleAddQuestion('true_false')}
+              className="px-2.5 py-1 text-xs font-serif font-bold text-[#8C2435] bg-[#FAF7F2] hover:bg-[#F2ECE1] border border-[#D4AF37]/50 rounded shadow-2xs transition-all cursor-pointer"
+            >
+              + True/False
+            </button>
+            <button
+              type="button"
+              onClick={() => handleAddQuestion('short_answer')}
+              className="px-2.5 py-1 text-xs font-serif font-bold text-[#8C2435] bg-[#FAF7F2] hover:bg-[#F2ECE1] border border-[#D4AF37]/50 rounded shadow-2xs transition-all cursor-pointer"
+            >
+              + Short Answer
+            </button>
+            <button
+              type="button"
+              onClick={() => handleAddQuestion('rewrite_sentence')}
+              className="px-2.5 py-1 text-xs font-serif font-bold text-[#8C2435] bg-[#FAF7F2] hover:bg-[#F2ECE1] border border-[#D4AF37]/50 rounded shadow-2xs transition-all cursor-pointer"
+            >
+              + Transformation
+            </button>
+            <button
+              type="button"
+              onClick={() => handleAddQuestion('error_correction')}
+              className="px-2.5 py-1 text-xs font-serif font-bold text-[#8C2435] bg-[#FAF7F2] hover:bg-[#F2ECE1] border border-[#D4AF37]/50 rounded shadow-2xs transition-all cursor-pointer"
+            >
+              + Error Correction
+            </button>
+            <button
+              type="button"
+              onClick={() => handleAddQuestion('match_column')}
+              className="px-2.5 py-1 text-xs font-serif font-bold text-[#8C2435] bg-[#FAF7F2] hover:bg-[#F2ECE1] border border-[#D4AF37]/50 rounded shadow-2xs transition-all cursor-pointer"
+            >
+              + Match Columns
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsImportBankOpen(true)}
+              className="px-2.5 py-1 text-xs font-serif font-bold text-[#35101F] bg-[#EDE4D6] hover:bg-[#E3D7C5] border border-[#CBBEAC] rounded flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+              title="Import canonical questions from Question Bank"
+            >
+              <Database className="w-3.5 h-3.5 text-[#8C2435]" />
+              <span>Import from Bank</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setCreateDialogType('mcq');
+                setIsCreateDialogOpen(true);
+              }}
+              className="px-2.5 py-1 text-xs font-serif font-bold text-white bg-[#8C2435] hover:bg-[#701D2A] rounded flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Create Dialog</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* ------------------------------------------------------------- */}
@@ -562,6 +825,13 @@ export const ExerciseAuthoringCenter: React.FC<ExerciseAuthoringCenterProps> = (
                     {q.type.replace('_', ' ')}
                   </span>
 
+                  {q.sourceQuestionBankId && (
+                    <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-sans font-medium bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      <Database className="w-2.5 h-2.5 text-emerald-700" />
+                      <span>Bank Ref</span>
+                    </span>
+                  )}
+
                   <span className="text-xs font-serif font-semibold text-[#292521] line-clamp-1 max-w-md">
                     {q.prompt || 'Question Prompt'}
                   </span>
@@ -576,7 +846,7 @@ export const ExerciseAuthoringCenter: React.FC<ExerciseAuthoringCenterProps> = (
                   <button
                     onClick={() => handleMoveQuestion(qIndex, 'up')}
                     disabled={qIndex === 0}
-                    className="p-1 hover:text-[#292521] disabled:opacity-20 text-[#7A6E5F]"
+                    className="p-1 hover:text-[#292521] disabled:opacity-20 text-[#7A6E5F] cursor-pointer"
                     title="Move Up"
                   >
                     <ChevronUp className="w-3.5 h-3.5" />
@@ -584,17 +854,119 @@ export const ExerciseAuthoringCenter: React.FC<ExerciseAuthoringCenterProps> = (
                   <button
                     onClick={() => handleMoveQuestion(qIndex, 'down')}
                     disabled={qIndex === questions.length - 1}
-                    className="p-1 hover:text-[#292521] disabled:opacity-20 text-[#7A6E5F]"
+                    className="p-1 hover:text-[#292521] disabled:opacity-20 text-[#7A6E5F] cursor-pointer"
                     title="Move Down"
                   >
                     <ChevronDown className="w-3.5 h-3.5" />
                   </button>
 
+                  {/* Contextual Question AI Actions Dropdown */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      disabled={Boolean(runningAiActionForQId[q.id])}
+                      onClick={() =>
+                        setActiveActionMenuQId(activeActionMenuQId === q.id ? null : q.id)
+                      }
+                      className="px-2 py-1 text-xs font-serif font-bold text-[#8C2435] bg-[#FAF7F2] hover:bg-[#F2ECE1] border border-[#C29A52]/60 rounded flex items-center gap-1 shadow-2xs cursor-pointer transition-all"
+                      title="Contextual Question AI Suite"
+                    >
+                      <Sparkles className={`w-3.5 h-3.5 ${runningAiActionForQId[q.id] ? 'animate-spin text-amber-600' : ''}`} />
+                      <span>{runningAiActionForQId[q.id] ? 'Working...' : 'AI Actions'}</span>
+                      <ChevronDown className="w-3 h-3" />
+                    </button>
+
+                    {activeActionMenuQId === q.id && (
+                      <div className="absolute right-0 top-full mt-1 w-64 bg-[#FFFDF8] border border-[#CBBEAC] rounded-xl shadow-xl z-30 py-1 text-xs font-serif text-[#292521] divide-y divide-[#EDE4D6]">
+                        <div className="px-3 py-1.5 bg-[#EDE4D6]/60 text-[10px] uppercase font-bold tracking-wider text-[#71685E]">
+                          Question AI Suite
+                        </div>
+                        <div className="py-1">
+                          <button
+                            type="button"
+                            onClick={() => handleRunQuestionAiAction(qIndex, 'generate_similar')}
+                            className="w-full text-left px-3 py-1.5 hover:bg-[#F3ECE0] flex items-center gap-2 text-[#35101F] cursor-pointer"
+                          >
+                            <Copy className="w-3.5 h-3.5 text-[#8C2435]" />
+                            <span>Generate Similar Variant</span>
+                          </button>
+
+                          {(q.type === 'mcq' || (q.options && q.options.length > 0)) && (
+                            <button
+                              type="button"
+                              onClick={() => handleRunQuestionAiAction(qIndex, 'generate_distractors')}
+                              className="w-full text-left px-3 py-1.5 hover:bg-[#F3ECE0] flex items-center gap-2 text-[#35101F] cursor-pointer"
+                            >
+                              <Layers className="w-3.5 h-3.5 text-[#8C2435]" />
+                              <span>Generate / Tune Distractors</span>
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => handleRunQuestionAiAction(qIndex, 'generate_answer')}
+                            className="w-full text-left px-3 py-1.5 hover:bg-[#F3ECE0] flex items-center gap-2 text-[#35101F] cursor-pointer"
+                          >
+                            <BadgeCheck className="w-3.5 h-3.5 text-emerald-700" />
+                            <span>Generate Model Answer & Rubric</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRunQuestionAiAction(qIndex, 'generate_explanation')}
+                            className="w-full text-left px-3 py-1.5 hover:bg-[#F3ECE0] flex items-center gap-2 text-[#35101F] cursor-pointer"
+                          >
+                            <GraduationCap className="w-3.5 h-3.5 text-[#8C2435]" />
+                            <span>Generate Pedagogical Explanation</span>
+                          </button>
+                        </div>
+
+                        <div className="py-1">
+                          <button
+                            type="button"
+                            onClick={() => handleRunQuestionAiAction(qIndex, 'increase_difficulty')}
+                            className="w-full text-left px-3 py-1.5 hover:bg-[#F3ECE0] flex items-center gap-2 text-[#35101F] cursor-pointer"
+                          >
+                            <ChevronUp className="w-3.5 h-3.5 text-amber-700" />
+                            <span>Increase Difficulty (Bloom's Up)</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRunQuestionAiAction(qIndex, 'decrease_difficulty')}
+                            className="w-full text-left px-3 py-1.5 hover:bg-[#F3ECE0] flex items-center gap-2 text-[#35101F] cursor-pointer"
+                          >
+                            <ChevronDown className="w-3.5 h-3.5 text-sky-700" />
+                            <span>Decrease Difficulty (Scaffold)</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRunQuestionAiAction(qIndex, 'improve_question')}
+                            className="w-full text-left px-3 py-1.5 hover:bg-[#F3ECE0] flex items-center gap-2 text-[#35101F] cursor-pointer"
+                          >
+                            <Edit3 className="w-3.5 h-3.5 text-[#8C2435]" />
+                            <span>Improve Question Stem & Clarity</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRunQuestionAiAction(qIndex, 'check_ambiguity')}
+                            className="w-full text-left px-3 py-1.5 hover:bg-[#F3ECE0] flex items-center gap-2 text-[#35101F] cursor-pointer"
+                          >
+                            <ShieldCheck className="w-3.5 h-3.5 text-[#8C2435]" />
+                            <span>Check Ambiguity & Alignment</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   {/* AI More Like This */}
                   {onOpenAiGeneratorForQuestion && (
                     <button
                       onClick={() => onOpenAiGeneratorForQuestion(q)}
-                      className="p-1 text-[#8C2435] hover:bg-[#EAE1D2] rounded"
+                      className="p-1 text-[#8C2435] hover:bg-[#EAE1D2] rounded cursor-pointer"
                       title="AI: Generate variant / more like this"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
@@ -604,7 +976,7 @@ export const ExerciseAuthoringCenter: React.FC<ExerciseAuthoringCenterProps> = (
                   {/* Duplicate */}
                   <button
                     onClick={() => handleDuplicateQuestion(qIndex)}
-                    className="p-1 text-[#615546] hover:bg-[#EAE1D2] rounded"
+                    className="p-1 text-[#615546] hover:bg-[#EAE1D2] rounded cursor-pointer"
                     title="Duplicate Question"
                   >
                     <Copy className="w-3.5 h-3.5" />
@@ -621,6 +993,56 @@ export const ExerciseAuthoringCenter: React.FC<ExerciseAuthoringCenterProps> = (
                   </button>
                 </div>
               </div>
+
+              {/* Editorial Ambiguity Report Banner if present */}
+              {aiAmbiguityReport[q.id] && (
+                <div className="mx-4 mt-2 p-2.5 rounded-lg bg-[#FAF7F2] border border-[#C29A52]/60 text-xs text-[#292521] space-y-1.5">
+                  <div className="flex items-center justify-between font-bold text-[#8C2435]">
+                    <span className="flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4" />
+                      Editorial Ambiguity Audit Report
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAiAmbiguityReport((prev) => {
+                          const next = { ...prev };
+                          delete next[q.id];
+                          return next;
+                        });
+                      }}
+                      className="text-[10px] text-[#71685E] hover:text-[#292521] cursor-pointer"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                  <p className="text-[#615546]">{aiAmbiguityReport[q.id].report}</p>
+                  {aiAmbiguityReport[q.id].improvedPrompt && (
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[11px] italic text-[#35101F]">
+                        Suggested: "{aiAmbiguityReport[q.id].improvedPrompt}"
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleUpdateQuestion(qIndex, {
+                            ...q,
+                            prompt: aiAmbiguityReport[q.id].improvedPrompt!,
+                          });
+                          setAiAmbiguityReport((prev) => {
+                            const next = { ...prev };
+                            delete next[q.id];
+                            return next;
+                          });
+                        }}
+                        className="px-2 py-0.5 rounded bg-[#8C2435] text-white text-[10px] font-bold cursor-pointer"
+                      >
+                        Apply Stem
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Question Body: Expanded View */}
               {isExpanded ? (
@@ -1669,6 +2091,58 @@ export const ExerciseAuthoringCenter: React.FC<ExerciseAuthoringCenterProps> = (
           </div>
         </div>
       )}
+
+      {/* Subject-Neutral Create Question Dialog */}
+      <CreateQuestionDialog
+        isOpen={isCreateDialogOpen}
+        onClose={() => setIsCreateDialogOpen(false)}
+        preselectedType={createDialogType}
+        topics={
+          chapter
+            ? [
+                {
+                  id: chapter.id,
+                  title: chapter.title,
+                  classLevel: (chapter.equivalentClass as any) || 'Class 6',
+                  chapterNumber: chapter.chapterNumber || 1,
+                  category: chapter.category || 'General',
+                  exercises: [],
+                },
+              ]
+            : []
+        }
+        selectedClass={(chapter?.equivalentClass as any) || 'Class 6'}
+        targetBoard={chapter?.curriculumBoard || 'CISCE'}
+        onCreateQuestion={(newQ) => {
+          onUpdateExercise({
+            ...exercise,
+            questions: [...questions, newQ],
+            questionCount: questions.length + 1,
+            suggestedMarks: [...questions, newQ].reduce((acc, q) => acc + (q.marks || 1), 0),
+          });
+          setExpandedQuestionId(newQ.id);
+        }}
+      />
+
+      {/* Import Canonical Questions from Question Bank */}
+      <ImportFromQuestionBankModal
+        isOpen={isImportBankOpen}
+        onClose={() => setIsImportBankOpen(false)}
+        seriesProject={seriesProject}
+        exerciseTitle={`Exercise ${exercise.letter}: ${exercise.title}`}
+        onImportQuestions={(imported) => {
+          const nextQuestions = [...questions, ...imported];
+          onUpdateExercise({
+            ...exercise,
+            questions: nextQuestions,
+            questionCount: nextQuestions.length,
+            suggestedMarks: nextQuestions.reduce((acc, q) => acc + (q.marks || 1), 0),
+          });
+          if (imported[0]) {
+            setExpandedQuestionId(imported[0].id);
+          }
+        }}
+      />
     </div>
   );
 };

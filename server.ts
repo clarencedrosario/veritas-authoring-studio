@@ -1793,7 +1793,7 @@ Output JSON only with this structure:
       "scaffoldingLevel": "High Support",
       "modelResponse": "Formatted model response showing expected working",
       "answer": "Exact verified correct answer",
-      "explanation": "Clear explanation of the reasoning and underlying rule",
+      "explanation": "Clear explanation of the concept, principle, method, rule, or reasoning",
       "difficulty": "Foundational",
       "teacherNote": "Diagnostic classroom tip or common student hesitation to watch for",
       "studentVisible": true,
@@ -1808,7 +1808,7 @@ Output JSON only with this structure:
       "scaffoldingLevel": "Medium Support",
       "modelResponse": "",
       "answer": "Exact verified correct answer",
-      "explanation": "Clear explanation of the reasoning and underlying rule",
+      "explanation": "Clear explanation of the concept, principle, method, rule, or reasoning",
       "difficulty": "Standard",
       "teacherNote": "Diagnostic classroom tip",
       "studentVisible": true,
@@ -1823,7 +1823,7 @@ Output JSON only with this structure:
       "scaffoldingLevel": "Low Support",
       "modelResponse": "",
       "answer": "Exact verified correct answer",
-      "explanation": "Clear explanation of the reasoning and underlying rule",
+      "explanation": "Clear explanation of the concept, principle, method, rule, or reasoning",
       "difficulty": "Standard",
       "teacherNote": "Diagnostic classroom tip",
       "studentVisible": true,
@@ -1832,9 +1832,175 @@ Output JSON only with this structure:
   ]
 }`;
       }
+    } else if (componentId === "comp-13") {
+      userPrompt = `Subject: "${effectiveSubject}"
+Topic / Chapter: "${trimmedTopic}"
+Grade Level: "${trimmedClass}"
+Curriculum Board: "${trimmedBoard}"
+${curriculumFramework ? `Framework Details: "${curriculumFramework}"` : ""}
+
+Generate 5 high-quality Bloom Level 1–2 Foundational Recognition and Identification questions for Exercise A on "${trimmedTopic}".
+Questions must test core recognition, identification, true/false, classification, or underlining without heavy production burden.
+
+Every question must have a stable unique ID ("q-ex-a-1", etc.), explicit prompt/instruction, clear verified correctAnswer, concise explanation, marks (1), and difficulty ("Easy" or "Medium").
+Output JSON only with this structure:
+{
+  "questions": [
+    {
+      "id": "q-ex-a-1",
+      "type": "identify_underline",
+      "instruction": "Identify or underline the target concept or element in the statement",
+      "prompt": "Core statement or question for students",
+      "correctAnswer": "Verified correct target answer",
+      "explanation": "Clear explanation of the concept, principle, or rule",
+      "marks": 1,
+      "difficulty": "Easy",
+      "cognitiveLevel": "Remembering"
+    }
+  ]
+}`;
+    } else if (componentId === "comp-14") {
+      userPrompt = `Subject: "${effectiveSubject}"
+Topic / Chapter: "${trimmedTopic}"
+Grade Level: "${trimmedClass}"
+Curriculum Board: "${trimmedBoard}"
+${curriculumFramework ? `Framework Details: "${curriculumFramework}"` : ""}
+
+Generate 5 high-quality Bloom Level 2 Understanding & Selection questions for Exercise B on "${trimmedTopic}".
+Questions should focus on Fill in the Blanks with bracketed choices, cloze completion, or discrete selection.
+
+Every question must have a stable unique ID ("q-ex-b-1", etc.), blanksSentence or prompt with bracketed choices, verified correctAnswer, acceptableAlternatives if any, concise explanation, marks (1), and difficulty ("Easy" or "Medium").
+Output JSON only with this structure:
+{
+  "questions": [
+    {
+      "id": "q-ex-b-1",
+      "type": "fill_in_blanks",
+      "instruction": "Fill in the blank with the appropriate choice from the brackets",
+      "prompt": "Statement with a blank ___ and [Option 1 / Option 2] in brackets",
+      "blanksSentence": "Statement with a blank ___ and [Option 1 / Option 2] in brackets",
+      "correctAnswer": "Correct choice",
+      "explanation": "Clear explanation of the principle or rule",
+      "marks": 1,
+      "difficulty": "Medium",
+      "cognitiveLevel": "Understanding"
+    }
+  ]
+}`;
+    } else if (componentId === "comp-15") {
+      userPrompt = `Subject: "${effectiveSubject}"
+Topic / Chapter: "${trimmedTopic}"
+Grade Level: "${trimmedClass}"
+Curriculum Board: "${trimmedBoard}"
+${curriculumFramework ? `Framework Details: "${curriculumFramework}"` : ""}
+
+Generate 5 high-quality Bloom Level 3–4 Application & Transformation questions for Exercise C on "${trimmedTopic}".
+Questions must require structural transformation, rephrasing, or formulaic manipulation according to precise instructions without altering original meaning.
+
+Output JSON only with this structure:
+{
+  "questions": [
+    {
+      "id": "q-ex-c-1",
+      "type": "transformation",
+      "instruction": "Rewrite or transform the following according to the given instruction",
+      "prompt": "Original statement or equation to transform",
+      "originalSentence": "Original statement or equation to transform",
+      "transformationInstruction": "Specific transformation constraint or beginning words",
+      "correctAnswer": "Complete transformed solution",
+      "modelAnswer": "Complete transformed solution",
+      "explanation": "Clear explanation of the transformation principle",
+      "marks": 2,
+      "difficulty": "Medium",
+      "cognitiveLevel": "Applying"
+    }
+  ]
+}`;
+    } else if (componentId === "comp-16") {
+      userPrompt = `Subject: "${effectiveSubject}"
+Topic / Chapter: "${trimmedTopic}"
+Grade Level: "${trimmedClass}"
+Curriculum Board: "${trimmedBoard}"
+${curriculumFramework ? `Framework Details: "${curriculumFramework}"` : ""}
+
+Generate 5 high-quality Bloom Level 4–5 Error Correction and Editing questions for Exercise D on "${trimmedTopic}".
+Items should present statements, equations, or short passages containing authentic misconceptions or errors for students to detect and rectify.
+
+Output JSON only with this structure:
+{
+  "questions": [
+    {
+      "id": "q-ex-d-1",
+      "type": "error_correction",
+      "instruction": "Identify the incorrect element and provide the rectified replacement",
+      "prompt": "Statement containing an intentional error or flaw",
+      "errorSnippet": "Specific error portion",
+      "correctionSnippet": "Correct replacement",
+      "correctAnswer": "Error: [error] -> Correction: [replacement]",
+      "explanation": "Clear rationale explaining why the error occurs and why the correction is valid",
+      "marks": 2,
+      "difficulty": "Hard",
+      "cognitiveLevel": "Analyzing"
+    }
+  ]
+}`;
+    } else if (componentId === "comp-17") {
+      userPrompt = `Subject: "${effectiveSubject}"
+Topic / Chapter: "${trimmedTopic}"
+Grade Level: "${trimmedClass}"
+Curriculum Board: "${trimmedBoard}"
+${curriculumFramework ? `Framework Details: "${curriculumFramework}"` : ""}
+
+Generate 5 high-quality Bloom Level 5–6 Contextual Application and Composition problems for Exercise E on "${trimmedTopic}".
+Items should present real-world scenarios, case studies, or structured reasoning challenges deploying core concepts.
+
+Output JSON only with this structure:
+{
+  "questions": [
+    {
+      "id": "q-ex-e-1",
+      "type": "open_ended",
+      "instruction": "Analyze the context and compose a reasoned response adhering to core principles",
+      "prompt": "Contextual scenario or multi-step reasoning problem",
+      "correctAnswer": "Model solution and key criteria",
+      "modelAnswer": "Model solution and key criteria",
+      "markingPoints": ["Key criterion 1", "Key criterion 2"],
+      "explanation": "Pedagogical marking rationale and conceptual breakdown",
+      "marks": 3,
+      "difficulty": "Hard",
+      "cognitiveLevel": "Evaluating"
+    }
+  ]
+}`;
+    } else if (componentId === "comp-18") {
+      userPrompt = `Subject: "${effectiveSubject}"
+Topic / Chapter: "${trimmedTopic}"
+Grade Level: "${trimmedClass}"
+Curriculum Board: "${trimmedBoard}"
+${curriculumFramework ? `Framework Details: "${curriculumFramework}"` : ""}
+
+Generate 6 supplemental practice questions for Additional Practice on "${trimmedTopic}", spanning foundational (2 items), practice (2 items), and challenge (2 items).
+
+Output JSON only with this structure:
+{
+  "questions": [
+    {
+      "id": "q-ex-extra-1",
+      "type": "mcq",
+      "instruction": "Select the correct response",
+      "prompt": "Question prompt",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correctAnswer": "Option A",
+      "explanation": "Clear explanation",
+      "marks": 1,
+      "difficulty": "Easy",
+      "cognitiveLevel": "Remembering"
+    }
+  ]
+}`;
     } else {
       return res.status(400).json({
-        error: `Unsupported componentId: "${componentId}". Supported canonical IDs are comp-9 (Worked Examples), comp-10 (Common Errors & Pitfalls), comp-11 (Remember / Tip Boxes), and comp-12 (Guided Practice Drills).`,
+        error: `Unsupported componentId: "${componentId}". Supported canonical IDs are comp-9 through comp-18 (Teaching, Guided Practice, and Formal Practice Exercises A–E + Supplemental).`,
       });
     }
 
@@ -1867,6 +2033,201 @@ Output JSON only with this structure:
   } catch (error: any) {
     console.error("Component generation route error:", error);
     return res.status(500).json({ error: error.message || "Failed to generate component content" });
+  }
+});
+
+// ============================================================================
+// VERITAS QUESTION AI ACTIONS: Question generation, distractor tuning & audits
+// ============================================================================
+app.post("/api/chapter-studio/question-ai-action", async (req, res) => {
+  try {
+    const {
+      action,
+      question,
+      exerciseContext,
+      topic,
+      classLevel = "Class 6",
+      board = "CISCE",
+      subject = "Academic Curriculum",
+      customInstructions = "",
+    } = req.body || {};
+
+    if (!action) {
+      return res.status(400).json({ error: "Action parameter is required." });
+    }
+
+    const ai = getGenAI();
+    if (!ai) {
+      return res.status(503).json({ error: "GEMINI_API_KEY is not configured." });
+    }
+
+    const gradeGuidance = getPedagogicalGradeGuidance(classLevel);
+    const boardGuidance = getBoardProgrammeGuidance(board);
+
+    const systemPrompt = `You are a distinguished academic textbook author and assessment specialist in ${subject} for ${board} ${classLevel}.
+${gradeGuidance}
+${boardGuidance}
+Always return strictly valid JSON matching the requested action schema.`;
+
+    let prompt = "";
+
+    if (action === "generate_similar") {
+      prompt = `Create a parallel variant of this question for ${classLevel} (${board} curriculum in ${subject}).
+Topic: "${topic || 'General'}"
+Original Question: ${JSON.stringify(question)}
+Keep the same pedagogical cognitive level, format, and difficulty, but change names, numbers, contexts, or items.
+Output JSON only:
+{
+  "question": {
+    "type": "${question?.type || 'mcq'}",
+    "instruction": "Instruction",
+    "prompt": "New variant prompt",
+    "options": ["Opt 1", "Opt 2", "Opt 3", "Opt 4"],
+    "correctAnswer": "Correct answer",
+    "explanation": "Clear explanation",
+    "marks": ${question?.marks || 1},
+    "difficulty": "${question?.difficulty || 'Medium'}",
+    "cognitiveLevel": "${question?.cognitiveLevel || 'Applying'}"
+  }
+}`;
+    } else if (action === "generate_distractors") {
+      prompt = `For this Multiple Choice Question in ${subject} (${board} ${classLevel}):
+Prompt: "${question?.prompt || ''}"
+Correct Answer: "${question?.correctAnswer || ''}"
+Generate 3 plausible academic distractors reflecting common student misconceptions.
+Output JSON only:
+{
+  "options": [
+    "${question?.correctAnswer || 'Correct Answer'}",
+    "Plausible Distractor 1",
+    "Plausible Distractor 2",
+    "Plausible Distractor 3"
+  ],
+  "distractorExplanations": [
+    "Correct verified answer.",
+    "Explanation why distractor 1 is incorrect.",
+    "Explanation why distractor 2 is incorrect.",
+    "Explanation why distractor 3 is incorrect."
+  ]
+}`;
+    } else if (action === "generate_answer" || action === "generate_explanation") {
+      prompt = `Provide an authoritative model answer and marking explanation for this question in ${subject} (${board} ${classLevel}):
+Prompt: "${question?.prompt || ''}"
+Type: "${question?.type || 'short_answer'}"
+${question?.options ? `Options: ${JSON.stringify(question.options)}` : ''}
+Output JSON only:
+{
+  "correctAnswer": "Authoritative verified correct answer",
+  "modelAnswer": "Detailed model response or step-by-step working if applicable",
+  "explanation": "Clear pedagogical explanation citing core subject concept or principle",
+  "markingPoints": ["Award 1 mark for ...", "Award 1 mark for ..."]
+}`;
+    } else if (action === "increase_difficulty") {
+      prompt = `Increase the cognitive challenge and rigor of this question for ${classLevel} (${board} ${subject}).
+Original Prompt: "${question?.prompt || ''}"
+Current Difficulty: "${question?.difficulty || 'Medium'}"
+Make it higher-order (Applying, Analyzing, or Evaluating), adding subtlety, multi-step reasoning, or richer contextual constraints without creating trickery.
+Output JSON only:
+{
+  "question": {
+    "prompt": "More rigorous prompt",
+    "instruction": "Clear instructions",
+    "options": ${question?.options ? JSON.stringify(question.options) : '[]'},
+    "correctAnswer": "Verified answer to upgraded prompt",
+    "explanation": "Comprehensive explanation",
+    "difficulty": "Hard",
+    "cognitiveLevel": "Analyzing"
+  }
+}`;
+    } else if (action === "decrease_difficulty") {
+      prompt = `Make this question more accessible and scaffolded for ${classLevel} (${board} ${subject}).
+Original Prompt: "${question?.prompt || ''}"
+Provide clear scaffolding, simplify sentence structure, and lower cognitive load to foundational level.
+Output JSON only:
+{
+  "question": {
+    "prompt": "Accessible simplified prompt",
+    "instruction": "Clear simple instructions",
+    "options": ${question?.options ? JSON.stringify(question.options) : '[]'},
+    "correctAnswer": "Verified answer",
+    "explanation": "Simple pedagogical explanation",
+    "difficulty": "Easy",
+    "cognitiveLevel": "Remembering"
+  }
+}`;
+    } else if (action === "improve_question" || action === "check_ambiguity") {
+      prompt = `Audit this question for editorial polish, precision, and pedagogical ambiguity in ${subject} (${board} ${classLevel}):
+Prompt: "${question?.prompt || ''}"
+Type: "${question?.type || ''}"
+Options: ${question?.options ? JSON.stringify(question.options) : 'None'}
+Answer: "${question?.correctAnswer || ''}"
+${customInstructions ? `Special Instructions: ${customInstructions}` : ''}
+
+Evaluate:
+1. Is the question completely unambiguous?
+2. Does it test the intended concept cleanly?
+3. Are the instructions self-contained?
+4. Is there an improved prompt?
+
+Output JSON only:
+{
+  "isAmbiguous": false,
+  "ambiguityReport": "Audit summary",
+  "improvedPrompt": "Polished, precise stem without ambiguity",
+  "improvedInstruction": "Precise instruction",
+  "editorialRecommendations": ["Recommendation 1", "Recommendation 2"]
+}`;
+    } else if (action === "generate_questions") {
+      const count = req.body.count || 5;
+      const qType = req.body.questionType || "mcq";
+      prompt = `Generate ${count} questions of type "${qType}" for topic "${topic || 'Core Chapter Topic'}" in ${subject} (${board} ${classLevel}).
+Ensure progressive difficulty, clear rubrics, and verified model answers.
+Output JSON only:
+{
+  "questions": [
+    {
+      "id": "q-gen-1",
+      "type": "${qType}",
+      "instruction": "Standard student instruction",
+      "prompt": "Problem or question statement",
+      "options": ["A", "B", "C", "D"],
+      "correctAnswer": "A",
+      "explanation": "Clear explanation",
+      "marks": 1,
+      "difficulty": "Medium",
+      "cognitiveLevel": "Understanding"
+    }
+  ]
+}`;
+    } else {
+      return res.status(400).json({ error: `Unsupported question AI action: "${action}"` });
+    }
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.8-flash",
+      contents: `${systemPrompt}\n\n${prompt}`,
+      config: {
+        responseMimeType: "application/json",
+      },
+    });
+
+    const text = response.text?.trim() || "";
+    let parsed: any;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      const match = text.match(/\{[\s\S]*\}/);
+      if (match) {
+        parsed = JSON.parse(match[0]);
+      } else {
+        return res.status(502).json({ error: "Failed to parse JSON response from AI model.", raw: text });
+      }
+    }
+
+    return res.json({ data: parsed });
+  } catch (error: any) {
+    console.error("Question AI action error:", error);
+    return res.status(500).json({ error: error.message || "Failed to process question AI action" });
   }
 });
 
