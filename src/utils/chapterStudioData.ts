@@ -1160,6 +1160,8 @@ export function createDefaultCbseClass6SubjectVerbAgreementChapter(): StudioChap
     },
     lastSaved: new Date().toISOString(),
     saveStatus: 'saved',
+    curriculumBoard: 'CBSE',
+    subject: 'English Grammar',
     rules: CANONICAL_SVA_RULES,
     visualBriefs: CANONICAL_SVA_VISUAL_BRIEFS,
     revisionData: CANONICAL_SVA_REVISION_DATA,
@@ -1780,6 +1782,7 @@ export function createDefaultCisceClass6SubjectVerbAgreementChapter(): StudioCha
       },
     ],
     curriculumBoard: 'CISCE',
+    subject: 'English Grammar',
     architectureId: 'arch-cisce-middle-grammar',
     architectureState: {
       governingArchitectureId: 'arch-cisce-middle-grammar',
@@ -2054,6 +2057,8 @@ export function convertTopicToStudioChapter(
       editionId,
       systemId,
       equivalentClass: classLevel,
+      curriculumBoard: (topic as any).curriculumBoard || (topic as any).board || systemId,
+      subject: (topic as any).subject || (resolvedCategory && !/grammar|syntax/i.test(resolvedCategory) ? resolvedCategory : 'English Grammar'),
       unitId: topic.unitId || 'u-1',
       unitTitle:
         topic.unitTitle && !/naming\s*word|parts\s*of\s*speech/i.test(topic.unitTitle)

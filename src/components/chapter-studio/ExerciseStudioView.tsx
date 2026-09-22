@@ -55,16 +55,36 @@ export const ExerciseStudioView: React.FC<ExerciseStudioViewProps> = ({
   // Construct fallback synthetic chapter if not directly provided
   const activeChapter: StudioChapter = useMemo(() => {
     if (chapter) return chapter;
+    const activeBp =
+      seriesProject?.activeBookProjectId && seriesProject.bookProjects?.[seriesProject.activeBookProjectId]
+        ? seriesProject.bookProjects[seriesProject.activeBookProjectId]
+        : null;
+
+    const board =
+      activeBp?.board ||
+      activeBp?.educationSystem ||
+      seriesProject?.targetBoard ||
+      seriesProject?.activeSystemId ||
+      '';
+    const classLevel =
+      activeBp?.classOrStage ||
+      activeBp?.classLevel ||
+      seriesProject?.activeStageId ||
+      seriesProject?.selectedClass ||
+      '';
+    const subject = activeBp?.subject || (seriesProject as any)?.subject || '';
+
     return {
       id: 'chap-exercise-studio',
-      bookId: 'book-grammar-studio',
+      bookId: seriesProject?.activeBookProjectId || 'book-grammar-studio',
       chapterNumber: 1,
-      title: 'Grammar Practice & Exercises',
-      subtitle: 'Applied Syntax, Sentence Transformation & Analysis',
-      category: 'Syntax & Concord',
+      title: 'Practice & Exercises',
+      subtitle: 'Applied Exercises, Problem Transformation & Analysis',
+      category: 'Practice',
       workflowStatus: 'writing',
-      curriculumBoard: 'CISCE',
-      equivalentClass: 'Class 6',
+      curriculumBoard: board,
+      equivalentClass: classLevel,
+      subject: subject,
       estimatedPages: 6,
       status: 'Draft',
       qualityScore: 0,

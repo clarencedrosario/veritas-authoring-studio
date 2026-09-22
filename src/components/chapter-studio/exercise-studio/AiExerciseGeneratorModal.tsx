@@ -150,8 +150,8 @@ export const AiExerciseGeneratorModal: React.FC<AiExerciseGeneratorModalProps> =
         difficulty,
         suggestedMarks: accepted.length,
         questionCount: accepted.length,
-        boardRelevance: `${chapter.curriculumBoard || chapter.systemId || 'CISCE'} ${chapter.equivalentClass || 'Class 6'}`,
-        classLevel: chapter.equivalentClass || 'Class 6',
+        boardRelevance: [chapter.curriculumBoard || chapter.systemId, chapter.equivalentClass].filter(Boolean).join(' ') || 'Curriculum Practice',
+        classLevel: chapter.equivalentClass || '',
         questions: accepted,
       };
       onAcceptAsNewExercise(newEx);

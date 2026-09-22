@@ -401,6 +401,58 @@ export const ExerciseAuthoringCenter: React.FC<ExerciseAuthoringCenterProps> = (
   const handleRunQuestionAiAction = async (qIndex: number, actionName: string) => {
     const targetQ = questions[qIndex];
     if (!targetQ) return;
+
+    // Derive active canonical project/chapter context without silent defaults
+    const activeBp =
+      seriesProject?.activeBookProjectId && seriesProject.bookProjects?.[seriesProject.activeBookProjectId]
+        ? seriesProject.bookProjects[seriesProject.activeBookProjectId]
+        : null;
+
+    const resolvedClassLevel =
+      chapter?.equivalentClass ||
+      chapter?.classOrStageId ||
+      activeBp?.classOrStage ||
+      activeBp?.classLevel ||
+      seriesProject?.activeStageId ||
+      seriesProject?.selectedClass ||
+      '';
+
+    const resolvedBoard =
+      chapter?.curriculumBoard ||
+      chapter?.systemId ||
+      activeBp?.board ||
+      activeBp?.educationSystem ||
+      seriesProject?.targetBoard ||
+      seriesProject?.activeSystemId ||
+      '';
+
+    const resolvedSubject =
+      chapter?.subject ||
+      activeBp?.subject ||
+      (seriesProject as any)?.subject ||
+      '';
+
+    const resolvedTopic =
+      chapter?.curriculumTopic ||
+      chapter?.title ||
+      exercise.title ||
+      '';
+
+    if (!resolvedClassLevel || !resolvedBoard || !resolvedSubject || !resolvedTopic) {
+      const missing: string[] = [];
+      if (!resolvedClassLevel) missing.push('Class / Stage');
+      if (!resolvedBoard) missing.push('Curriculum Board');
+      if (!resolvedSubject) missing.push('Subject');
+      if (!resolvedTopic) missing.push('Topic / Chapter Title');
+
+      alert(
+        `Cannot execute Question AI Action: Missing required academic context (${missing.join(
+          ', '
+        )}). Please configure this project/chapter context before running AI generation.`
+      );
+      return;
+    }
+
     setRunningAiActionForQId((prev) => ({ ...prev, [targetQ.id]: actionName }));
     setActiveActionMenuQId(null);
 
@@ -417,18 +469,20 @@ export const ExerciseAuthoringCenter: React.FC<ExerciseAuthoringCenterProps> = (
             instructions: exercise.instructions,
             developmentalTier: exercise.developmentalTier,
           },
-          topic: chapter?.title || exercise.title,
-          classLevel: chapter?.equivalentClass || 'Class 6',
-          board: chapter?.curriculumBoard || 'CISCE',
-          subject: chapter?.subject || 'Academic Curriculum',
+          topic: resolvedTopic,
+          classLevel: resolvedClassLevel,
+          board: resolvedBoard,
+          subject: resolvedSubject,
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`Question AI action returned status ${response.status}`);
+        const errPayload = await response.json().catch(() => ({}));
+        throw new Error(errPayload.error || `Question AI action returned status ${response.status}`);
       }
 
-      const data = await response.json();
+      const resJson = await response.json();
+      const data = resJson.data || resJson;
 
       if (actionName === 'generate_similar') {
         if (data.question) {
@@ -2103,7 +2157,7 @@ export const ExerciseAuthoringCenter: React.FC<ExerciseAuthoringCenterProps> = (
                 {
                   id: chapter.id,
                   title: chapter.title,
-                  classLevel: (chapter.equivalentClass as any) || 'Class 6',
+                  classLevel: (chapter.equivalentClass as any) || (seriesProject?.selectedClass as any) || '',
                   chapterNumber: chapter.chapterNumber || 1,
                   category: chapter.category || 'General',
                   exercises: [],
@@ -2111,8 +2165,8 @@ export const ExerciseAuthoringCenter: React.FC<ExerciseAuthoringCenterProps> = (
               ]
             : []
         }
-        selectedClass={(chapter?.equivalentClass as any) || 'Class 6'}
-        targetBoard={chapter?.curriculumBoard || 'CISCE'}
+        selectedClass={(chapter?.equivalentClass as any) || (seriesProject?.selectedClass as any) || ''}
+        targetBoard={chapter?.curriculumBoard || chapter?.systemId || seriesProject?.targetBoard || seriesProject?.activeSystemId || ''}
         onCreateQuestion={(newQ) => {
           onUpdateExercise({
             ...exercise,

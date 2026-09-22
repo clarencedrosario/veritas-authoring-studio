@@ -1510,45 +1510,49 @@ Output pure, valid JSON only. No markdown ticks or explanation.`;
 function getPedagogicalGradeGuidance(classLevel: string): string {
   const digits = classLevel.replace(/\D/g, "");
   const num = parseInt(digits, 10);
+  const label = classLevel.trim();
 
   if (isNaN(num)) {
-    const lower = classLevel.toLowerCase();
-    if (lower.includes("primary") || lower.includes("junior")) {
-      return `Pedagogical Level: Primary (Age 7–10). Use simple, decodable vocabulary, concrete relatable situations, and moderate scaffolding. Avoid abstract academic jargon.`;
+    const lower = label.toLowerCase();
+    if (lower.includes("primary") || lower.includes("junior") || lower.includes("early")) {
+      return `Pedagogical Level: Primary (${label}, Age 5–10). Use accessible vocabulary, concrete relatable situations, and clear scaffolding. Avoid abstract academic jargon.`;
     }
-    if (lower.includes("senior") || lower.includes("higher") || lower.includes("advanced")) {
-      return `Pedagogical Level: Senior Secondary (Age 16–18). Use rigorous academic discourse, subtle nuance, advanced problem transformation, and comprehensive analytical rationale.`;
+    if (lower.includes("senior") || lower.includes("higher") || lower.includes("advanced") || lower.includes("a level") || lower.includes("as level")) {
+      return `Pedagogical Level: Senior Secondary (${label}, Age 16–18). Use rigorous academic discourse, subtle nuance, advanced problem transformation, and comprehensive analytical rationale.`;
     }
-    return `Pedagogical Level: Middle School (Age 11–14). Provide systematic explanations, structured multi-step reasoning, and clear rule applications.`;
+    if (lower.includes("checkpoint") || lower.includes("igcse") || lower.includes("secondary")) {
+      return `Pedagogical Level: Secondary (${label}, Age 13–16). Board/qualification rigor, authentic examination formats, and structured reasoning.`;
+    }
+    return `Pedagogical Level: (${label}). Provide systematic explanations, structured reasoning, and clear concept applications.`;
   }
 
   if (num <= 2) {
-    return `Pedagogical Level: Early Primary (Class ${num}, Age 6–7). Keep language extremely simple, decodable, and playful. Sentences under 8 words. Focus on concrete real-world objects (toys, animals, family). Zero abstract academic jargon. Maximum scaffolding.`;
+    return `Pedagogical Level: Early Primary (${label}, Age 6–7). Keep language extremely simple, decodable, and playful. Sentences under 8 words. Focus on concrete real-world objects (toys, animals, family, classroom). Zero abstract academic jargon. Maximum scaffolding.`;
   }
   if (num <= 5) {
-    return `Pedagogical Level: Primary (Class ${num}, Age 8–10). Use accessible school/home contexts and friendly relatable scenarios. Focus on clear contrastive patterns and fundamental concepts. Clear, supportive step-by-step guidance with moderate scaffolding.`;
+    return `Pedagogical Level: Primary (${label}, Age 8–10). Use accessible school/home contexts and friendly relatable scenarios. Focus on clear contrastive patterns and fundamental concepts. Clear, supportive step-by-step guidance with moderate scaffolding.`;
   }
   if (num <= 8) {
-    return `Pedagogical Level: Middle School (Class ${num}, Age 11–13). Rigorous yet accessible. Systematic step-by-step reasoning explaining the underlying logic and mechanics. Highlight common traps and intervening modifiers. Moderate scaffolding.`;
+    return `Pedagogical Level: Middle School / Lower Secondary (${label}, Age 11–13). Rigorous yet accessible. Systematic step-by-step reasoning explaining the underlying logic and mechanics. Highlight common traps and intervening modifiers. Moderate scaffolding.`;
   }
   if (num <= 10) {
-    return `Pedagogical Level: Secondary / Board Examination (Class ${num}, Age 14–16). High academic rigor aligned with board examination standards. Emphasize authentic examination traps, subtle distractors, precise analytical terminology, and formal solution structures. Light scaffolding.`;
+    return `Pedagogical Level: Secondary / Board Examination (${label}, Age 14–16). High academic rigor aligned with curriculum standards. Emphasize authentic examination traps, subtle distractors, precise analytical terminology, and formal solution structures. Light scaffolding.`;
   }
-  return `Pedagogical Level: Senior Secondary (Class ${num}, Age 17–18). Publication-grade academic depth. Advanced theoretical synthesis, stylistic and rhetorical variations, edge cases, and independent critical thinking. Minimal scaffolding.`;
+  return `Pedagogical Level: Senior Secondary (${label}, Age 17–18). Publication-grade academic depth. Advanced theoretical synthesis, stylistic and rhetorical variations, edge cases, and independent critical thinking. Minimal scaffolding.`;
 }
 
 function getBoardProgrammeGuidance(board: string): string {
   const b = (board || "").toUpperCase();
   if (b.includes("CISCE") || b.includes("ICSE") || b.includes("ISC")) {
-    return `Board Context: CISCE (ICSE / ISC). Emphasize rigorous formal precision, exact terminology, transformation rigor, and avoidance of classic CISCE board exam traps.`;
+    return `Board / Programme: CISCE (ICSE / ISC). Emphasize rigorous formal precision, exact terminology, transformation rigor, and avoidance of classic CISCE board exam traps.`;
   }
   if (b.includes("CAMBRIDGE") || b.includes("CAIE") || b.includes("IGCSE") || b.includes("CHECKPOINT")) {
-    return `Board Context: Cambridge Assessment International Education (CAIE). Emphasize inquiry-based conceptual discovery, international contexts, British English conventions, and communicative/functional precision.`;
+    return `Board / Programme: Cambridge Assessment International Education (CAIE). Emphasize inquiry-based conceptual discovery, international contexts, British English conventions, and communicative/functional precision.`;
   }
   if (b.includes("CBSE") || b.includes("NCF") || b.includes("NCERT")) {
-    return `Board Context: CBSE / NCF. Emphasize competency-based learning, inductive pattern finding, authentic integrated exercises, and application to real-world communication.`;
+    return `Board / Programme: CBSE / NCF. Emphasize competency-based learning, inductive pattern finding, authentic integrated exercises, and application to real-world communication.`;
   }
-  return `Board Context: ${board} (Independent / Custom Curriculum). Focus on universal academic rigor, clear conceptual progression, and transparent instructional scaffolding.`;
+  return `Board / Programme: ${board} (Custom / Independent Curriculum). Focus on universal academic rigor, clear conceptual progression, and transparent instructional scaffolding.`;
 }
 
 app.post("/api/chapter-studio/generate-component", async (req, res) => {
@@ -2046,25 +2050,53 @@ app.post("/api/chapter-studio/question-ai-action", async (req, res) => {
       question,
       exerciseContext,
       topic,
-      classLevel = "Class 6",
-      board = "CISCE",
-      subject = "Academic Curriculum",
+      classLevel,
+      board,
+      subject,
       customInstructions = "",
     } = req.body || {};
 
-    if (!action) {
+    if (!action || typeof action !== "string" || !action.trim()) {
       return res.status(400).json({ error: "Action parameter is required." });
     }
+
+    // Require canonical academic context from active project/chapter.
+    // Do NOT apply silent defaults (no Class 6, no CISCE, no Academic Curriculum).
+    const missingFields: string[] = [];
+    if (!classLevel || typeof classLevel !== "string" || !classLevel.trim()) {
+      missingFields.push("classLevel");
+    }
+    if (!board || typeof board !== "string" || !board.trim()) {
+      missingFields.push("board");
+    }
+    if (!subject || typeof subject !== "string" || !subject.trim()) {
+      missingFields.push("subject");
+    }
+    if (!topic || typeof topic !== "string" || !topic.trim()) {
+      missingFields.push("topic");
+    }
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        error: `Missing required academic context: ${missingFields.join(", ")}. Question AI actions require real active project/chapter context (classLevel, board, subject, topic) and do not supply fallback defaults.`,
+        missingFields,
+      });
+    }
+
+    const trimmedTopic = topic.trim();
+    const trimmedClass = classLevel.trim();
+    const trimmedBoard = board.trim();
+    const trimmedSubject = subject.trim();
 
     const ai = getGenAI();
     if (!ai) {
       return res.status(503).json({ error: "GEMINI_API_KEY is not configured." });
     }
 
-    const gradeGuidance = getPedagogicalGradeGuidance(classLevel);
-    const boardGuidance = getBoardProgrammeGuidance(board);
+    const gradeGuidance = getPedagogicalGradeGuidance(trimmedClass);
+    const boardGuidance = getBoardProgrammeGuidance(trimmedBoard);
 
-    const systemPrompt = `You are a distinguished academic textbook author and assessment specialist in ${subject} for ${board} ${classLevel}.
+    const systemPrompt = `You are a distinguished academic textbook author and assessment specialist in ${trimmedSubject} for ${trimmedBoard} ${trimmedClass}.
 ${gradeGuidance}
 ${boardGuidance}
 Always return strictly valid JSON matching the requested action schema.`;
@@ -2072,8 +2104,8 @@ Always return strictly valid JSON matching the requested action schema.`;
     let prompt = "";
 
     if (action === "generate_similar") {
-      prompt = `Create a parallel variant of this question for ${classLevel} (${board} curriculum in ${subject}).
-Topic: "${topic || 'General'}"
+      prompt = `Create a parallel variant of this question for ${trimmedClass} (${trimmedBoard} curriculum in ${trimmedSubject}).
+Topic: "${trimmedTopic}"
 Original Question: ${JSON.stringify(question)}
 Keep the same pedagogical cognitive level, format, and difficulty, but change names, numbers, contexts, or items.
 Output JSON only:
@@ -2091,7 +2123,7 @@ Output JSON only:
   }
 }`;
     } else if (action === "generate_distractors") {
-      prompt = `For this Multiple Choice Question in ${subject} (${board} ${classLevel}):
+      prompt = `For this Multiple Choice Question in ${trimmedSubject} (${trimmedBoard} ${trimmedClass}):
 Prompt: "${question?.prompt || ''}"
 Correct Answer: "${question?.correctAnswer || ''}"
 Generate 3 plausible academic distractors reflecting common student misconceptions.
@@ -2111,7 +2143,7 @@ Output JSON only:
   ]
 }`;
     } else if (action === "generate_answer" || action === "generate_explanation") {
-      prompt = `Provide an authoritative model answer and marking explanation for this question in ${subject} (${board} ${classLevel}):
+      prompt = `Provide an authoritative model answer and marking explanation for this question in ${trimmedSubject} (${trimmedBoard} ${trimmedClass}):
 Prompt: "${question?.prompt || ''}"
 Type: "${question?.type || 'short_answer'}"
 ${question?.options ? `Options: ${JSON.stringify(question.options)}` : ''}
@@ -2123,7 +2155,7 @@ Output JSON only:
   "markingPoints": ["Award 1 mark for ...", "Award 1 mark for ..."]
 }`;
     } else if (action === "increase_difficulty") {
-      prompt = `Increase the cognitive challenge and rigor of this question for ${classLevel} (${board} ${subject}).
+      prompt = `Increase the cognitive challenge and rigor of this question for ${trimmedClass} (${trimmedBoard} ${trimmedSubject}).
 Original Prompt: "${question?.prompt || ''}"
 Current Difficulty: "${question?.difficulty || 'Medium'}"
 Make it higher-order (Applying, Analyzing, or Evaluating), adding subtlety, multi-step reasoning, or richer contextual constraints without creating trickery.
@@ -2140,7 +2172,7 @@ Output JSON only:
   }
 }`;
     } else if (action === "decrease_difficulty") {
-      prompt = `Make this question more accessible and scaffolded for ${classLevel} (${board} ${subject}).
+      prompt = `Make this question more accessible and scaffolded for ${trimmedClass} (${trimmedBoard} ${trimmedSubject}).
 Original Prompt: "${question?.prompt || ''}"
 Provide clear scaffolding, simplify sentence structure, and lower cognitive load to foundational level.
 Output JSON only:
@@ -2156,7 +2188,7 @@ Output JSON only:
   }
 }`;
     } else if (action === "improve_question" || action === "check_ambiguity") {
-      prompt = `Audit this question for editorial polish, precision, and pedagogical ambiguity in ${subject} (${board} ${classLevel}):
+      prompt = `Audit this question for editorial polish, precision, and pedagogical ambiguity in ${trimmedSubject} (${trimmedBoard} ${trimmedClass}):
 Prompt: "${question?.prompt || ''}"
 Type: "${question?.type || ''}"
 Options: ${question?.options ? JSON.stringify(question.options) : 'None'}
@@ -2180,7 +2212,7 @@ Output JSON only:
     } else if (action === "generate_questions") {
       const count = req.body.count || 5;
       const qType = req.body.questionType || "mcq";
-      prompt = `Generate ${count} questions of type "${qType}" for topic "${topic || 'Core Chapter Topic'}" in ${subject} (${board} ${classLevel}).
+      prompt = `Generate ${count} questions of type "${qType}" for topic "${trimmedTopic}" in ${trimmedSubject} (${trimmedBoard} ${trimmedClass}).
 Ensure progressive difficulty, clear rubrics, and verified model answers.
 Output JSON only:
 {
@@ -2224,7 +2256,10 @@ Output JSON only:
       }
     }
 
-    return res.json({ data: parsed });
+    return res.json({
+      ...parsed,
+      data: parsed,
+    });
   } catch (error: any) {
     console.error("Question AI action error:", error);
     return res.status(500).json({ error: error.message || "Failed to process question AI action" });
