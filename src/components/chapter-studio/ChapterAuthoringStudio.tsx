@@ -39,6 +39,10 @@ import { SentenceDiagrammerModal } from './SentenceDiagrammerModal';
 import { CurriculumTraceabilityModal } from './CurriculumTraceabilityModal';
 import { ChapterSnapshotModal } from './ChapterSnapshotModal';
 import { ChapterStudioMenuBar } from './ChapterStudioMenuBar';
+import { SimpleWritingModeView } from './SimpleWritingModeView';
+import { SimpleStructureOutline } from './SimpleStructureOutline';
+import { HumanisePolishModal } from './HumanisePolishModal';
+import { DraftChapterAiModal } from './DraftChapterAiModal';
 import {
   PanelLeftClose,
   PanelLeftOpen,
@@ -66,6 +70,9 @@ import {
   AlertCircle,
   Info,
   X,
+  PenTool,
+  Sliders,
+  Wand2,
 } from 'lucide-react';
 
 interface ChapterAuthoringStudioProps {
@@ -119,6 +126,33 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
       category: t.category,
     }));
   }, [allCurrentBookTopics]);
+
+  // AUTHORING MODES: 'simple' (Default, Fast, Writing-First) vs 'advanced' (Full Editorial Production)
+  const [authoringMode, setAuthoringMode] = useState<'simple' | 'advanced'>(() => {
+    try {
+      const saved = localStorage.getItem('veritas_chapter_authoring_mode');
+      return saved === 'advanced' ? 'advanced' : 'simple';
+    } catch {
+      return 'simple';
+    }
+  });
+
+  const handleSetAuthoringMode = (mode: 'simple' | 'advanced') => {
+    setAuthoringMode(mode);
+    try {
+      localStorage.setItem('veritas_chapter_authoring_mode', mode);
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  // Humanise / Polish Modal State
+  const [showHumaniseModal, setShowHumaniseModal] = useState(false);
+  const [humaniseSelectedText, setHumaniseSelectedText] = useState('');
+  const [humaniseScope, setHumaniseScope] = useState<'selection' | 'paragraph' | 'section' | 'chapter'>('section');
+
+  // Draft Chapter with AI Modal State
+  const [showDraftAiModal, setShowDraftAiModal] = useState(false);
 
   // Add Chapter Modal state
   const [showAddChapterModal, setShowAddChapterModal] = useState(false);
@@ -609,14 +643,112 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
     }
   };
 
+  // Chapter Duplication, Deletion, and Reordering
+  const handleDuplicateChapter = (topicId: string) => {
+    const currentBook = seriesProject.books[targetClass] || Object.values(seriesProject.books)[0];
+    if (!currentBook) return;
+    const targetTopic = currentBook.topics.find((t) => t.id === topicId);
+    if (!targetTopic) return;
+
+    const newTopicId = `topic-${Date.now()}`;
+    const duplicatedTopic: GrammarTopic = {
+      ...targetTopic,
+      id: newTopicId,
+      title: `${targetTopic.title} (Copy)`,
+      order: currentBook.topics.length + 1,
+    };
+
+    const updatedTopics = [...currentBook.topics, duplicatedTopic];
+    const updatedSeriesProject = {
+      ...seriesProject,
+      books: {
+        ...seriesProject.books,
+        [targetClass]: {
+          ...currentBook,
+          topics: updatedTopics,
+        },
+      },
+    };
+
+    onUpdateSeriesProject(updatedSeriesProject);
+    setAuthoringNotification({
+      type: 'success',
+      message: `Chapter "${targetTopic.title}" duplicated successfully.`,
+    });
+  };
+
+  const handleDeleteChapter = (topicId: string) => {
+    const currentBook = seriesProject.books[targetClass] || Object.values(seriesProject.books)[0];
+    if (!currentBook || currentBook.topics.length <= 1) {
+      alert('A book must have at least one chapter.');
+      return;
+    }
+    const filteredTopics = currentBook.topics.filter((t) => t.id !== topicId);
+    const reordered = filteredTopics.map((t, idx) => ({ ...t, order: idx + 1 }));
+
+    const updatedSeriesProject = {
+      ...seriesProject,
+      books: {
+        ...seriesProject.books,
+        [targetClass]: {
+          ...currentBook,
+          topics: reordered,
+        },
+      },
+    };
+
+    onUpdateSeriesProject(updatedSeriesProject);
+
+    if (currentTopic.id === topicId) {
+      const nextTopic = reordered[0];
+      if (nextTopic) {
+        handleSelectChapter(nextTopic.id);
+      }
+    }
+
+    setAuthoringNotification({
+      type: 'success',
+      message: `Chapter removed from book.`,
+    });
+  };
+
+  const handleMoveChapter = (topicId: string, direction: 'up' | 'down') => {
+    const currentBook = seriesProject.books[targetClass] || Object.values(seriesProject.books)[0];
+    if (!currentBook) return;
+    const idx = currentBook.topics.findIndex((t) => t.id === topicId);
+    if (idx < 0) return;
+    if (direction === 'up' && idx === 0) return;
+    if (direction === 'down' && idx === currentBook.topics.length - 1) return;
+
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    const newTopics = [...currentBook.topics];
+    const [moved] = newTopics.splice(idx, 1);
+    newTopics.splice(targetIdx, 0, moved);
+
+    const reordered = newTopics.map((t, i) => ({ ...t, order: i + 1 }));
+
+    const updatedSeriesProject = {
+      ...seriesProject,
+      books: {
+        ...seriesProject.books,
+        [targetClass]: {
+          ...currentBook,
+          topics: reordered,
+        },
+      },
+    };
+
+    onUpdateSeriesProject(updatedSeriesProject);
+  };
+
   // Section handling
-  const handleAddSection = () => {
+  const handleAddSection = (suggestedTitle?: string) => {
     const nextNum = chapter.sections.length + 1;
     const newSec = {
       id: `sec-${Date.now()}`,
       chapterId: chapter.id,
       numberLabel: `${chapter.chapterNumber}.${nextNum}`,
-      title: `Section ${nextNum}: New Topic Rule`,
+      title: suggestedTitle || `Section ${nextNum}: New Topic Rule`,
       order: nextNum,
       blocks: [
         {
@@ -635,6 +767,53 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
     handleUpdateChapter(updatedChapter);
     setActiveSectionId(newSec.id);
     setActiveView('section');
+  };
+
+  const handleRenameSection = (secId: string, newTitle: string) => {
+    const updated = {
+      ...chapter,
+      sections: chapter.sections.map((s) => (s.id === secId ? { ...s, title: newTitle } : s)),
+    };
+    handleUpdateChapter(updated);
+  };
+
+  const handleDuplicateSection = (secId: string) => {
+    const target = chapter.sections.find((s) => s.id === secId);
+    if (!target) return;
+
+    const duplicated = {
+      ...target,
+      id: `sec-dup-${Date.now()}`,
+      title: `${target.title} (Copy)`,
+      order: target.order + 1,
+      blocks: target.blocks.map((b) => ({
+        ...b,
+        id: `blk-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      })),
+    };
+
+    const targetIdx = chapter.sections.findIndex((s) => s.id === secId);
+    const newSections = [...chapter.sections];
+    newSections.splice(targetIdx + 1, 0, duplicated);
+
+    const reordered = newSections.map((s, idx) => ({ ...s, order: idx + 1 }));
+    handleUpdateChapter({ ...chapter, sections: reordered });
+    setActiveSectionId(duplicated.id);
+  };
+
+  const handleMoveSection = (secId: string, direction: 'up' | 'down') => {
+    const index = chapter.sections.findIndex((s) => s.id === secId);
+    if (index < 0) return;
+    if (direction === 'up' && index === 0) return;
+    if (direction === 'down' && index === chapter.sections.length - 1) return;
+
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    const newSections = [...chapter.sections];
+    const [moved] = newSections.splice(index, 1);
+    newSections.splice(targetIndex, 0, moved);
+
+    const reordered = newSections.map((s, idx) => ({ ...s, order: idx + 1 }));
+    handleUpdateChapter({ ...chapter, sections: reordered });
   };
 
   const handleUpdateSection = (updatedSec: any) => {
@@ -657,6 +836,73 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
     if (activeSectionId === secId) {
       setActiveSectionId(filtered[0]?.id || '');
     }
+  };
+
+  // AI Sections Integration
+  const handleAcceptAiSections = (newSections: any[], replaceExisting: boolean) => {
+    const mergedSections = replaceExisting ? newSections : [...chapter.sections, ...newSections];
+    const reordered = mergedSections.map((s, idx) => ({
+      ...s,
+      order: idx + 1,
+      numberLabel: `${chapter.chapterNumber}.${idx + 1}`,
+    }));
+    const updated = {
+      ...chapter,
+      sections: reordered,
+      lastSaved: new Date().toISOString(),
+      saveStatus: 'saved' as const,
+    };
+    handleUpdateChapter(updated);
+    if (reordered[0]) {
+      setActiveSectionId(reordered[0].id);
+    }
+    setAuthoringNotification({
+      type: 'success',
+      message: `Successfully drafted and integrated ${newSections.length} chapter section${newSections.length === 1 ? '' : 's'} into the manuscript!`,
+    });
+  };
+
+  const handleApplyHumanisedText = (polishedText: string, scope: 'selection' | 'paragraph' | 'section' | 'chapter') => {
+    if (scope === 'chapter') {
+      const updatedSections = [...chapter.sections];
+      if (updatedSections[0]) {
+        const newBlock: TextbookContentBlock = {
+          id: `blk-${Date.now()}`,
+          type: 'text' as ContentBlockType,
+          order: 1,
+          visibility: 'student' as const,
+          textContent: polishedText,
+          authorNotes: 'Polished authorial prose',
+        };
+        updatedSections[0] = {
+          ...updatedSections[0],
+          blocks: [newBlock],
+        };
+      }
+      handleUpdateChapter({ ...chapter, sections: updatedSections });
+    } else {
+      const updatedSections = chapter.sections.map((sec) => {
+        if (sec.id !== activeSectionId) return sec;
+        const newBlock: TextbookContentBlock = {
+          id: `blk-${Date.now()}`,
+          type: 'text' as ContentBlockType,
+          order: 1,
+          visibility: 'student' as const,
+          textContent: polishedText,
+          authorNotes: 'Polished authorial prose',
+        };
+        return {
+          ...sec,
+          blocks: [newBlock],
+        };
+      });
+      handleUpdateChapter({ ...chapter, sections: updatedSections });
+    }
+
+    setAuthoringNotification({
+      type: 'success',
+      message: 'Manuscript prose humanised and updated successfully!',
+    });
   };
 
   // Block handlers
@@ -916,8 +1162,123 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
     <div
       className="h-full w-full flex-1 flex flex-col overflow-hidden min-h-0 min-w-0 bg-[#F6F0E7] text-[#292521]"
     >
-      {/* Top Header: Either Compact Sticky Header or Full Dual Dashboard Header */}
-      {isHeaderCompacted ? (
+      {/* Header Switching: Simple Writing Mode vs Advanced / Editorial Mode */}
+      {authoringMode === 'simple' ? (
+        /* SIMPLE WRITING MODE HEADER (Default, Fast, Writing-First) */
+        <header className="h-11 border-b border-[#CBBEAC] flex items-center justify-between px-3 sm:px-4 shrink-0 z-20 select-none bg-[#EDE4D6] text-[#292521] shadow-2xs">
+          {/* Left: Back + Identity */}
+          <div className="flex items-center space-x-2.5 min-w-0">
+            {onBackToDashboard && (
+              <button
+                type="button"
+                onClick={onBackToDashboard}
+                className="flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-semibold text-[#71685E] hover:text-[#292521] hover:bg-[#F6F0E7] transition-colors cursor-pointer"
+                title="Return to Book Planner"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Book Planner</span>
+              </button>
+            )}
+
+            <div className="h-4 w-px bg-[#CBBEAC]" />
+
+            <div className="flex items-center space-x-2 min-w-0">
+              <div className="w-6 h-6 rounded-lg bg-[#5A1832] text-[#EDE4D6] text-[11px] font-serif font-bold flex items-center justify-center shrink-0 shadow-2xs">
+                C{chapter.chapterNumber || 1}
+              </div>
+              <h1 className="font-serif font-bold text-xs sm:text-sm tracking-tight text-[#35101F] truncate max-w-[140px] sm:max-w-xs md:max-w-sm">
+                {chapter.title || 'Untitled Chapter'}
+              </h1>
+              <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FFFDF8] text-[#5A1832] border border-[#CBBEAC] shrink-0 font-mono">
+                {chapter.curriculumBoard || chapter.systemId || 'CBSE'} • {chapter.equivalentClass}
+              </span>
+            </div>
+          </div>
+
+          {/* Center: Authoring Modes Toggle */}
+          <div className="flex items-center p-0.5 rounded-xl bg-[#CBBEAC]/50 border border-[#CBBEAC]">
+            <button
+              type="button"
+              onClick={() => handleSetAuthoringMode('simple')}
+              className="px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 bg-[#FFFDF8] text-[#5A1832] shadow-2xs"
+              title="Simple Writing Mode: Fast, distraction-free document editor"
+            >
+              <PenTool className="w-3.5 h-3.5 text-[#C29A52]" />
+              <span>Simple Writing Mode</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleSetAuthoringMode('advanced')}
+              className="px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold text-[#71685E] hover:text-[#292521] transition-all cursor-pointer flex items-center space-x-1.5"
+              title="Advanced / Editorial Mode: Full 23-component architecture, 15 production stages & audits"
+            >
+              <Sliders className="w-3.5 h-3.5 text-[#71685E]" />
+              <span className="hidden sm:inline">Advanced / Editorial Mode</span>
+              <span className="sm:hidden">Advanced</span>
+            </button>
+          </div>
+
+          {/* Right: Prominent Actions & Panel Toggles */}
+          <div className="flex items-center space-x-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowDraftAiModal(true)}
+              className="hidden sm:inline-flex items-center space-x-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-[#5A1832] text-[#EDE4D6] hover:bg-[#35101F] border border-[#C29A52]/40 transition-colors shadow-2xs cursor-pointer"
+              title="Draft complete chapter structure and prose with AI"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[#C29A52]" />
+              <span>Draft with AI</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setHumaniseScope('section');
+                setHumaniseSelectedText(chapter.sections?.[0]?.blocks?.[0]?.textContent || '');
+                setShowHumaniseModal(true);
+              }}
+              className="hidden md:inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl text-xs font-bold bg-[#FFFDF8] hover:bg-[#F6F0E7] text-[#5A1832] border border-[#C29A52] transition-colors shadow-2xs cursor-pointer"
+              title="Humanise and polish manuscript text"
+            >
+              <Wand2 className="w-3.5 h-3.5 text-[#C29A52]" />
+              <span>Humanise / Polish</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowPreview(true)}
+              className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl text-xs font-semibold bg-[#FFFDF8] hover:bg-[#F6F0E7] text-[#292521] border border-[#CBBEAC] shadow-2xs transition-colors cursor-pointer"
+              title="Preview Textbook Layout"
+            >
+              <Eye className="w-3.5 h-3.5 text-[#5A1832]" />
+              <span className="hidden sm:inline">Preview</span>
+            </button>
+
+            <div className="h-4 w-px bg-[#CBBEAC] mx-1" />
+
+            {/* Navigator Toggle */}
+            <button
+              type="button"
+              onClick={() => setIsNavCollapsed(!isNavCollapsed)}
+              className="p-1 rounded-lg hover:bg-[#F6F0E7] text-[#71685E] hover:text-[#292521] cursor-pointer"
+              title={isNavCollapsed ? 'Show Outline' : 'Hide Outline'}
+            >
+              {isNavCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+            </button>
+
+            {/* Copilot Toggle */}
+            <button
+              type="button"
+              onClick={() => setIsCopilotCollapsed(!isCopilotCollapsed)}
+              className="p-1 rounded-lg hover:bg-[#F6F0E7] text-[#71685E] hover:text-[#292521] cursor-pointer"
+              title={isCopilotCollapsed ? 'Open Author Intelligence & Copilot' : 'Collapse Copilot'}
+            >
+              {isCopilotCollapsed ? <PanelRightOpen className="w-4 h-4" /> : <PanelRightClose className="w-4 h-4" />}
+            </button>
+          </div>
+        </header>
+      ) : isHeaderCompacted ? (
         /* Sleek Auto-Compacted Header (h-9, 36px) */
         <div className="h-9 border-b border-[#CBBEAC] flex items-center justify-between px-3 sm:px-4 bg-[#EDE4D6] text-[#292521] shrink-0 z-20 shadow-2xs select-none">
           {/* Left: Identity & Quick Stage */}
@@ -945,6 +1306,26 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
             <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0 hidden md:inline">
               Saved
             </span>
+          </div>
+
+          {/* Mode Switcher in Compact Header */}
+          <div className="flex items-center p-0.5 rounded-lg bg-[#CBBEAC]/50 border border-[#CBBEAC]">
+            <button
+              type="button"
+              onClick={() => handleSetAuthoringMode('simple')}
+              className="px-2 py-0.5 rounded text-[11px] font-semibold text-[#71685E] hover:text-[#292521] cursor-pointer flex items-center space-x-1"
+            >
+              <PenTool className="w-3 h-3" />
+              <span>Simple</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSetAuthoringMode('advanced')}
+              className="px-2 py-0.5 rounded text-[11px] font-bold bg-[#FFFDF8] text-[#5A1832] shadow-2xs cursor-pointer flex items-center space-x-1"
+            >
+              <Sliders className="w-3 h-3 text-[#C29A52]" />
+              <span>Advanced</span>
+            </button>
           </div>
 
           {/* Right: Context Actions, Focus Mode, More Tools, and Expand Button */}
@@ -1102,6 +1483,28 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
               </div>
             </div>
 
+            {/* Mode Switcher in Advanced Full Header */}
+            <div className="flex items-center p-0.5 rounded-xl bg-[#CBBEAC]/50 border border-[#CBBEAC]">
+              <button
+                type="button"
+                onClick={() => handleSetAuthoringMode('simple')}
+                className="px-2.5 py-0.5 rounded-lg text-xs font-semibold text-[#71685E] hover:text-[#292521] transition-all cursor-pointer flex items-center space-x-1"
+                title="Switch to Simple Writing Mode"
+              >
+                <PenTool className="w-3.5 h-3.5" />
+                <span>Simple Mode</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSetAuthoringMode('advanced')}
+                className="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-[#FFFDF8] text-[#5A1832] shadow-2xs transition-all cursor-pointer flex items-center space-x-1"
+              >
+                <Sliders className="w-3.5 h-3.5 text-[#C29A52]" />
+                <span className="hidden sm:inline">Advanced / Editorial Mode</span>
+                <span className="sm:hidden">Advanced</span>
+              </button>
+            </div>
+
             {/* Panel Toggles & Board Adapt */}
             <div className="flex items-center space-x-1.5 shrink-0">
               {/* Book Architecture Indicator & Blueprint Manager */}
@@ -1198,9 +1601,10 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
         </>
       )}
 
-      {/* Global Studio Menu Bar: Write Chapter, Chapter, Insert, Review, AI Tools, Publish */}
-      <div className="shrink-0">
-        <ChapterStudioMenuBar
+      {/* Global Studio Menu Bar: Only in Advanced / Editorial Mode */}
+      {authoringMode === 'advanced' && (
+        <div className="shrink-0">
+          <ChapterStudioMenuBar
           onWriteChapter={handleWriteChapter}
           isWritingChapter={isWritingChapter}
           onAddChapter={() => setShowAddChapterModal(true)}
@@ -1251,7 +1655,8 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
           onPreflightCheck={() => setShowQualityAudit(true)}
           onPublishingStatus={() => setActiveView('setup')}
         />
-      </div>
+        </div>
+      )}
 
       {/* Authoring Feedback Notification Banner */}
       {authoringNotification && (
@@ -1289,38 +1694,60 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
 
       {/* Main 3-Column Studio Workspace with Independent Resizing */}
       <div className="flex-1 flex min-h-0 min-w-0 overflow-hidden relative">
-        {/* Left Column: Chapter Structure Navigator (Resizable 180-340px) */}
+        {/* Left Column: Simple Outline (Simple Mode) OR Full Architecture Navigator (Advanced Mode) */}
         {!isNavCollapsed ? (
           <aside
             style={{ width: `${archNavWidth}px` }}
             className="shrink-0 h-full min-h-0 border-r border-[#CBBEAC] flex flex-col overflow-hidden bg-[#EDE4D6] relative group/nav"
           >
-            <ChapterStructureNavigator
-              chapter={chapter}
-              activeSectionId={activeSectionId}
-              onSelectSection={(secId) => {
-                setActiveSectionId(secId);
-                setActiveView('section');
-              }}
-              onAddSection={handleAddSection}
-              onDeleteSection={handleDeleteSection}
-              activeView={activeView}
-              onSelectView={setActiveView}
-              onUpdateChapter={handleUpdateChapter}
-              architecture={activeArchitecture}
-              activeArchitectureItemId={activeArchitectureItemId}
-              onSelectArchitectureItem={(itemId, viewId) => {
-                setActiveArchitectureItemId(itemId);
-                setActiveView(viewId);
-              }}
-              onOpenArchitectureCustomizer={() => setShowArchitectureCustomizer(true)}
-              onToggleCollapse={() => setIsNavCollapsed(true)}
-              chapters={chaptersList}
-              activeTopicId={currentTopic.id}
-              onSelectChapter={handleSelectChapter}
-              onAddChapter={() => setShowAddChapterModal(true)}
-              isDarkMode={false}
-            />
+            {authoringMode === 'simple' ? (
+              <SimpleStructureOutline
+                chapter={chapter}
+                chapters={chaptersList}
+                activeTopicId={currentTopic.id}
+                onSelectChapter={handleSelectChapter}
+                onAddChapter={() => setShowAddChapterModal(true)}
+                onDuplicateChapter={handleDuplicateChapter}
+                onDeleteChapter={handleDeleteChapter}
+                activeSectionId={activeSectionId}
+                onSelectSection={(secId) => {
+                  setActiveSectionId(secId);
+                }}
+                onAddSection={handleAddSection}
+                onRenameSection={handleRenameSection}
+                onMoveSection={handleMoveSection}
+                onDuplicateSection={handleDuplicateSection}
+                onDeleteSection={handleDeleteSection}
+                onToggleCollapse={() => setIsNavCollapsed(true)}
+              />
+            ) : (
+              <ChapterStructureNavigator
+                chapter={chapter}
+                activeSectionId={activeSectionId}
+                onSelectSection={(secId) => {
+                  setActiveSectionId(secId);
+                  setActiveView('section');
+                }}
+                onAddSection={handleAddSection}
+                onDeleteSection={handleDeleteSection}
+                activeView={activeView}
+                onSelectView={setActiveView}
+                onUpdateChapter={handleUpdateChapter}
+                architecture={activeArchitecture}
+                activeArchitectureItemId={activeArchitectureItemId}
+                onSelectArchitectureItem={(itemId, viewId) => {
+                  setActiveArchitectureItemId(itemId);
+                  setActiveView(viewId);
+                }}
+                onOpenArchitectureCustomizer={() => setShowArchitectureCustomizer(true)}
+                onToggleCollapse={() => setIsNavCollapsed(true)}
+                chapters={chaptersList}
+                activeTopicId={currentTopic.id}
+                onSelectChapter={handleSelectChapter}
+                onAddChapter={() => setShowAddChapterModal(true)}
+                isDarkMode={false}
+              />
+            )}
 
             {/* Draggable Divider on Right Edge */}
             <div
@@ -1328,7 +1755,7 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
               onTouchStart={handleNavTouchStart}
               onDoubleClick={() => handleUpdateArchNavWidth(240)}
               className="absolute top-0 right-0 w-2.5 h-full cursor-col-resize z-30 flex items-center justify-center hover:bg-[#C29A52]/20 active:bg-[#5A1832]/30 transition-colors select-none"
-              title="Drag to resize Architecture (180–340px) • Double-click to restore default (240px)"
+              title="Drag to resize Outline / Architecture (180–340px) • Double-click to restore default (240px)"
             >
               <div className="w-[2px] h-8 bg-transparent group-hover/nav:bg-[#C29A52] active:bg-[#5A1832] transition-colors rounded-full" />
             </div>
@@ -1338,40 +1765,58 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
             type="button"
             onClick={() => setIsNavCollapsed(false)}
             className="w-7 h-full bg-[#EDE4D6] hover:bg-[#CBBEAC]/50 border-r border-[#CBBEAC] flex flex-col items-center justify-start pt-4 text-[#71685E] hover:text-[#5A1832] cursor-pointer transition-colors shrink-0 group select-none"
-            title="Expand Chapter Architecture"
+            title={authoringMode === 'simple' ? 'Expand Chapter Outline' : 'Expand Chapter Architecture'}
           >
             <PanelLeftOpen className="w-4 h-4 mb-3 text-[#5A1832]" />
             <span className="[writing-mode:vertical-lr] rotate-180 text-[10px] font-bold uppercase tracking-widest text-[#5A1832]">
-              Architecture
+              {authoringMode === 'simple' ? 'Outline' : 'Architecture'}
             </span>
           </button>
         )}
 
-        {/* Center Column: Manuscript Canvas & Editor Area (min-w-0, flex-1, dominant working area) */}
+        {/* Center Column: Simple Writing Mode View (Default) OR Full Manuscript Canvas (Advanced) */}
         <main className="flex-1 min-w-0 h-full min-h-0 overflow-hidden flex flex-col bg-[#F6F0E7]">
-          <ChapterManuscriptCanvas
-            chapter={chapter}
-            onUpdateChapter={handleUpdateChapter}
-            activeView={activeView}
-            activeSectionId={activeSectionId}
-            architecture={activeArchitecture}
-            activeArchitectureItemId={activeArchitectureItemId}
-            onSelectView={setActiveView}
-            onOpenPreview={() => setShowPreview(true)}
-            onOpenQualityAudit={() => setShowQualityAudit(true)}
-            onOpenVisualStudio={(visId?: string) => {
-              setActiveVisualRecordId(visId);
-              setShowVisualStudio(true);
-            }}
-            onOpenBoardAdapt={() => setShowBoardAdaptModal(true)}
-            onEditBlock={setEditingBlock}
-            onDeleteBlock={handleDeleteBlock}
-            onMoveBlock={handleMoveBlock}
-            onAddBlockToCurrentSection={handleAddBlockToCurrentSection}
-            seriesProject={seriesProject}
-            isDarkMode={false}
-            onScroll={handleCanvasScroll}
-          />
+          {authoringMode === 'simple' ? (
+            <SimpleWritingModeView
+              chapter={chapter}
+              onUpdateChapter={handleUpdateChapter}
+              activeSectionId={activeSectionId}
+              onSelectSection={setActiveSectionId}
+              onOpenDraftAiModal={() => setShowDraftAiModal(true)}
+              onOpenHumaniseModal={(scope, text) => {
+                setHumaniseScope(scope || 'section');
+                setHumaniseSelectedText(text || '');
+                setShowHumaniseModal(true);
+              }}
+              onTriggerCopilotAction={(actionKey, text) => {
+                setIsCopilotCollapsed(false);
+              }}
+            />
+          ) : (
+            <ChapterManuscriptCanvas
+              chapter={chapter}
+              onUpdateChapter={handleUpdateChapter}
+              activeView={activeView}
+              activeSectionId={activeSectionId}
+              architecture={activeArchitecture}
+              activeArchitectureItemId={activeArchitectureItemId}
+              onSelectView={setActiveView}
+              onOpenPreview={() => setShowPreview(true)}
+              onOpenQualityAudit={() => setShowQualityAudit(true)}
+              onOpenVisualStudio={(visId?: string) => {
+                setActiveVisualRecordId(visId);
+                setShowVisualStudio(true);
+              }}
+              onOpenBoardAdapt={() => setShowBoardAdaptModal(true)}
+              onEditBlock={setEditingBlock}
+              onDeleteBlock={handleDeleteBlock}
+              onMoveBlock={handleMoveBlock}
+              onAddBlockToCurrentSection={handleAddBlockToCurrentSection}
+              seriesProject={seriesProject}
+              isDarkMode={false}
+              onScroll={handleCanvasScroll}
+            />
+          )}
         </main>
 
         {/* Right Column: Author Intelligence & Copilot Drawer (Resizable 200-380px) */}
@@ -1549,6 +1994,30 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
         chapter={chapter}
         onRestoreSnapshot={(restored) => handleUpdateChapter(restored)}
         isDarkMode={false}
+      />
+
+      {/* Humanise / Polish Modal */}
+      <HumanisePolishModal
+        isOpen={showHumaniseModal}
+        onClose={() => setShowHumaniseModal(false)}
+        chapter={chapter}
+        selectedText={humaniseSelectedText}
+        currentSectionTitle={chapter.sections.find((s) => s.id === activeSectionId)?.title}
+        currentSectionText={
+          chapter.sections.find((s) => s.id === activeSectionId)?.blocks.map((b) => b.textContent).join('\n\n')
+        }
+        entireChapterText={
+          chapter.sections.map((s) => s.blocks.map((b) => b.textContent).join('\n')).join('\n\n')
+        }
+        onApplyPolishedText={handleApplyHumanisedText}
+      />
+
+      {/* Draft Entire Chapter with AI Modal */}
+      <DraftChapterAiModal
+        isOpen={showDraftAiModal}
+        onClose={() => setShowDraftAiModal(false)}
+        chapter={chapter}
+        onAcceptSections={handleAcceptAiSections}
       />
 
       {/* Add Chapter to Book Modal */}

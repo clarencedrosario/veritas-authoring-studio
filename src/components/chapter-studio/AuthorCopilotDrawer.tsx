@@ -51,9 +51,31 @@ export const AuthorCopilotDrawer: React.FC<AuthorCopilotDrawerProps> = ({
   const [copied, setCopied] = useState(false);
   const [authorNotesText, setAuthorNotesText] = useState(chapter.authorNotes || '');
 
-  const executeAction = (actionKey: string) => {
+  const executeAction = async (actionKey: string) => {
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      const response = await fetch('/api/chapter-studio/ai-writing-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          actionKey,
+          selectedText: selectedText || chapter.title,
+          classLevel: chapter.equivalentClass || 'Class 6',
+          chapterTitle: chapter.title,
+          activeSectionTitle,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.result) {
+          setLastActionOutput(data.result);
+          setIsLoading(false);
+          return;
+        }
+      }
+      throw new Error('Fallback to local action engine');
+    } catch {
       const res = runAuthorAiCopilotAction(
         actionKey,
         selectedText,
@@ -61,8 +83,9 @@ export const AuthorCopilotDrawer: React.FC<AuthorCopilotDrawerProps> = ({
         chapter.title
       );
       setLastActionOutput(res);
+    } finally {
       setIsLoading(false);
-    }, 300);
+    }
   };
 
   const handleInsertBelow = () => {

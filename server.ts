@@ -1936,6 +1936,355 @@ Output JSON only:
 });
 
 // ============================================================================
+// VERITAS CHAPTER STUDIO: Humanise & Polish Manuscript Endpoint
+// ============================================================================
+app.post("/api/chapter-studio/humanize-manuscript", async (req, res) => {
+  try {
+    const {
+      text,
+      style = "natural",
+      scope = "section",
+      board = "CBSE",
+      classLevel = "Class 6",
+      subject = "English Grammar",
+      chapterTitle = "Grammar Chapter",
+      customInstructions = "",
+    } = req.body || {};
+
+    if (!text || typeof text !== "string" || !text.trim()) {
+      return res.status(400).json({ error: "No manuscript text provided to humanise." });
+    }
+
+    const ai = getGenAI();
+    if (!ai) {
+      return res.status(503).json({ error: "AI service is currently unavailable. GEMINI_API_KEY is not configured." });
+    }
+
+    const gradeGuidance = getPedagogicalGradeGuidance(classLevel);
+    const boardGuidance = getBoardProgrammeGuidance(board);
+
+    const styleDirectives: Record<string, string> = {
+      natural: "Produce organic human sentence rhythm with varied cadences, natural transitions, and authentic authorial pacing. Eliminate monotonous, predictable phrasing.",
+      conversational: "Adopt a direct, warm, student-friendly voice as if a brilliant, encouraging teacher is speaking directly to the student in class.",
+      academic: "Elevate scholarly rigour, precise linguistic terminology, formal grammar distinctions, and analytical elegance.",
+      textbook: "Deliver crisp, authoritative textbook prose with crystal-clear explanations, pedagogical definitions, and logical signposting.",
+      child_friendly: "Use accessible, concrete vocabulary, vivid relatable comparisons, and supportive sentence lengths tailored for younger learners.",
+      concise: "Strip away all filler, wordiness, tautologies, and bloated clauses while preserving 100% of the educational meaning and examples.",
+      engaging: "Infuse dynamic energy, intellectual curiosity, vivid sentence openings, and memorable illustrations.",
+      professional: "Maintain balanced, standard publishing house quality suitable for premier educational textbook publication.",
+    };
+
+    const chosenDirective = styleDirectives[style] || styleDirectives.natural;
+
+    const systemPrompt = `You are a distinguished Senior Educational Book Editor and Master Textbook Author at VERITAS Publishing.
+Your mission is to polish and humanise educational manuscripts so they sound like exceptional, naturally authored textbook prose rather than generic or formulaic text.
+${gradeGuidance}
+${boardGuidance}
+
+POLISHING DIRECTIVES:
+- Style Profile: ${chosenDirective}
+- Target Scope: ${scope}
+- Subject: ${subject}
+- Chapter: "${chapterTitle}"
+- Target Level: ${classLevel} under ${board}
+- PRESERVE PEDAGOGICAL ACCURACY: Never alter grammatical rules, definitions, correct answers, or core educational facts.
+- NATURAL SENTENCE VARIATION: Vary sentence lengths (mix short punchy statements with compound explanatory thoughts).
+- BAN AI CLICHÉS: Never use "dive in", "delve", "rich tapestry", "testament to", "unlock", "embark", "furthermore it is crucial to remember".
+${customInstructions ? `- Author's Custom Directive: ${customInstructions}` : ""}
+
+Return strictly a JSON object with this structure (no markdown wrappers):
+{
+  "polishedText": "the refined, humanised manuscript text",
+  "changesSummary": "one sentence summarizing the editorial improvements made (e.g. tightened syntax, enhanced conversational warmth, varied sentence length)",
+  "wordCount": 120
+}`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.8-flash",
+      contents: `Manuscript passage to polish/humanise:\n\n"""\n${text}\n"""`,
+      config: {
+        systemInstruction: systemPrompt,
+        temperature: 0.6,
+        responseMimeType: "application/json",
+      },
+    });
+
+    const raw = response.text || "";
+    try {
+      const parsed = JSON.parse(raw);
+      return res.json({
+        success: true,
+        polishedText: parsed.polishedText || text,
+        changesSummary: parsed.changesSummary || "Editorial rhythm, syntax, and voice polished.",
+        wordCount: parsed.wordCount || (parsed.polishedText ? parsed.polishedText.trim().split(/\s+/).length : 0),
+      });
+    } catch {
+      return res.json({
+        success: true,
+        polishedText: raw.trim(),
+        changesSummary: "Editorial rhythm and voice refined.",
+        wordCount: raw.trim().split(/\s+/).length,
+      });
+    }
+  } catch (error: any) {
+    console.error("Humanise manuscript error:", error);
+    return res.status(500).json({ error: error.message || "Failed to humanise manuscript text" });
+  }
+});
+
+// ============================================================================
+// VERITAS CHAPTER STUDIO: Draft Entire Grammar Chapter Endpoint
+// ============================================================================
+app.post("/api/chapter-studio/draft-entire-chapter", async (req, res) => {
+  try {
+    const {
+      chapterTitle,
+      classLevel = "Class 6",
+      board = "CBSE",
+      subject = "English Grammar",
+      instructions = "",
+    } = req.body || {};
+
+    if (!chapterTitle || typeof chapterTitle !== "string" || !chapterTitle.trim()) {
+      return res.status(400).json({ error: "Chapter title is required to draft chapter." });
+    }
+
+    const ai = getGenAI();
+    if (!ai) {
+      return res.status(503).json({ error: "AI service unavailable. GEMINI_API_KEY is not configured." });
+    }
+
+    const gradeGuidance = getPedagogicalGradeGuidance(classLevel);
+    const boardGuidance = getBoardProgrammeGuidance(board);
+
+    const systemPrompt = `You are the Lead Academic Textbook Author for VERITAS Publishing.
+Draft a complete, pedagogically sound, and class-appropriate grammar chapter for:
+Subject: ${subject}
+Chapter Topic: "${chapterTitle.trim()}"
+Grade Level: ${classLevel}
+Board / Curriculum: ${board}
+${gradeGuidance}
+${boardGuidance}
+${instructions ? `Author Directives: ${instructions}` : ""}
+
+Propose a flexible chapter structure (between 4 and 7 sections) tailored specifically to this grade level and board.
+Suggested section types may include:
+- Chapter Opener & Orientation
+- Core Conceptual Explanation
+- Grammar Rules & Principles
+- Exemplary Usage & Variations
+- Common Errors & Exam Traps
+- Scaffolded Practice Exercises
+- Chapter Summary & Quick Reference
+
+For EACH section, provide:
+1. "title": A descriptive, student-friendly section heading
+2. "sectionType": One of ("opener", "explanation", "rules", "examples", "common_errors", "exercises", "summary")
+3. "content": Complete, high-quality, textbook-ready prose and examples (minimum 100-250 words per section). Not mere bullet points or summaries; author real textbook reading material!
+4. "rationale": Short explanation of why this section fits this grade and curriculum.
+
+Return strictly valid JSON with this structure:
+{
+  "chapterTitle": "${chapterTitle.trim()}",
+  "subtitle": "Scholarly subtitle describing the scope",
+  "pedagogicalOverview": "Brief overview of how the chapter develops mastery",
+  "sections": [
+    {
+      "id": "sec-1",
+      "title": "Section Title",
+      "sectionType": "explanation",
+      "content": "Full drafted textbook prose with examples...",
+      "rationale": "Pedagogical rationale for this section..."
+    }
+  ]
+}`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.8-flash",
+      contents: `Draft the grammar chapter: "${chapterTitle.trim()}" for ${classLevel} under ${board}.`,
+      config: {
+        systemInstruction: systemPrompt,
+        temperature: 0.65,
+        responseMimeType: "application/json",
+      },
+    });
+
+    const raw = response.text || "";
+    const parsed = JSON.parse(raw);
+    return res.json({
+      success: true,
+      draft: parsed,
+    });
+  } catch (error: any) {
+    console.error("Draft entire chapter error:", error);
+    return res.status(500).json({ error: error.message || "Failed to draft chapter with AI" });
+  }
+});
+
+// ============================================================================
+// VERITAS CHAPTER STUDIO: Central AI Writing Action Endpoint
+// ============================================================================
+app.post("/api/chapter-studio/ai-writing-action", async (req, res) => {
+  try {
+    const {
+      action,
+      text = "",
+      chapterTitle = "Grammar Chapter",
+      sectionTitle = "",
+      board = "CBSE",
+      classLevel = "Class 6",
+      subject = "English Grammar",
+      existingChapterContent = "",
+      additionalInstructions = "",
+    } = req.body || {};
+
+    if (!action || typeof action !== "string") {
+      return res.status(400).json({ error: "Missing required action parameter." });
+    }
+
+    const ai = getGenAI();
+    if (!ai) {
+      return res.status(503).json({ error: "AI service unavailable. GEMINI_API_KEY is not configured." });
+    }
+
+    const gradeGuidance = getPedagogicalGradeGuidance(classLevel);
+    const boardGuidance = getBoardProgrammeGuidance(board);
+
+    const actionDirectives: Record<string, { label: string; prompt: string }> = {
+      continue_writing: {
+        label: "Continue Writing",
+        prompt: `Continue the manuscript narrative and exposition naturally from the preceding text. Maintain consistent pedagogical voice, depth, and tone. Seamlessly advance the concept.`,
+      },
+      generate_section: {
+        label: "Generate Section",
+        prompt: `Draft a comprehensive, engaging textbook section for "${sectionTitle || "Grammar Concept"}" in "${chapterTitle}". Include clear conceptual explanation, authentic illustrative sentences, and pedagogical callouts.`,
+      },
+      expand: {
+        label: "Expand Content",
+        prompt: `Expand the provided text with richer explanatory depth, concrete analogies, and clearer step-by-step reasoning without fluff or empty repetition.`,
+      },
+      shorten: {
+        label: "Shorten & Condense",
+        prompt: `Condense the text into lean, punchy, student-friendly prose while retaining every core rule, definition, and essential example.`,
+      },
+      rewrite: {
+        label: "Rewrite",
+        prompt: `Rewrite the provided text with improved pedagogical clarity, crisp syntax, and heightened student engagement.`,
+      },
+      explain_clearly: {
+        label: "Explain More Clearly",
+        prompt: `Rephrase this concept with luminous clarity. Break complex grammar mechanics down into an intuitive, memorable explanation that any student can understand effortlessly.`,
+      },
+      simplify_grade: {
+        label: `Simplify for ${classLevel}`,
+        prompt: `Calibrate the vocabulary, sentence structures, and conceptual difficulty specifically for ${classLevel} students. Use relatable everyday scenarios and clear, accessible language.`,
+      },
+      make_advanced: {
+        label: "Make More Advanced / Olympiad",
+        prompt: `Deepen the academic rigor to Olympiad/advanced competitive examination level. Include syntactic edge cases, subtle inversions, parenthetical distractors, and nuanced concord challenges.`,
+      },
+      generate_examples: {
+        label: "Generate Illustrative Examples",
+        prompt: `Provide 5 authentic, culturally relevant example sentences showcasing this rule. Include contrastive pairs (Correct vs Incorrect) with brief explanations of the underlying syntactic mechanics.`,
+      },
+      generate_exercises: {
+        label: "Generate Practice Exercises",
+        prompt: `Author 6 diverse, high-quality practice questions (fill-in-the-blanks, error spotting, sentence re-writing) calibrated for ${classLevel} ${board}, complete with answer keys and explanations.`,
+      },
+      generate_answer_key: {
+        label: "Generate Answer Key & Explanations",
+        prompt: `Produce a comprehensive, rigorous answer key with step-by-step syntactic explanations and common trap alerts for the provided exercises or questions.`,
+      },
+      generate_learning_objectives: {
+        label: "Generate Learning Objectives",
+        prompt: `Formulate 4-5 measurable learning objectives based on Bloom's Revised Taxonomy (Remember, Understand, Apply, Analyze, Evaluate) specifically for "${chapterTitle}" in ${classLevel}.`,
+      },
+      suggest_activities: {
+        label: "Suggest Classroom Activities",
+        prompt: `Propose 3 engaging, collaborative classroom or individual activities (e.g. grammar games, detective error hunts, peer quiz-crafting) that reinforce this topic interactively.`,
+      },
+      check_grammar: {
+        label: "Check Grammar & Mechanical Precision",
+        prompt: `Analyze the provided text for grammatical precision, punctuation, typographical consistency, and stylistic flow. Suggest specific corrections with reasons.`,
+      },
+      check_consistency: {
+        label: "Check Curriculum Consistency",
+        prompt: `Review the chapter excerpt for consistency in terminology, grade-level vocabulary, and pedagogical progression across the curriculum framework.`,
+      },
+      check_age_appropriateness: {
+        label: "Check Age Appropriateness",
+        prompt: `Evaluate the readability, cognitive load, and age-appropriateness of this content for ${classLevel} (typical age range). Provide an assessment and recommended adjustments.`,
+      },
+      suggest_visual: {
+        label: "Suggest Visual / Illustration Brief",
+        prompt: `Design a vivid textbook visual brief (diagram, comic strip, flowchart, or infobox) that visually explains this grammatical concept to visual learners. Include layout, caption, and art instruction.`,
+      },
+      polish_writing: {
+        label: "Polish Writing",
+        prompt: `Polish the authorial prose to publication-ready textbook standard, balancing academic authority with approachable clarity.`,
+      },
+    };
+
+    const config = actionDirectives[action] || {
+      label: "AI Authoring Assist",
+      prompt: `Assist the textbook author with: ${action}`,
+    };
+
+    const systemPrompt = `You are a Senior Academic Author and Master Curriculum Developer for VERITAS Academic Publishing.
+Chapter: "${chapterTitle}"
+Current Section: "${sectionTitle || "Main Manuscript"}"
+Target Level: ${classLevel}
+Board / Curriculum: ${board}
+Subject: ${subject}
+${gradeGuidance}
+${boardGuidance}
+
+Task: ${config.prompt}
+${additionalInstructions ? `Specific Author Instructions: ${additionalInstructions}` : ""}
+
+Return strictly a JSON object with this schema (no markdown wrappers):
+{
+  "actionLabel": "${config.label}",
+  "result": "The high quality drafted content or editorial response...",
+  "rationale": "Brief pedagogical rationale for why this fits ${classLevel} ${board}."
+}`;
+
+    const userContent = `Context / Excerpt:\n"""\n${text || existingChapterContent.slice(-800) || chapterTitle}\n"""`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.8-flash",
+      contents: userContent,
+      config: {
+        systemInstruction: systemPrompt,
+        temperature: 0.6,
+        responseMimeType: "application/json",
+      },
+    });
+
+    const raw = response.text || "";
+    try {
+      const parsed = JSON.parse(raw);
+      return res.json({
+        success: true,
+        actionLabel: parsed.actionLabel || config.label,
+        result: parsed.result || raw,
+        rationale: parsed.rationale || "",
+      });
+    } catch {
+      return res.json({
+        success: true,
+        actionLabel: config.label,
+        result: raw.trim(),
+        rationale: "",
+      });
+    }
+  } catch (error: any) {
+    console.error("AI writing action error:", error);
+    return res.status(500).json({ error: error.message || "Failed to execute AI writing action" });
+  }
+});
+
+// ============================================================================
 // VERITAS ACADEMIC EDITORIAL REVIEW: Audit Clarity for Assessments & Questions
 // ============================================================================
 app.post("/api/ai/audit-clarity", async (req, res) => {
