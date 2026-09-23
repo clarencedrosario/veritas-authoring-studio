@@ -55,6 +55,8 @@ const BOARD_OPTIONS = [
   { id: 'CBSE', label: 'CBSE (NCF / NEP 2020 Aligned)' },
   { id: 'CISCE', label: 'CISCE / ICSE / ISC (Formal Syntax Rigour)' },
   { id: 'Cambridge', label: 'Cambridge (CAIE International Framework)' },
+  { id: 'State Board', label: 'State Board Curriculum' },
+  { id: 'IB', label: 'International Baccalaureate (IB)' },
 ];
 
 export const DraftChapterAiModal: React.FC<DraftChapterAiModalProps> = ({
@@ -65,11 +67,9 @@ export const DraftChapterAiModal: React.FC<DraftChapterAiModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  const [chapterTitle, setChapterTitle] = useState(chapter.title || 'Subject–Verb Agreement');
+  const [chapterTitle, setChapterTitle] = useState(chapter.title || '');
   const [classLevel, setClassLevel] = useState<string>(
-    chapter.equivalentClass && CLASS_OPTIONS.includes(chapter.equivalentClass as string)
-      ? (chapter.equivalentClass as string)
-      : 'Class 6'
+    chapter.equivalentClass || CLASS_OPTIONS[0]
   );
   const [board, setBoard] = useState<string>(
     chapter.curriculumBoard || chapter.systemId || 'CBSE'
@@ -81,9 +81,22 @@ export const DraftChapterAiModal: React.FC<DraftChapterAiModalProps> = ({
   const [replaceExisting, setReplaceExisting] = useState(true);
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    if (isOpen) {
+      setChapterTitle(chapter.title || '');
+      if (chapter.equivalentClass) {
+        setClassLevel(chapter.equivalentClass);
+      }
+      if (chapter.curriculumBoard || chapter.systemId) {
+        setBoard(chapter.curriculumBoard || chapter.systemId);
+      }
+      setErrorNotice(null);
+    }
+  }, [isOpen, chapter.id, chapter.title, chapter.equivalentClass, chapter.curriculumBoard, chapter.systemId]);
+
   const handleGenerate = async () => {
     if (!chapterTitle.trim()) {
-      setErrorNotice('Please provide a chapter title.');
+      setErrorNotice('Please provide a chapter title to draft.');
       return;
     }
 
@@ -98,16 +111,21 @@ export const DraftChapterAiModal: React.FC<DraftChapterAiModalProps> = ({
           chapterTitle: chapterTitle.trim(),
           classLevel,
           board,
-          subject: chapter.subject || 'English Grammar',
+          subject: chapter.subject || 'English Language & Grammar',
           instructions: instructions.trim(),
         }),
       });
 
-      if (!res.ok) {
-        throw new Error(`Server returned HTTP ${res.status}`);
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data) {
+        const errorMsg =
+          (typeof data?.error === 'string' ? data.error : data?.error?.message) ||
+          data?.message ||
+          `Server returned HTTP ${res.status}`;
+        throw new Error(errorMsg);
       }
 
-      const data = await res.json();
       if (data.success && data.draft?.sections?.length) {
         const sections: ProposedSection[] = data.draft.sections.map((sec: any, idx: number) => ({
           id: `draft-sec-${Date.now()}-${idx}`,
@@ -177,18 +195,25 @@ export const DraftChapterAiModal: React.FC<DraftChapterAiModalProps> = ({
           sectionTitle: target.title,
           board,
           classLevel,
-          subject: chapter.subject || 'English Grammar',
+          subject: chapter.subject || 'English Language & Grammar',
           additionalInstructions: `Regenerate with fresh examples and clear exposition. ${instructions}`,
         }),
       });
-      const data = await res.json();
-      if (data.success && data.result) {
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.success && data.result) {
         setProposedSections((prev) =>
           prev.map((s, idx) => (idx === index ? { ...s, content: data.result } : s))
         );
+      } else {
+        const errorMsg =
+          (typeof data?.error === 'string' ? data.error : data?.error?.message) ||
+          data?.message ||
+          `Regeneration failed (HTTP ${res.status})`;
+        setErrorNotice(errorMsg);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to regenerate section:', err);
+      setErrorNotice(err?.message || 'Failed to regenerate section.');
     }
   };
 
@@ -270,7 +295,7 @@ export const DraftChapterAiModal: React.FC<DraftChapterAiModalProps> = ({
                 type="text"
                 value={chapterTitle}
                 onChange={(e) => setChapterTitle(e.target.value)}
-                placeholder="e.g. Subject–Verb Agreement, Relative Clauses, Direct & Indirect Speech"
+                placeholder="Enter chapter title or topic (e.g. Prepositional Phrases, Direct & Indirect Speech, Tenses)..."
                 className="w-full px-3 py-2 rounded-xl border border-[#CBBEAC] bg-[#FFFDF8] text-xs font-semibold text-[#292521] focus:outline-none focus:ring-1 focus:ring-[#C29A52]"
               />
             </div>
@@ -284,6 +309,11 @@ export const DraftChapterAiModal: React.FC<DraftChapterAiModalProps> = ({
                 onChange={(e) => setClassLevel(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-[#CBBEAC] bg-[#FFFDF8] text-xs font-medium text-[#292521] focus:outline-none focus:ring-1 focus:ring-[#C29A52]"
               >
+                {!CLASS_OPTIONS.includes(classLevel) && classLevel && (
+                  <option key={classLevel} value={classLevel}>
+                    {classLevel}
+                  </option>
+                )}
                 {CLASS_OPTIONS.map((c) => (
                   <option key={c} value={c}>
                     {c}
@@ -301,6 +331,11 @@ export const DraftChapterAiModal: React.FC<DraftChapterAiModalProps> = ({
                 onChange={(e) => setBoard(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-[#CBBEAC] bg-[#FFFDF8] text-xs font-medium text-[#292521] focus:outline-none focus:ring-1 focus:ring-[#C29A52]"
               >
+                {!BOARD_OPTIONS.some((b) => b.id === board) && board && (
+                  <option key={board} value={board}>
+                    {board}
+                  </option>
+                )}
                 {BOARD_OPTIONS.map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.label}

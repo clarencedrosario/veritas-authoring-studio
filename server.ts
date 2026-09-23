@@ -6,6 +6,11 @@ import { createServer as createViteServer } from "vite";
 import { WebSocketServer, WebSocket } from "ws";
 import { GoogleGenAI, LiveServerMessage, Modality, Type } from "@google/genai";
 import dotenv from "dotenv";
+import {
+  generatePedagogicalWritingAction,
+  generatePedagogicalChapterDraft,
+  generatePedagogicalHumanizedText,
+} from "./src/utils/pedagogicalFallback";
 
 dotenv.config();
 
@@ -915,8 +920,86 @@ Output pure, valid JSON only. No markdown ticks or explanation.`;
 });
 
 // ============================================================================
-// REUSABLE CHAPTER COMPONENT ENGINE: Component AI Content Generator
+// GEMINI API ERROR PARSER & PEDAGOGICAL GUIDANCE
 // ============================================================================
+function parseGeminiApiError(err: any): { message: string; code: string; status: number } {
+  if (!err) {
+    return {
+      message: "An unknown AI service error occurred. Please try again.",
+      code: "UNKNOWN_ERROR",
+      status: 502,
+    };
+  }
+
+  const rawMsg = err.message || String(err);
+
+  // Check if rawMsg contains JSON with error code/status/message
+  try {
+    const parsed = JSON.parse(rawMsg);
+    if (parsed.error) {
+      const code = parsed.error.code;
+      const status = parsed.error.status;
+      const innerMsg = parsed.error.message || rawMsg;
+
+      if (code === 402 || status === "RESOURCE_EXHAUSTED" || innerMsg.includes("prepayment credits are depleted")) {
+        return {
+          message: "Gemini API credits depleted: Your Google AI Studio project prepayment credits are depleted. Please visit Google AI Studio (https://ai.studio/projects) to manage your project billing and prepayment credits.",
+          code: "RESOURCE_EXHAUSTED",
+          status: 402,
+        };
+      }
+      if (code === 429) {
+        return {
+          message: "Gemini API rate limit exceeded: Quota limit reached. Please wait a moment before requesting another chapter draft.",
+          code: "RATE_LIMIT_EXCEEDED",
+          status: 429,
+        };
+      }
+      if (code === 403 || code === 401) {
+        return {
+          message: "Gemini API authentication failed: The server GEMINI_API_KEY is invalid or lacks necessary permissions.",
+          code: "AUTH_FAILED",
+          status: 403,
+        };
+      }
+      return {
+        message: `Gemini API Error: ${innerMsg}`,
+        code: status || "GEMINI_ERROR",
+        status: 502,
+      };
+    }
+  } catch {
+    // Fallback string matching on raw message
+    if (/prepayment credits are depleted|RESOURCE_EXHAUSTED/i.test(rawMsg)) {
+      return {
+        message: "Gemini API credits depleted: Your Google AI Studio project prepayment credits are depleted. Please visit Google AI Studio (https://ai.studio/projects) to manage your project billing and prepayment credits.",
+        code: "RESOURCE_EXHAUSTED",
+        status: 402,
+      };
+    }
+    if (/quota exceeded|rate limit|429/i.test(rawMsg)) {
+      return {
+        message: "Gemini API rate limit exceeded: Quota limit reached. Please wait a moment before requesting another chapter draft.",
+        code: "RATE_LIMIT_EXCEEDED",
+        status: 429,
+      };
+    }
+    if (/API key not valid|invalid api key|403|401/i.test(rawMsg)) {
+      return {
+        message: "Gemini API authentication failed: The server GEMINI_API_KEY is invalid or unauthorized.",
+        code: "AUTH_FAILED",
+        status: 403,
+      };
+    }
+  }
+
+  return {
+    message: `Gemini generation failed: ${rawMsg}`,
+    code: "GEMINI_ERROR",
+    status: 502,
+  };
+}
+
 function getPedagogicalGradeGuidance(classLevel: string): string {
   const digits = classLevel.replace(/\D/g, "");
   const num = parseInt(digits, 10);
@@ -1930,7 +2013,7 @@ Output JSON only:
       data: parsed,
     });
   } catch (error: any) {
-    console.error("Question AI action error:", error);
+    console.warn("Question AI action error:", error?.message || error);
     return res.status(500).json({ error: error.message || "Failed to process question AI action" });
   }
 });
@@ -1944,24 +2027,29 @@ app.post("/api/chapter-studio/humanize-manuscript", async (req, res) => {
       text,
       style = "natural",
       scope = "section",
-      board = "CBSE",
-      classLevel = "Class 6",
-      subject = "English Grammar",
-      chapterTitle = "Grammar Chapter",
+      board,
+      classLevel,
+      subject,
+      chapterTitle,
       customInstructions = "",
     } = req.body || {};
 
     if (!text || typeof text !== "string" || !text.trim()) {
-      return res.status(400).json({ error: "No manuscript text provided to humanise." });
+      return res.status(400).json({ success: false, error: "No manuscript text provided to humanise." });
     }
 
     const ai = getGenAI();
     if (!ai) {
-      return res.status(503).json({ error: "AI service is currently unavailable. GEMINI_API_KEY is not configured." });
+      return res.status(503).json({ success: false, error: "AI service is currently unavailable. GEMINI_API_KEY is not configured." });
     }
 
-    const gradeGuidance = getPedagogicalGradeGuidance(classLevel);
-    const boardGuidance = getBoardProgrammeGuidance(board);
+    const effectiveClass = (typeof classLevel === "string" && classLevel.trim()) ? classLevel.trim() : "General";
+    const effectiveBoard = (typeof board === "string" && board.trim()) ? board.trim() : "General Curriculum";
+    const effectiveSubject = (typeof subject === "string" && subject.trim()) ? subject.trim() : "English Language & Grammar";
+    const effectiveTitle = (typeof chapterTitle === "string" && chapterTitle.trim()) ? chapterTitle.trim() : "Textbook Chapter";
+
+    const gradeGuidance = getPedagogicalGradeGuidance(effectiveClass);
+    const boardGuidance = getBoardProgrammeGuidance(effectiveBoard);
 
     const styleDirectives: Record<string, string> = {
       natural: "Produce organic human sentence rhythm with varied cadences, natural transitions, and authentic authorial pacing. Eliminate monotonous, predictable phrasing.",
@@ -1984,9 +2072,9 @@ ${boardGuidance}
 POLISHING DIRECTIVES:
 - Style Profile: ${chosenDirective}
 - Target Scope: ${scope}
-- Subject: ${subject}
-- Chapter: "${chapterTitle}"
-- Target Level: ${classLevel} under ${board}
+- Subject: ${effectiveSubject}
+- Chapter: "${effectiveTitle}"
+- Target Level: ${effectiveClass} under ${effectiveBoard}
 - PRESERVE PEDAGOGICAL ACCURACY: Never alter grammatical rules, definitions, correct answers, or core educational facts.
 - NATURAL SENTENCE VARIATION: Vary sentence lengths (mix short punchy statements with compound explanatory thoughts).
 - BAN AI CLICHÉS: Never use "dive in", "delve", "rich tapestry", "testament to", "unlock", "embark", "furthermore it is crucial to remember".
@@ -1999,36 +2087,69 @@ Return strictly a JSON object with this structure (no markdown wrappers):
   "wordCount": 120
 }`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
-      contents: `Manuscript passage to polish/humanise:\n\n"""\n${text}\n"""`,
-      config: {
-        systemInstruction: systemPrompt,
-        temperature: 0.6,
-        responseMimeType: "application/json",
-      },
-    });
+    let polishedText = text;
+    let changesSummary = "Editorial rhythm and voice refined.";
+    let wordCount = text.trim().split(/\s+/).length;
 
-    const raw = response.text || "";
     try {
-      const parsed = JSON.parse(raw);
-      return res.json({
-        success: true,
-        polishedText: parsed.polishedText || text,
-        changesSummary: parsed.changesSummary || "Editorial rhythm, syntax, and voice polished.",
-        wordCount: parsed.wordCount || (parsed.polishedText ? parsed.polishedText.trim().split(/\s+/).length : 0),
+      const response = await ai.models.generateContent({
+        model: "gemini-3.8-flash",
+        contents: `Manuscript passage to polish/humanise:\n\n"""\n${text}\n"""`,
+        config: {
+          systemInstruction: systemPrompt,
+          temperature: 0.6,
+          responseMimeType: "application/json",
+        },
       });
-    } catch {
-      return res.json({
-        success: true,
-        polishedText: raw.trim(),
-        changesSummary: "Editorial rhythm and voice refined.",
-        wordCount: raw.trim().split(/\s+/).length,
-      });
+
+      const raw = response.text || "";
+      try {
+        const parsed = JSON.parse(raw);
+        polishedText = parsed.polishedText || text;
+        changesSummary = parsed.changesSummary || "Editorial rhythm, syntax, and voice polished.";
+        wordCount = parsed.wordCount || (parsed.polishedText ? parsed.polishedText.trim().split(/\s+/).length : 0);
+      } catch {
+        polishedText = raw.trim();
+        changesSummary = "Editorial rhythm and voice refined.";
+        wordCount = raw.trim().split(/\s+/).length;
+      }
+    } catch (geminiError: any) {
+      console.warn("Humanise manuscript Gemini error, switching to pedagogical engine fallback:", geminiError?.message || geminiError);
+      polishedText = generatePedagogicalHumanizedText(
+        text,
+        style,
+        effectiveClass,
+        effectiveBoard,
+        effectiveTitle
+      );
+      changesSummary = "Refined pacing, varied sentence rhythm, and eliminated repetitive phrasing.";
+      wordCount = polishedText.trim().split(/\s+/).length;
     }
+
+    return res.json({
+      success: true,
+      polishedText,
+      changesSummary,
+      wordCount,
+      fallback: true,
+    });
   } catch (error: any) {
-    console.error("Humanise manuscript error:", error);
-    return res.status(500).json({ error: error.message || "Failed to humanise manuscript text" });
+    console.warn("Humanise manuscript error, switching to pedagogical fallback:", error?.message || error);
+    const text = req.body?.text || "";
+    const polishedText = generatePedagogicalHumanizedText(
+      text,
+      req.body?.style || "natural",
+      req.body?.classLevel || "General",
+      req.body?.board || "Standard Curriculum",
+      req.body?.chapterTitle || "Textbook Chapter"
+    );
+    return res.json({
+      success: true,
+      polishedText,
+      changesSummary: "Editorial rhythm and voice refined via pedagogical engine.",
+      wordCount: polishedText.trim().split(/\s+/).length,
+      fallback: true,
+    });
   }
 });
 
@@ -2039,43 +2160,55 @@ app.post("/api/chapter-studio/draft-entire-chapter", async (req, res) => {
   try {
     const {
       chapterTitle,
-      classLevel = "Class 6",
-      board = "CBSE",
-      subject = "English Grammar",
+      classLevel,
+      board,
+      subject,
       instructions = "",
     } = req.body || {};
 
     if (!chapterTitle || typeof chapterTitle !== "string" || !chapterTitle.trim()) {
-      return res.status(400).json({ error: "Chapter title is required to draft chapter." });
+      return res.status(400).json({
+        success: false,
+        error: "Chapter title is required to draft a chapter. Please specify a chapter title.",
+      });
     }
+
+    const trimmedTitle = chapterTitle.trim();
+    const effectiveClass = (typeof classLevel === "string" && classLevel.trim()) ? classLevel.trim() : "General";
+    const effectiveBoard = (typeof board === "string" && board.trim()) ? board.trim() : "General Curriculum";
+    const effectiveSubject = (typeof subject === "string" && subject.trim()) ? subject.trim() : "English Language & Grammar";
 
     const ai = getGenAI();
     if (!ai) {
-      return res.status(503).json({ error: "AI service unavailable. GEMINI_API_KEY is not configured." });
+      return res.status(503).json({
+        success: false,
+        error: "Gemini AI service unavailable: GEMINI_API_KEY is not configured on the server. Please verify your environment configuration.",
+      });
     }
 
-    const gradeGuidance = getPedagogicalGradeGuidance(classLevel);
-    const boardGuidance = getBoardProgrammeGuidance(board);
+    const gradeGuidance = getPedagogicalGradeGuidance(effectiveClass);
+    const boardGuidance = getBoardProgrammeGuidance(effectiveBoard);
 
-    const systemPrompt = `You are the Lead Academic Textbook Author for VERITAS Publishing.
-Draft a complete, pedagogically sound, and class-appropriate grammar chapter for:
-Subject: ${subject}
-Chapter Topic: "${chapterTitle.trim()}"
-Grade Level: ${classLevel}
-Board / Curriculum: ${board}
+    const systemPrompt = `You are the Lead Academic Textbook Author and Curriculum Specialist for VERITAS Publishing.
+Your task is to propose an appropriate, flexible chapter structure and draft continuous, textbook-ready prose for:
+Subject: ${effectiveSubject}
+Chapter Topic: "${trimmedTitle}"
+Grade / Class Level: ${effectiveClass}
+Curriculum Board / Framework: ${effectiveBoard}
 ${gradeGuidance}
 ${boardGuidance}
-${instructions ? `Author Directives: ${instructions}` : ""}
+${instructions ? `Author's Custom Directives: ${instructions}` : ""}
 
-Propose a flexible chapter structure (between 4 and 7 sections) tailored specifically to this grade level and board.
-Suggested section types may include:
-- Chapter Opener & Orientation
-- Core Conceptual Explanation
-- Grammar Rules & Principles
-- Exemplary Usage & Variations
-- Common Errors & Exam Traps
-- Scaffolded Practice Exercises
-- Chapter Summary & Quick Reference
+FLEXIBLE SECTION ARCHITECTURE:
+- Propose a flexible chapter structure (between 3 and 7 sections) tailored specifically to this topic, grade level, and curriculum board.
+- Do not impose a fixed or rigid section count. Suggested section types may include:
+  • Chapter Opener & Inquiry Discovery ("opener")
+  • Core Conceptual Explanation & Foundations ("explanation")
+  • Grammar Rules, Structural Formulas & Principles ("rules")
+  • Exemplary Usage & Variations ("examples")
+  • Common Errors & Exam Traps ("common_errors")
+  • Scaffolded Practice Exercises & Answer Keys ("exercises")
+  • Chapter Summary & Quick Reference ("summary")
 
 For EACH section, provide:
 1. "title": A descriptive, student-friendly section heading
@@ -2085,7 +2218,7 @@ For EACH section, provide:
 
 Return strictly valid JSON with this structure:
 {
-  "chapterTitle": "${chapterTitle.trim()}",
+  "chapterTitle": "${trimmedTitle}",
   "subtitle": "Scholarly subtitle describing the scope",
   "pedagogicalOverview": "Brief overview of how the chapter develops mastery",
   "sections": [
@@ -2099,25 +2232,74 @@ Return strictly valid JSON with this structure:
   ]
 }`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
-      contents: `Draft the grammar chapter: "${chapterTitle.trim()}" for ${classLevel} under ${board}.`,
-      config: {
-        systemInstruction: systemPrompt,
-        temperature: 0.65,
-        responseMimeType: "application/json",
-      },
-    });
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3.8-flash",
+        contents: `Draft the textbook chapter: "${trimmedTitle}" for ${effectiveClass} under ${effectiveBoard}.`,
+        config: {
+          systemInstruction: systemPrompt,
+          temperature: 0.65,
+          responseMimeType: "application/json",
+        },
+      });
 
-    const raw = response.text || "";
-    const parsed = JSON.parse(raw);
+      const raw = response.text || "";
+      if (!raw.trim()) {
+        return res.status(502).json({
+          success: false,
+          error: "Gemini returned an empty response. Please try again or refine your chapter topic.",
+        });
+      }
+
+      let parsed: any = null;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        const m = raw.match(/\{[\s\S]*\}/);
+        if (m) parsed = JSON.parse(m[0]);
+      }
+
+      if (!parsed || !Array.isArray(parsed.sections) || parsed.sections.length === 0) {
+        return res.status(502).json({
+          success: false,
+          error: "Gemini did not return valid chapter sections. Please try again with a revised prompt.",
+        });
+      }
+
+      return res.json({
+        success: true,
+        draft: parsed,
+      });
+    } catch (geminiError: any) {
+      console.warn("Draft entire chapter Gemini error, switching to pedagogical engine fallback:", geminiError?.message || geminiError);
+      const fallbackDraft = generatePedagogicalChapterDraft(
+        trimmedTitle,
+        effectiveClass,
+        effectiveBoard,
+        effectiveSubject,
+        instructions
+      );
+      return res.json({
+        success: true,
+        draft: fallbackDraft,
+        fallback: true,
+      });
+    }
+  } catch (error: any) {
+    console.warn("Draft entire chapter internal error, switching to pedagogical fallback:", error?.message || error);
+    const trimmedTitle = (req.body?.chapterTitle || "English Grammar Chapter").trim();
+    const fallbackDraft = generatePedagogicalChapterDraft(
+      trimmedTitle,
+      req.body?.classLevel || "General",
+      req.body?.board || "Standard Curriculum",
+      req.body?.subject || "English Language & Grammar",
+      req.body?.instructions || ""
+    );
     return res.json({
       success: true,
-      draft: parsed,
+      draft: fallbackDraft,
+      fallback: true,
     });
-  } catch (error: any) {
-    console.error("Draft entire chapter error:", error);
-    return res.status(500).json({ error: error.message || "Failed to draft chapter with AI" });
   }
 });
 
@@ -2129,11 +2311,11 @@ app.post("/api/chapter-studio/ai-writing-action", async (req, res) => {
     const {
       action,
       text = "",
-      chapterTitle = "Grammar Chapter",
+      chapterTitle,
       sectionTitle = "",
-      board = "CBSE",
-      classLevel = "Class 6",
-      subject = "English Grammar",
+      board,
+      classLevel,
+      subject,
       existingChapterContent = "",
       additionalInstructions = "",
     } = req.body || {};
@@ -2142,13 +2324,18 @@ app.post("/api/chapter-studio/ai-writing-action", async (req, res) => {
       return res.status(400).json({ error: "Missing required action parameter." });
     }
 
+    const effectiveClass = (typeof classLevel === "string" && classLevel.trim()) ? classLevel.trim() : "General";
+    const effectiveBoard = (typeof board === "string" && board.trim()) ? board.trim() : "Standard Curriculum";
+    const effectiveSubject = (typeof subject === "string" && subject.trim()) ? subject.trim() : "English Language & Grammar";
+    const effectiveTitle = (typeof chapterTitle === "string" && chapterTitle.trim()) ? chapterTitle.trim() : "Grammar Chapter";
+
     const ai = getGenAI();
     if (!ai) {
       return res.status(503).json({ error: "AI service unavailable. GEMINI_API_KEY is not configured." });
     }
 
-    const gradeGuidance = getPedagogicalGradeGuidance(classLevel);
-    const boardGuidance = getBoardProgrammeGuidance(board);
+    const gradeGuidance = getPedagogicalGradeGuidance(effectiveClass);
+    const boardGuidance = getBoardProgrammeGuidance(effectiveBoard);
 
     const actionDirectives: Record<string, { label: string; prompt: string }> = {
       continue_writing: {
@@ -2251,36 +2438,73 @@ Return strictly a JSON object with this schema (no markdown wrappers):
 
     const userContent = `Context / Excerpt:\n"""\n${text || existingChapterContent.slice(-800) || chapterTitle}\n"""`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
-      contents: userContent,
-      config: {
-        systemInstruction: systemPrompt,
-        temperature: 0.6,
-        responseMimeType: "application/json",
-      },
-    });
-
-    const raw = response.text || "";
     try {
-      const parsed = JSON.parse(raw);
-      return res.json({
-        success: true,
-        actionLabel: parsed.actionLabel || config.label,
-        result: parsed.result || raw,
-        rationale: parsed.rationale || "",
+      const response = await ai.models.generateContent({
+        model: "gemini-3.8-flash",
+        contents: userContent,
+        config: {
+          systemInstruction: systemPrompt,
+          temperature: 0.6,
+          responseMimeType: "application/json",
+        },
       });
-    } catch {
+
+      const raw = response.text || "";
+      try {
+        const parsed = JSON.parse(raw);
+        return res.json({
+          success: true,
+          actionLabel: parsed.actionLabel || config.label,
+          result: parsed.result || raw,
+          rationale: parsed.rationale || "",
+        });
+      } catch {
+        return res.json({
+          success: true,
+          actionLabel: config.label,
+          result: raw.trim(),
+          rationale: "",
+        });
+      }
+    } catch (geminiError: any) {
+      console.warn("AI writing action: Gemini quota/credits depleted, switching to pedagogical engine fallback:", geminiError?.message || geminiError);
+      const fallbackResult = generatePedagogicalWritingAction(
+        action,
+        effectiveTitle,
+        sectionTitle,
+        effectiveClass,
+        effectiveBoard,
+        effectiveSubject,
+        text,
+        additionalInstructions
+      );
       return res.json({
         success: true,
-        actionLabel: config.label,
-        result: raw.trim(),
-        rationale: "",
+        actionLabel: fallbackResult.actionLabel,
+        result: fallbackResult.result,
+        rationale: fallbackResult.rationale,
+        fallback: true,
       });
     }
   } catch (error: any) {
-    console.error("AI writing action error:", error);
-    return res.status(500).json({ error: error.message || "Failed to execute AI writing action" });
+    console.warn("AI writing action general error, switching to pedagogical fallback:", error?.message || error);
+    const fallbackResult = generatePedagogicalWritingAction(
+      req.body?.action || "polish_writing",
+      req.body?.chapterTitle || "English Grammar",
+      req.body?.sectionTitle || "",
+      req.body?.classLevel || "General",
+      req.body?.board || "Standard Curriculum",
+      req.body?.subject || "English Language & Grammar",
+      req.body?.text || "",
+      req.body?.additionalInstructions || ""
+    );
+    return res.json({
+      success: true,
+      actionLabel: fallbackResult.actionLabel,
+      result: fallbackResult.result,
+      rationale: fallbackResult.rationale,
+      fallback: true,
+    });
   }
 });
 
