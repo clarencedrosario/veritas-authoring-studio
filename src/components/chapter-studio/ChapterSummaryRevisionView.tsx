@@ -25,13 +25,20 @@ export interface ChapterSummaryRevisionViewProps {
   isDarkMode: boolean;
 }
 
-export function getInitialRevisionDataForChapter(chapter: StudioChapter): ChapterRevisionData {
+export function getInitialRevisionDataForChapter(chapter: StudioChapter, seriesProject?: any): ChapterRevisionData {
   if (chapter.revisionData) {
     return chapter.revisionData;
   }
 
-  // If this is the Subject-Verb Agreement chapter, use the rich canonical data
+  const effectiveSubject = (chapter as any).subject || seriesProject?.subject || 'Academic Studies';
+  const isGrammar = /grammar|syntax|english language/i.test(chapter.category || '') || /grammar/i.test(effectiveSubject);
+  const isMath = /math/i.test(chapter.category || '') || /math/i.test(effectiveSubject);
+  const isScience = /science|biology|physics|chemistry/i.test(chapter.category || '') || /science|biology|physics|chemistry/i.test(effectiveSubject);
+  const isHistory = /history|civics|social/i.test(chapter.category || '') || /history|civics|social/i.test(effectiveSubject);
+
+  // If this is the Subject-Verb Agreement chapter in English Grammar, use the rich canonical data
   const isSva =
+    isGrammar &&
     chapter.title?.toLowerCase().includes('subject') &&
     chapter.title?.toLowerCase().includes('verb');
   if (isSva) {
@@ -53,8 +60,24 @@ export function getInitialRevisionDataForChapter(chapter: StudioChapter): Chapte
         ? chapter.rules.map((r) => ({ ruleTitle: r.ruleName, summary: r.ruleStatement }))
         : [
             {
-              ruleTitle: `Core Principle of ${chapter.title}`,
-              summary: `Fundamental grammatical law governing ${chapter.title}.`,
+              ruleTitle: isGrammar
+                ? `Core Principle of ${chapter.title}`
+                : isMath
+                ? `Core Theorem/Method of ${chapter.title}`
+                : isScience
+                ? `Core Scientific Law of ${chapter.title}`
+                : isHistory
+                ? `Key Periodization/Theme of ${chapter.title}`
+                : `Core Concept of ${chapter.title}`,
+              summary: isGrammar
+                ? `Fundamental grammatical law governing ${chapter.title}.`
+                : isMath
+                ? `Standard mathematical definition and application rule for ${chapter.title}.`
+                : isScience
+                ? `Governing scientific principle and mechanism for ${chapter.title}.`
+                : isHistory
+                ? `Contextual overview and historical significance of ${chapter.title}.`
+                : `Fundamental academic principle governing ${chapter.title}.`,
             },
           ]);
 
@@ -62,7 +85,7 @@ export function getInitialRevisionDataForChapter(chapter: StudioChapter): Chapte
       chapter.ending.commonTraps?.map((t) => ({
         mistake: t.trap,
         correction: t.fix,
-        why: `Violates standard grammatical rules for ${chapter.title}.`,
+        why: `Violates standard principles for ${chapter.title}.`,
       })) ||
       chapter.ending.commonMistakes?.map((cm) => ({
         mistake: cm.incorrectSentence,
@@ -77,31 +100,47 @@ export function getInitialRevisionDataForChapter(chapter: StudioChapter): Chapte
       })) ||
       chapter.opening?.keyVocabulary?.map((term) => ({
         term,
-        definition: `Core grammatical term for ${chapter.title}.`,
+        definition: `Core academic term for ${chapter.title}.`,
       })) || [];
 
     const rememberPoints =
       chapter.ending.summaryPoints ||
       chapter.ending.whatYouLearned || [
-        `Always verify grammatical agreement and context in ${chapter.title}.`,
+        `Always verify conceptual principles and context in ${chapter.title}.`,
         'Apply rules systematically before choosing your answer.',
       ];
 
     return {
       rulesAtAGlance,
-      keyConcepts: [chapter.title, 'Syntax', 'Form & Function'],
+      keyConcepts: isGrammar
+        ? [chapter.title, 'Syntax', 'Form & Function']
+        : isMath
+        ? [chapter.title, 'Formulae', 'Analytical Steps']
+        : isScience
+        ? [chapter.title, 'Empirical Principles', 'Mechanisms']
+        : isHistory
+        ? [chapter.title, 'Historical Factors', 'Significance']
+        : [chapter.title, 'Core Principles', 'Applications'],
       commonMistakes,
       rememberPoints,
       keyVocabulary,
       quickCheckQuestions: [
         {
-          prompt: `State the primary grammatical rule governing ${chapter.title}.`,
+          prompt: isGrammar
+            ? `State the primary grammatical rule governing ${chapter.title}.`
+            : isMath
+            ? `State the primary formula or principle governing ${chapter.title}.`
+            : isScience
+            ? `State the primary scientific mechanism explaining ${chapter.title}.`
+            : isHistory
+            ? `State the primary historical causes and outcomes of ${chapter.title}.`
+            : `Explain the fundamental concept of ${chapter.title}.`,
           answer: `Consult chapter section 1 for the fundamental definition and exemplary application.`,
         },
       ],
       revisionExercises: [chapter.title],
       challengeQuestions: [
-        `Construct an original complex sentence demonstrating accurate use of ${chapter.title}.`,
+        `Formulate an original response demonstrating advanced mastery of ${chapter.title}.`,
       ],
       selfAssessmentChecklist: [
         {
@@ -127,14 +166,26 @@ export function getInitialRevisionDataForChapter(chapter: StudioChapter): Chapte
         ? chapter.rules.map((r) => ({ ruleTitle: r.ruleName, summary: r.ruleStatement }))
         : [
             {
-              ruleTitle: `Core Principle of ${chapter.title}`,
-              summary: `Fundamental grammatical rule governing ${chapter.title}.`,
+              ruleTitle: isGrammar
+                ? `Core Principle of ${chapter.title}`
+                : isMath
+                ? `Core Formula of ${chapter.title}`
+                : isScience
+                ? `Core Law of ${chapter.title}`
+                : isHistory
+                ? `Key Period of ${chapter.title}`
+                : `Core Concept of ${chapter.title}`,
+              summary: isGrammar
+                ? `Fundamental grammatical rule governing ${chapter.title}.`
+                : `Fundamental academic principle governing ${chapter.title}.`,
             },
           ],
-    keyConcepts: [chapter.title, 'Grammatical Rules', 'Standard English Usage'],
+    keyConcepts: isGrammar
+      ? [chapter.title, 'Grammatical Rules', 'Standard English Usage']
+      : [chapter.title, 'Core Principles', 'Academic Foundations'],
     commonMistakes: [],
     rememberPoints: [
-      `Review key definitions and exemplary sentence patterns for ${chapter.title}.`,
+      `Review key definitions and exemplary patterns for ${chapter.title}.`,
       'Pay close attention to exceptions and boundary conditions.',
     ],
     keyVocabulary:
@@ -150,7 +201,7 @@ export function getInitialRevisionDataForChapter(chapter: StudioChapter): Chapte
     ],
     revisionExercises: [chapter.title],
     challengeQuestions: [
-      `Analyze an advanced sentence applying the rules of ${chapter.title}.`,
+      `Analyze an advanced problem applying the principles of ${chapter.title}.`,
     ],
     selfAssessmentChecklist: [
       {
@@ -158,7 +209,7 @@ export function getInitialRevisionDataForChapter(chapter: StudioChapter): Chapte
         canDo: true,
       },
       {
-        statement: `I can apply these rules in written exercises accurately.`,
+        statement: `I can apply these principles in written exercises accurately.`,
         canDo: true,
       },
     ],
@@ -171,7 +222,23 @@ export const ChapterSummaryRevisionView: React.FC<ChapterSummaryRevisionViewProp
   seriesProject,
   isDarkMode,
 }) => {
-  const revision = getInitialRevisionDataForChapter(chapter);
+  const revision = getInitialRevisionDataForChapter(chapter, seriesProject);
+
+  const effectiveSubject = (chapter as any).subject || seriesProject?.subject || 'Academic Studies';
+  const isGrammar = /grammar|syntax|english language/i.test(chapter.category || '') || /grammar/i.test(effectiveSubject);
+  const isMath = /math/i.test(chapter.category || '') || /math/i.test(effectiveSubject);
+  const isScience = /science|biology|physics|chemistry/i.test(chapter.category || '') || /science|biology|physics|chemistry/i.test(effectiveSubject);
+  const isHistory = /history|civics|social/i.test(chapter.category || '') || /history|civics|social/i.test(effectiveSubject);
+
+  const rulesTabLabel = isGrammar
+    ? 'Rules at a Glance'
+    : isMath
+    ? 'Formulae & Principles'
+    : isScience
+    ? 'Laws & Principles'
+    : isHistory
+    ? 'Key Themes & Chronology'
+    : 'Core Principles & Key Concepts';
 
   const [activeTab, setActiveTab] = useState<
     'rules_glance' | 'common_mistakes' | 'vocabulary' | 'quick_check' | 'checklist'
@@ -206,8 +273,8 @@ export const ChapterSummaryRevisionView: React.FC<ChapterSummaryRevisionViewProp
       seriesProject?.activeSystemId ||
       seriesProject?.targetBoard ||
       'CISCE';
-    const subject = chapterAny.subject || seriesProject?.subject || 'English Grammar & Composition';
-    const topic = chapter.title || 'Subject-Verb Agreement';
+    const subject = chapterAny.subject || seriesProject?.subject || (isGrammar ? 'English Grammar & Composition' : 'Academic Studies');
+    const topic = chapter.title || (isGrammar ? 'Subject-Verb Agreement' : 'Core Study');
 
     try {
       const res = await fetch('/api/chapter-studio/generate-component', {
@@ -231,7 +298,7 @@ export const ChapterSummaryRevisionView: React.FC<ChapterSummaryRevisionViewProp
       if (generated) {
         const updatedRevision: ChapterRevisionData = {
           rulesAtAGlance: (generated.rulesAtAGlance || []).map((r: any) => ({
-            ruleTitle: r.rule || r.ruleTitle || 'Rule',
+            ruleTitle: r.rule || r.ruleTitle || (isGrammar ? 'Rule' : 'Principle'),
             summary: r.summary || '',
             example: r.example || undefined,
             trap: r.trap || undefined,
@@ -254,7 +321,7 @@ export const ChapterSummaryRevisionView: React.FC<ChapterSummaryRevisionViewProp
             statement: sa.statement || '',
             canDo: sa.canDo ?? true,
           })),
-          keyConcepts: generated.keyConcepts || revision.keyConcepts || [chapter.title, 'Syntax', 'Grammar'],
+          keyConcepts: generated.keyConcepts || revision.keyConcepts || [chapter.title, isGrammar ? 'Syntax' : 'Principles', isGrammar ? 'Grammar' : 'Framework'],
           rememberPoints: generated.rememberPoints || revision.rememberPoints || [],
           revisionExercises: generated.revisionExercises || revision.revisionExercises || [],
           challengeQuestions: generated.challengeQuestions || revision.challengeQuestions || [],
@@ -331,7 +398,7 @@ export const ChapterSummaryRevisionView: React.FC<ChapterSummaryRevisionViewProp
                     : 'text-[#71685E] hover:text-[#292521] hover:bg-[#EDE4D6]'
                 }`}
               >
-                Rules at a Glance
+                {rulesTabLabel}
               </button>
               <button
                 type="button"
@@ -387,7 +454,7 @@ export const ChapterSummaryRevisionView: React.FC<ChapterSummaryRevisionViewProp
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-serif font-bold text-[#35101F]">
-              Rules at a Glance for {chapter.title}
+              {rulesTabLabel} for {chapter.title}
             </h3>
             {isEditing && (
               <button
@@ -397,14 +464,17 @@ export const ChapterSummaryRevisionView: React.FC<ChapterSummaryRevisionViewProp
                     ...prev,
                     rulesAtAGlance: [
                       ...(prev.rulesAtAGlance || []),
-                      { ruleTitle: 'New Grammatical Rule', summary: 'Enter summary and exemplary formula.' },
+                      {
+                        ruleTitle: isGrammar ? 'New Grammatical Rule' : 'New Principle/Concept',
+                        summary: 'Enter summary and exemplary formula.',
+                      },
                     ],
                   }))
                 }
                 className="px-2.5 py-1 rounded bg-[#5A1832] text-white text-xs flex items-center gap-1 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Add Rule</span>
+                <span>Add {isGrammar ? 'Rule' : 'Principle'}</span>
               </button>
             )}
           </div>

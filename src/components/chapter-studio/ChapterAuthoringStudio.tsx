@@ -123,7 +123,28 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
   // Add Chapter Modal state
   const [showAddChapterModal, setShowAddChapterModal] = useState(false);
   const [newChapterTitleInput, setNewChapterTitleInput] = useState('');
-  const [newChapterCategoryInput, setNewChapterCategoryInput] = useState('Syntax & Concord');
+  const [newChapterCategoryInput, setNewChapterCategoryInput] = useState('');
+
+  const isGrammarProject = useMemo(() => {
+    const subj = ((seriesProject as any)?.subject || '').toLowerCase();
+    return /grammar|syntax|english language/.test(subj);
+  }, [seriesProject]);
+
+  // Extract unique categories already in the current book or project
+  const existingCategories = useMemo(() => {
+    const set = new Set<string>();
+    allCurrentBookTopics.forEach((t) => {
+      if (t.category && t.category.trim()) set.add(t.category.trim());
+    });
+    if (set.size === 0) {
+      if (isGrammarProject) {
+        ['Syntax & Concord', 'Parts of Speech', 'Verb Tenses & Aspect', 'Clauses & Sentence Structure', 'Vocabulary & Semantics', 'Punctuation & Mechanics'].forEach((c) => set.add(c));
+      } else {
+        ['Core Foundations', 'Key Concepts & Principles', 'Processes & Methods', 'Applied Studies', 'Advanced Applications'].forEach((c) => set.add(c));
+      }
+    }
+    return Array.from(set);
+  }, [allCurrentBookTopics, isGrammarProject]);
 
   const handleSelectChapter = (topicId: string) => {
     const foundTopic = allCurrentBookTopics.find((t) => t.id === topicId);
@@ -488,9 +509,9 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
 
   // Add Chapter to Book (adheres to: A BOOK HAS NO FIXED NUMBER OF CHAPTERS)
   const handleAddNewChapter = (title: string, category?: string) => {
-    const chapTitle = title.trim() || `Chapter ${allCurrentBookTopics.length + 1}: New Grammar Study`;
-    const cat = category?.trim() || 'Syntax & Concord';
     const nextNum = allCurrentBookTopics.length + 1;
+    const chapTitle = title.trim() || `Chapter ${nextNum}: Untitled Chapter`;
+    const cat = category?.trim() || existingCategories[0] || (isGrammarProject ? 'Syntax & Concord' : 'General');
     const newTopicId = `top-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 
     const newStudioChapter = createChapterFromArchitecture(
@@ -503,6 +524,8 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
     );
     newStudioChapter.category = cat;
 
+    const isGrammar = isGrammarProject || /grammar|syntax|english language/i.test(cat);
+
     const newTopic: GrammarTopic = {
       id: newTopicId,
       order: nextNum,
@@ -511,31 +534,37 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
       classLevel: targetClass,
       curriculumSystemId: targetSystem,
       overview: `Academic study of ${chapTitle} adhering to canonical book architecture.`,
-      learningObjectives: [
-        `Understand foundational grammatical rules of ${chapTitle}`,
-        `Apply structural rules in sentence formation`,
-        `Identify and rectify common errors in board examinations`,
-      ],
+      learningObjectives: isGrammar
+        ? [
+            `Understand foundational grammatical rules of ${chapTitle}`,
+            `Apply structural rules in sentence formation`,
+            `Identify and rectify common errors in board examinations`,
+          ]
+        : [
+            `Understand foundational concepts and principles of ${chapTitle}`,
+            `Apply conceptual frameworks and analytical methods`,
+            `Identify and rectify common misconceptions in examinations`,
+          ],
       definitions: [
         {
           id: `def-${newTopicId}-1`,
           term: chapTitle,
           partOfSpeechOrCategory: cat,
-          ageAppropriateExplanation: `Essential grammatical explanation of ${chapTitle} for ${targetClass}.`,
-          rules: [`Core standard rule for ${chapTitle}.`],
+          ageAppropriateExplanation: `Essential academic explanation of ${chapTitle} for ${targetClass}.`,
+          rules: [`Core standard principle for ${chapTitle}.`],
           examples: [
             {
-              sentence: `Illustrative sentence demonstrating ${chapTitle}.`,
-              note: 'Standard declarative application.',
+              sentence: `Illustrative example demonstrating ${chapTitle}.`,
+              note: 'Standard application.',
             },
           ],
         },
       ],
-      notesAndTheoryMarkdown: `# ${chapTitle}\n\nDetailed pedagogical notes and syntactic theory conforming to standard book architecture.`,
+      notesAndTheoryMarkdown: `# ${chapTitle}\n\nDetailed pedagogical notes and conceptual framework conforming to standard book architecture.`,
       exercises: newStudioChapter.exercises.map((ex) => ({
         id: `ex-${newTopicId}-${ex.letter}`,
         title: ex.title,
-        instructions: ex.instructions || 'Complete the following grammatical practice items.',
+        instructions: ex.instructions || 'Complete the following practice items.',
         targetType: ((ex as any).targetType as any) || 'mixed',
         tier: ((ex as any).tier as any) || 'mixed',
         difficulty: 'Medium' as const,
@@ -1556,30 +1585,57 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
                   type="text"
                   value={newChapterTitleInput}
                   onChange={(e) => setNewChapterTitleInput(e.target.value)}
-                  placeholder="e.g. Non-Finite Verbs: Infinitives, Gerunds &amp; Participles"
+                  placeholder={
+                    isGrammarProject
+                      ? "e.g. Non-Finite Verbs: Infinitives, Gerunds & Participles"
+                      : "e.g. Linear Equations, Cell Structure, The French Revolution..."
+                  }
                   className="w-full rounded-xl border border-[#CBBEAC] bg-[#F6F0E7]/50 px-3 py-2 text-xs text-[#292521] focus:outline-none focus:border-[#5A1832] focus:bg-[#FFFDF8]"
                   autoFocus
                 />
+                <p className="text-[10px] text-[#71685E] mt-1">
+                  Leave blank to default to: <span className="font-mono italic">Chapter {allCurrentBookTopics.length + 1}: Untitled Chapter</span>
+                </p>
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-[#5A1832] uppercase tracking-wider mb-1">
-                  Grammar Category
-                </label>
-                <select
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold text-[#5A1832] uppercase tracking-wider">
+                    {isGrammarProject ? 'Grammar Category / Strand' : 'Category / Strand / Domain'}
+                  </label>
+                  <span className="text-[10px] text-[#71685E]">Select or type custom</span>
+                </div>
+                <input
+                  type="text"
+                  list="category-suggestions"
                   value={newChapterCategoryInput}
                   onChange={(e) => setNewChapterCategoryInput(e.target.value)}
+                  placeholder={existingCategories[0] || (isGrammarProject ? 'Syntax & Concord' : 'General')}
                   className="w-full rounded-xl border border-[#CBBEAC] bg-[#F6F0E7]/50 px-3 py-2 text-xs text-[#292521] focus:outline-none focus:border-[#5A1832] focus:bg-[#FFFDF8]"
-                >
-                  <option value="Syntax & Concord">Syntax &amp; Concord</option>
-                  <option value="Morphology & Parts of Speech">Morphology &amp; Parts of Speech</option>
-                  <option value="Verb Tenses & Aspect">Verb Tenses &amp; Aspect</option>
-                  <option value="Active & Passive Voice">Active &amp; Passive Voice</option>
-                  <option value="Direct & Indirect Speech">Direct &amp; Indirect Speech</option>
-                  <option value="Clauses & Sentence Structure">Clauses &amp; Sentence Structure</option>
-                  <option value="Vocabulary & Semantics">Vocabulary &amp; Semantics</option>
-                  <option value="Punctuation & Mechanics">Punctuation &amp; Mechanics</option>
-                </select>
+                />
+                <datalist id="category-suggestions">
+                  {existingCategories.map((cat) => (
+                    <option key={cat} value={cat} />
+                  ))}
+                </datalist>
+                {existingCategories.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {existingCategories.slice(0, 5).map((cat) => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setNewChapterCategoryInput(cat)}
+                        className={`text-[10px] px-2 py-0.5 rounded-md border transition-colors cursor-pointer ${
+                          newChapterCategoryInput === cat
+                            ? 'bg-[#5A1832] text-[#FFFDF8] border-[#5A1832]'
+                            : 'bg-[#FFFDF8] text-[#71685E] border-[#CBBEAC] hover:border-[#5A1832]'
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="p-2.5 rounded-xl bg-[#EDE4D6]/60 border border-[#CBBEAC]/80 text-[11px] text-[#71685E] space-y-1">

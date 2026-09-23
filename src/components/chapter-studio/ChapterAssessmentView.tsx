@@ -73,8 +73,13 @@ export const ChapterAssessmentView: React.FC<ChapterAssessmentViewProps> = ({
   ]);
 
   const activeSubject = useMemo(() => {
-    return chapterAny.subject || seriesProject?.subject || 'English Grammar & Composition';
+    return chapterAny.subject || seriesProject?.subject || 'Academic Studies';
   }, [chapterAny.subject, seriesProject]);
+
+  const isGrammar = /grammar|syntax|english language/i.test(chapter.category || '') || /grammar/i.test(activeSubject);
+  const isMath = /math/i.test(chapter.category || '') || /math/i.test(activeSubject);
+  const isScience = /science|biology|physics|chemistry/i.test(chapter.category || '') || /science|biology|physics|chemistry/i.test(activeSubject);
+  const isHistory = /history|civics|social/i.test(chapter.category || '') || /history|civics|social/i.test(activeSubject);
 
   // Read or initialize canonical assessment test
   const activeTest = chapter.chapterTest;
@@ -107,20 +112,15 @@ export const ChapterAssessmentView: React.FC<ChapterAssessmentViewProps> = ({
     if (isCreatingTest) return;
     setIsCreatingTest(true);
 
-    const newPaper: AssessmentPaper = {
-      id: `paper-${Date.now()}`,
-      title: `${chapter.title} — Chapter Mastery Assessment`,
-      targetClass: activeClassLevel,
-      totalMarks: 25,
-      durationMinutes: 45,
-      instructions: [
-        'Attempt all questions carefully.',
-        'Marks for each question are indicated in brackets against it.',
-        'Adhere strictly to standard grammatical concord and correct orthography.',
-        'Do not alter the fundamental meaning in sentence transformation questions.',
-      ],
-      boardTarget: activeBoard,
-      sections: [
+    const isSva =
+      isGrammar &&
+      chapter.title?.toLowerCase().includes('subject') &&
+      chapter.title?.toLowerCase().includes('verb');
+
+    let defaultSections: AssessmentSection[];
+
+    if (isSva) {
+      defaultSections = [
         {
           id: 'sec-a',
           title: 'Section A: Objective Identification & Recall',
@@ -196,7 +196,115 @@ export const ChapterAssessmentView: React.FC<ChapterAssessmentViewProps> = ({
             },
           ],
         },
+      ];
+    } else {
+      defaultSections = [
+        {
+          id: 'sec-a',
+          title: `Section A: Foundational Concepts & Identification`,
+          instructions: `Attempt all questions. Select or supply the accurate answer.`,
+          marksAllocation: 5,
+          questions: [
+            {
+              id: `q-${Date.now()}-1`,
+              type: 'mcq',
+              prompt: `Which of the following statements best defines the fundamental principle of ${chapter.title}?`,
+              options: [
+                `A) Primary conceptual formulation of ${chapter.title} under standard conditions.`,
+                `B) Incomplete or boundary-case exception misapplied as general law.`,
+                `C) Inverted definition lacking necessary qualifying terms.`,
+                `D) Unrelated secondary theorem.`,
+              ],
+              correctAnswer: `A) Primary conceptual formulation of ${chapter.title} under standard conditions.`,
+              explanation: `Option A accurately states the governing definition and standard criteria for ${chapter.title}.`,
+              marks: 1,
+              difficulty: 'Easy',
+              cognitiveLevel: 'Remembering',
+              conceptTested: `${chapter.title} Core Definition`,
+            },
+            {
+              id: `q-${Date.now()}-2`,
+              type: 'fill_in_blanks',
+              prompt: `Complete the key principle statement for ${chapter.title}:`,
+              blanksSentence: `In the study of ${chapter.title}, the primary principle is ___ [fundamentally verified].`,
+              correctAnswer: 'fundamentally verified',
+              explanation: `Standard formulation required by the syllabus for ${chapter.title}.`,
+              marks: 1,
+              difficulty: 'Medium',
+              cognitiveLevel: 'Understanding',
+              conceptTested: `${chapter.title} Key Terms`,
+            },
+          ],
+        },
+        {
+          id: 'sec-b',
+          title: isMath
+            ? 'Section B: Problem Solving & Derivations'
+            : isScience
+            ? 'Section B: Analysis & Scientific Reasoning'
+            : isHistory
+            ? 'Section B: Historical Source & Causation Analysis'
+            : 'Section B: Analytical Application & Problem Solving',
+          instructions: isMath
+            ? 'Provide complete step-by-step working and units.'
+            : isScience
+            ? 'State scientific principles and clear causal reasoning.'
+            : isHistory
+            ? 'Support your analysis with chronology, factors, and outcomes.'
+            : 'Provide comprehensive, step-by-step explanations.',
+          marksAllocation: 10,
+          questions: [
+            {
+              id: `q-${Date.now()}-3`,
+              type: 'short_answer' as any,
+              prompt: `Explain the fundamental concept of ${chapter.title} and illustrate its application with a worked example.`,
+              correctAnswer: `Comprehensive explanation covering definition, methodology, and verified application of ${chapter.title}.`,
+              explanation: `Demonstrates conceptual grasp and procedural competence in ${chapter.title}.`,
+              marks: 3,
+              difficulty: 'Medium',
+              cognitiveLevel: 'Applying',
+              conceptTested: `${chapter.title} Application`,
+            },
+            {
+              id: `q-${Date.now()}-4`,
+              type: 'short_answer' as any,
+              prompt: `Analyze a non-routine scenario involving ${chapter.title} and resolve the underlying challenge systematically.`,
+              correctAnswer: `Step-by-step resolution addressing boundary conditions and validating the final outcome.`,
+              explanation: `Tests higher-order problem-solving and critical reasoning.`,
+              marks: 4,
+              difficulty: 'Hard',
+              cognitiveLevel: 'Analysing',
+              conceptTested: `${chapter.title} Higher-Order Problem Solving`,
+            },
+          ],
+        },
+      ];
+    }
+
+    const newPaper: AssessmentPaper = {
+      id: `paper-${Date.now()}`,
+      title: `${chapter.title} — Chapter Mastery Assessment`,
+      targetClass: activeClassLevel,
+      totalMarks: 25,
+      durationMinutes: 45,
+      instructions: [
+        'Attempt all questions carefully.',
+        'Marks for each question are indicated in brackets against it.',
+        isGrammar
+          ? 'Adhere strictly to standard grammatical concord and correct orthography.'
+          : isMath
+          ? 'Show all intermediate working steps, formulae, and units clearly.'
+          : isScience
+          ? 'State scientific principles, equations, and units wherever applicable.'
+          : isHistory
+          ? 'Support your answers with historical evidence, chronology, and key terms.'
+          : 'Answer clearly and justify your answers where required.',
+        isGrammar
+          ? 'Do not alter the fundamental meaning in sentence transformation questions.'
+          : 'Review all completed solutions before submission.',
       ],
+      boardTarget: activeBoard,
+      sections: defaultSections,
     };
 
     persistTest(newPaper);
@@ -747,7 +855,15 @@ export const ChapterAssessmentView: React.FC<ChapterAssessmentViewProps> = ({
                 Full Marks (100%)
               </span>
               <p className="text-xs text-emerald-950 leading-relaxed font-serif">
-                Exact grammatical concord strictly applied. No orthographic or punctuation errors. Sentence retains original semantic intent in transformations.
+                {isGrammar
+                  ? 'Exact grammatical concord strictly applied. No orthographic or punctuation errors. Sentence retains original semantic intent in transformations.'
+                  : isMath
+                  ? 'Complete and mathematically accurate working shown. Correct formula applied, algebraic precision maintained, and final answer with correct units.'
+                  : isScience
+                  ? 'Accurate scientific terminology and principles stated. Precise diagrams/equations provided with correct units and systematic reasoning.'
+                  : isHistory
+                  ? 'Comprehensive and factually accurate response with relevant dates, causation factors, and contextual significance demonstrated.'
+                  : 'Complete, accurate response satisfying all question criteria with systematic reasoning and precise domain terminology.'}
               </p>
             </div>
 
@@ -756,7 +872,15 @@ export const ChapterAssessmentView: React.FC<ChapterAssessmentViewProps> = ({
                 Partial Credit (50%)
               </span>
               <p className="text-xs text-amber-950 leading-relaxed font-serif">
-                Correct finite verb identified, but minor transcription or punctuation slip. Proximity concord recognized in correlative conjunctions with partial syntactic error.
+                {isGrammar
+                  ? 'Correct finite verb identified, but minor transcription or punctuation slip. Proximity concord recognized in correlative conjunctions with partial syntactic error.'
+                  : isMath
+                  ? 'Correct method and formula applied, but minor arithmetic calculation error or missing final units.'
+                  : isScience
+                  ? 'Correct scientific concept recognized, but incomplete explanation of mechanism or minor omissions in step reasoning.'
+                  : isHistory
+                  ? 'Accurate historical facts cited, but limited depth in analysis of causation or incomplete chronologic sequence.'
+                  : 'Partially accurate response demonstrating fundamental understanding with minor procedural or explanatory gaps.'}
               </p>
             </div>
 
@@ -765,7 +889,15 @@ export const ChapterAssessmentView: React.FC<ChapterAssessmentViewProps> = ({
                 Zero Credit (0%)
               </span>
               <p className="text-xs text-rose-950 leading-relaxed font-serif">
-                Failure of subject-verb concord. Selecting the intervening distractor noun. Altering the core grammatical meaning of the specimen sentence.
+                {isGrammar
+                  ? 'Failure of grammatical concord. Selecting the distractor option. Altering the core grammatical meaning of the specimen sentence.'
+                  : isMath
+                  ? 'Incorrect formula, flawed mathematical reasoning, or complete misunderstanding of the problem statement.'
+                  : isScience
+                  ? 'Factually incorrect scientific assertions, false mechanisms, or failure to address the core prompt.'
+                  : isHistory
+                  ? 'Historically inaccurate facts, erroneous chronologies, or unrelated assertions.'
+                  : 'Incorrect response displaying fundamental misconceptions or failing to address the question prompt.'}
               </p>
             </div>
           </div>

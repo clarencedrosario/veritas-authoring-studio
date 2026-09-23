@@ -30,6 +30,9 @@ export interface ChallengeProblemItem {
   prompt: string;
   hint?: string;
   modelAnswer?: string;
+  rationale?: string;
+  solutionReasoning?: string;
+  conceptualExplanation?: string;
   grammaticalRationale?: string;
   commonPitfall?: string;
   marks?: number;
@@ -43,41 +46,114 @@ export const ChapterChallengeDrillView: React.FC<ChapterChallengeDrillViewProps>
   seriesProject,
   isDarkMode = false,
 }) => {
+  const effectiveSubject = (chapter as any).subject || seriesProject?.subject || 'Academic Studies';
+  const isGrammar = /grammar|syntax|english language/i.test(chapter.category || '') || /grammar/i.test(effectiveSubject);
+  const isMath = /math/i.test(chapter.category || '') || /math/i.test(effectiveSubject);
+  const isScience = /science|biology|physics|chemistry/i.test(chapter.category || '') || /science|biology|physics|chemistry/i.test(effectiveSubject);
+  const isHistory = /history|civics|social/i.test(chapter.category || '') || /history|civics|social/i.test(effectiveSubject);
+
+  const rationaleLabel = isGrammar
+    ? 'Grammatical Rationale & Syntactic Analysis'
+    : isMath
+    ? 'Mathematical Derivation & Proof'
+    : isScience
+    ? 'Scientific Reasoning & Empirical Principle'
+    : isHistory
+    ? 'Historical Evidence & Analytical Reasoning'
+    : 'Conceptual Rationale & Explanation';
+
   // Normalize existing challenge problems
   const initialProblems: ChallengeProblemItem[] = (chapter.challengeProblems || []).map((cp, idx) => ({
     id: cp.id || `chal-${idx + 1}`,
     title: cp.title || `Challenge Problem ${idx + 1}`,
     prompt: cp.prompt || '',
     modelAnswer: cp.modelAnswer || '',
-    hint: (cp as any).hint || 'Look closely at intervening parenthetical clauses and structural head nouns.',
-    grammaticalRationale: (cp as any).grammaticalRationale || 'Requires non-local syntactic agreement.',
-    commonPitfall: (cp as any).commonPitfall || 'Proximity attraction to the noun immediately preceding the verb.',
+    hint: (cp as any).hint || (isGrammar ? 'Look closely at intervening parenthetical clauses and structural head nouns.' : 'Analyze the core constraints and governing principles.'),
+    rationale: (cp as any).rationale || (cp as any).solutionReasoning || (cp as any).grammaticalRationale || '',
+    grammaticalRationale: (cp as any).grammaticalRationale || (cp as any).rationale || '',
+    commonPitfall: (cp as any).commonPitfall || (isGrammar ? 'Proximity attraction to the noun immediately preceding the verb.' : 'Common surface misconception or sign error.'),
     marks: (cp as any).marks || 3,
     difficulty: (cp as any).difficulty || 'Olympiad',
     cognitiveLevel: (cp as any).cognitiveLevel || 'Evaluating',
   }));
 
+  const defaultProblem: ChallengeProblemItem = isGrammar
+    ? {
+        id: 'chal-sva-1',
+        title: 'The Royal Fleet & Inverted Complementation',
+        prompt:
+          'Analyze the sentence: "Down the stormy channel, accompanied by three smaller escorts, (sail / sails) the flagship of the Admiral." Determine the correct finite verb and provide full syntactic justification.',
+        hint: 'Identify the true head noun after subject-verb inversion.',
+        modelAnswer:
+          'The correct verb is "sails". The sentence is inverted; the true grammatical subject is the singular noun phrase "the flagship of the Admiral", not the fronted adverbial or the parenthetical escort adjunct.',
+        rationale:
+          'Inversion does not alter concord requirements; the singular head noun "flagship" requires the singular verb "sails".',
+        grammaticalRationale:
+          'Inversion does not alter concord requirements; the singular head noun "flagship" requires the singular verb "sails".',
+        commonPitfall:
+          'Attraction to the plural noun "escorts" in the parenthetical phrase or "channel" in the fronted prepositional phrase.',
+        marks: 3,
+        difficulty: 'Olympiad',
+        cognitiveLevel: 'Evaluating',
+      }
+    : isMath
+    ? {
+        id: `chal-math-1`,
+        title: `${chapter.title} — Non-Routine Olympiad Challenge`,
+        prompt: `Evaluate the given conditions for ${chapter.title} under multi-step constraints and determine the exact solution with step-by-step mathematical reasoning.`,
+        hint: 'Apply structural decomposition or algebraic invariant principles.',
+        modelAnswer: 'Complete multi-step mathematical derivation yielding verified solution.',
+        rationale: 'Derived from fundamental theorems without approximation errors.',
+        grammaticalRationale: 'Derived from fundamental theorems without approximation errors.',
+        commonPitfall: 'Sign error or overlooking boundary/domain restrictions.',
+        marks: 4,
+        difficulty: 'Olympiad',
+        cognitiveLevel: 'Evaluating',
+      }
+    : isScience
+    ? {
+        id: `chal-sci-1`,
+        title: `${chapter.title} — Experimental Analysis & Reasoning`,
+        prompt: `Anomalous observational data is gathered in a controlled experiment testing ${chapter.title}. Account for the phenomenon using core scientific laws.`,
+        hint: 'Examine independent and confounding variables.',
+        modelAnswer: 'Scientific explanation establishing the causal mechanism.',
+        rationale: 'Grounded in empirical laws and validated experimental evidence.',
+        grammaticalRationale: 'Grounded in empirical laws and validated experimental evidence.',
+        commonPitfall: 'Confusing correlation with causation or relying on surface analogies.',
+        marks: 4,
+        difficulty: 'Olympiad',
+        cognitiveLevel: 'Analysing',
+      }
+    : isHistory
+    ? {
+        id: `chal-hist-1`,
+        title: `${chapter.title} — Historiographical Inquiry`,
+        prompt: `Evaluate conflicting historical interpretations regarding ${chapter.title}. What primary evidence best supports the prevailing consensus?`,
+        hint: 'Critique the provenance and reliability of the conflicting sources.',
+        modelAnswer: 'Structured historical synthesis integrating contextual evidence.',
+        rationale: 'Corroborated by primary documentary evidence and critical source analysis.',
+        grammaticalRationale: 'Corroborated by primary documentary evidence and critical source analysis.',
+        commonPitfall: 'Anachronistic projection of modern concepts onto historical agents.',
+        marks: 4,
+        difficulty: 'Advanced',
+        cognitiveLevel: 'Evaluating',
+      }
+    : {
+        id: `chal-gen-1`,
+        title: `${chapter.title} — High-Order Analytical Application`,
+        prompt: `Analyze the core theoretical framework of ${chapter.title} in a complex scenario and formulate a rigorous solution.`,
+        hint: 'Synthesize foundational principles with contextual constraints.',
+        modelAnswer: 'Comprehensive analytical solution.',
+        rationale: 'Rigorous application of conceptual frameworks.',
+        grammaticalRationale: 'Rigorous application of conceptual frameworks.',
+        commonPitfall: 'Superficial recall without deep conceptual synthesis.',
+        marks: 4,
+        difficulty: 'Advanced',
+        cognitiveLevel: 'Analysing',
+      };
+
   const [problems, setProblems] = useState<ChallengeProblemItem[]>(
-    initialProblems.length > 0
-      ? initialProblems
-      : [
-          {
-            id: 'chal-sva-1',
-            title: 'The Royal Fleet & Inverted Complementation',
-            prompt:
-              'Analyze the sentence: "Down the stormy channel, accompanied by three smaller escorts, (sail / sails) the flagship of the Admiral." Determine the correct finite verb and provide full syntactic justification.',
-            hint: 'Identify the true head noun after subject-verb inversion.',
-            modelAnswer:
-              'The correct verb is "sails". The sentence is inverted; the true grammatical subject is the singular noun phrase "the flagship of the Admiral", not the fronted adverbial or the parenthetical escort adjunct.',
-            grammaticalRationale:
-              'Inversion does not alter concord requirements; the singular head noun "flagship" requires the singular verb "sails".',
-            commonPitfall:
-              'Attraction to the plural noun "escorts" in the parenthetical phrase or "channel" in the fronted prepositional phrase.',
-            marks: 3,
-            difficulty: 'Olympiad',
-            cognitiveLevel: 'Evaluating',
-          },
-        ]
+    initialProblems.length > 0 ? initialProblems : [defaultProblem]
   );
 
   const [isTeacherView, setIsTeacherView] = useState(true);
@@ -132,11 +208,34 @@ export const ChapterChallengeDrillView: React.FC<ChapterChallengeDrillViewProps>
   const handleAddNew = () => {
     const newItem: ChallengeProblemItem = {
       id: `chal-${Date.now()}`,
-      title: `Challenge ${problems.length + 1}: Syntactic Trap`,
+      title: isGrammar
+        ? `Challenge ${problems.length + 1}: Syntactic Trap`
+        : isMath
+        ? `Challenge ${problems.length + 1}: Non-Routine Problem`
+        : isScience
+        ? `Challenge ${problems.length + 1}: Deep Experimental Problem`
+        : isHistory
+        ? `Challenge ${problems.length + 1}: Historiographical Synthesis`
+        : `Challenge ${problems.length + 1}: High-Order Analytical Application`,
       prompt: 'Enter the Olympiad or competition-level challenge question prompt...',
-      hint: 'Guide students toward structural decomposition without revealing the answer.',
-      modelAnswer: 'Enter verified model solution and syntactic reasoning...',
-      grammaticalRationale: 'State the formal rule and justification...',
+      hint: isGrammar
+        ? 'Guide students toward structural decomposition without revealing the answer.'
+        : 'Guide students toward foundational principles and decomposition without revealing the answer.',
+      modelAnswer: isGrammar
+        ? 'Enter verified model solution and syntactic reasoning...'
+        : isMath
+        ? 'Enter verified model solution and step-by-step mathematical derivation...'
+        : 'Enter verified model solution and analytical justification...',
+      rationale: isGrammar
+        ? 'State the formal grammatical rule and concord justification...'
+        : isMath
+        ? 'State the formal mathematical theorem and proof...'
+        : isScience
+        ? 'State the governing empirical principle and reasoning...'
+        : 'State the core theoretical framework and rationale...',
+      grammaticalRationale: isGrammar
+        ? 'State the formal grammatical rule and concord justification...'
+        : 'State the formal academic justification...',
       commonPitfall: 'Describe the false intuition or trap students should avoid...',
       marks: 3,
       difficulty: 'Olympiad',
@@ -167,8 +266,8 @@ export const ChapterChallengeDrillView: React.FC<ChapterChallengeDrillViewProps>
       seriesProject?.activeSystemId ||
       seriesProject?.targetBoard ||
       '';
-    const subject = chapterAny.subject || seriesProject?.subject || 'English Grammar & Composition';
-    const topic = chapter.title || 'Subject-Verb Agreement';
+    const subject = chapterAny.subject || seriesProject?.subject || (isGrammar ? 'English Grammar & Composition' : 'Academic Studies');
+    const topic = chapter.title || (isGrammar ? 'Subject-Verb Agreement' : 'Core Chapter Study');
 
     if (!classLevel || !board) {
       setErrorMessage('Academic project context (Class Level and Curriculum Board) is required for authentic Olympiad generation.');
@@ -198,9 +297,10 @@ export const ChapterChallengeDrillView: React.FC<ChapterChallengeDrillViewProps>
         id: `chal-ai-${Date.now()}-${idx}`,
         title: cp.title || `Olympiad Drill ${problems.length + idx + 1}`,
         prompt: cp.prompt || '',
-        hint: cp.hint || 'Carefully analyze syntactic relations.',
+        hint: cp.hint || (isGrammar ? 'Carefully analyze syntactic relations.' : 'Examine fundamental constraints and invariants.'),
         modelAnswer: cp.modelAnswer || '',
-        grammaticalRationale: cp.grammaticalRationale || '',
+        rationale: cp.rationale || cp.solutionReasoning || cp.conceptualExplanation || cp.grammaticalRationale || '',
+        grammaticalRationale: cp.grammaticalRationale || cp.rationale || '',
         commonPitfall: cp.commonPitfall || '',
         marks: cp.marks || 3,
         difficulty: (cp.difficulty as any) || 'Olympiad',
@@ -239,7 +339,7 @@ export const ChapterChallengeDrillView: React.FC<ChapterChallengeDrillViewProps>
               Application &amp; Olympiad Challenge Drills
             </h2>
             <p className="text-xs text-[#71685E] mt-0.5">
-              Author competitive examination questions, deep syntactic puzzles, and high-order linguistic application tasks.
+              Author competitive examination questions, non-routine problems, and high-order analytical application tasks.
             </p>
           </div>
         </div>
@@ -387,16 +487,35 @@ export const ChapterChallengeDrillView: React.FC<ChapterChallengeDrillViewProps>
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-[11px] font-bold text-emerald-900 block mb-1">
-                    Model Solution &amp; Syntactic Reasoning:
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={editForm.modelAnswer || ''}
-                    onChange={(e) => setEditForm({ ...editForm, modelAnswer: e.target.value })}
-                    className="w-full text-xs p-2.5 rounded-lg bg-emerald-50/50 border border-emerald-300 text-emerald-950 font-serif leading-relaxed"
-                  />
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-[11px] font-bold text-emerald-900 block mb-1">
+                      Model Solution &amp; {isGrammar ? 'Syntactic Reasoning' : isMath ? 'Step-by-Step Derivation' : isScience ? 'Scientific Reasoning' : 'Analytical Justification'}:
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={editForm.modelAnswer || ''}
+                      onChange={(e) => setEditForm({ ...editForm, modelAnswer: e.target.value })}
+                      className="w-full text-xs p-2.5 rounded-lg bg-emerald-50/50 border border-emerald-300 text-emerald-950 font-serif leading-relaxed"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-[#5A1832] block mb-1">
+                      {rationaleLabel}:
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={editForm.rationale || editForm.grammaticalRationale || ''}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          rationale: e.target.value,
+                          grammaticalRationale: e.target.value,
+                        })
+                      }
+                      className="w-full text-xs p-2 rounded-lg bg-[#F6F0E7] border border-[#CBBEAC] text-[#292521]"
+                    />
+                  </div>
                 </div>
               </div>
             );
@@ -512,10 +631,10 @@ export const ChapterChallengeDrillView: React.FC<ChapterChallengeDrillViewProps>
                       <p className="font-serif text-emerald-950 leading-relaxed pl-5 font-medium">
                         {prob.modelAnswer}
                       </p>
-                      {prob.grammaticalRationale && (
+                      {(prob.rationale || prob.grammaticalRationale) && (
                         <p className="pl-5 pt-1 text-[11px] text-emerald-800 font-serif italic">
-                          <span className="font-bold">Syntactic Analysis: </span>
-                          {prob.grammaticalRationale}
+                          <span className="font-bold">{rationaleLabel}: </span>
+                          {prob.rationale || prob.grammaticalRationale}
                         </p>
                       )}
                     </div>

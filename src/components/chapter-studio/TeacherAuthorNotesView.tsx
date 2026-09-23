@@ -36,9 +36,62 @@ export const TeacherAuthorNotesView: React.FC<TeacherAuthorNotesViewProps> = ({
   seriesProject,
   isDarkMode = false,
 }) => {
-  const initialNotes = chapter.teacherAuthorNotes && chapter.teacherAuthorNotes.length > 0
-    ? chapter.teacherAuthorNotes
-    : CANONICAL_SVA_TEACHER_NOTES;
+  const chapterAny = chapter as any;
+  const effectiveSubject = chapterAny.subject || seriesProject?.subject || 'Academic Studies';
+  const isGrammar = /grammar|syntax|english language/i.test(chapter.category || '') || /grammar/i.test(effectiveSubject);
+  const isMath = /math/i.test(chapter.category || '') || /math/i.test(effectiveSubject);
+  const isScience = /science|biology|physics|chemistry/i.test(chapter.category || '') || /science|biology|physics|chemistry/i.test(effectiveSubject);
+  const isHistory = /history|civics|social/i.test(chapter.category || '') || /history|civics|social/i.test(effectiveSubject);
+
+  const isSva =
+    isGrammar &&
+    chapter.title?.toLowerCase().includes('subject') &&
+    chapter.title?.toLowerCase().includes('verb');
+
+  const initialNotes = useMemo(() => {
+    if (chapter.teacherAuthorNotes && chapter.teacherAuthorNotes.length > 0) {
+      return chapter.teacherAuthorNotes;
+    }
+    if (isSva) {
+      return CANONICAL_SVA_TEACHER_NOTES;
+    }
+    return [
+      {
+        id: `tg-pace-init`,
+        type: 'pacing_guide',
+        title: `Suggested Lesson Pacing Guide (${seriesProject?.activeSystemId || 'Curriculum'})`,
+        content: `• Period 1 (40 mins): Diagnostic Warmup & Core Concept Introduction for ${chapter.title}.\n• Period 2 (40 mins): Deep-Dive Exploration & Guided Problem Solving.\n• Period 3 (40 mins): Collaborative Student Drills & Error Analysis.\n• Period 4 (40 mins): Summative Assessment & Mastery Verification.`,
+        visibility: 'teacher_edition',
+        createdDate: new Date().toISOString().split('T')[0],
+      },
+      {
+        id: `tg-strat-init`,
+        type: 'teaching_strategy',
+        title: `Pedagogical Strategies for ${chapter.title}`,
+        content: isMath
+          ? `1. Concrete-Representational-Abstract (CRA) Sequence: Begin with concrete representations before algebraic abstractions.\n2. Dual-Coding: Require students to write mathematical reasoning steps adjacent to symbolic derivations.\n3. Error Reflection: Prompt students to audit deliberate sign or procedural missteps.`
+          : isScience
+          ? `1. Inquiry-Based Phenomenon: Open the lesson by demonstrating the real-world observation before giving the formal definition.\n2. Concept-Mapping: Connect ${chapter.title} to foundational physical or biological laws.\n3. Laboratory Safety & Verification: Have students verify hypotheses with controlled observations.`
+          : isHistory
+          ? `1. Primary Source Interrogation: Present excerpts or contemporary artifacts before textbook narrative.\n2. Multi-Perspective Causation: Analyze socio-political, economic, and cultural triggers.\n3. Chronological Sequencing: Use comparative timelines to anchor cause-and-effect relationships.`
+          : `1. Direct Guided Instruction: Present foundational definitions with clear specimen applications.\n2. Scaffolding: Transition gradually from teacher modeling to independent mastery.\n3. Formative Checkpoints: Use brief diagnostic checks at every conceptual transition.`,
+        visibility: 'teacher_edition',
+        createdDate: new Date().toISOString().split('T')[0],
+      },
+      {
+        id: `tg-misc-init`,
+        type: 'common_misconception',
+        title: `Anticipated Student Misconceptions & Inoculations`,
+        content: isMath
+          ? `• Misconception: Confusing procedural memorization with conceptual understanding.\n  Inoculation: Require verbal explanation of each step's mathematical validity.\n• Misconception: Overlooking boundary constraints or units.\n  Inoculation: Enforce dimensional analysis and sanity checks.`
+          : isScience
+          ? `• Misconception: Conflating everyday colloquial meanings with precise scientific definitions.\n  Inoculation: Explicitly contrast colloquial versus scientific terminology.\n• Misconception: Treating correlation as direct causation.\n  Inoculation: Guide students to isolate controlled variables.`
+          : `• Misconception: Surface-level pattern matching without understanding core principles.\n  Inoculation: Present boundary-case counter-examples that break superficial assumptions.\n• Misconception: Over-generalizing special cases.\n  Inoculation: Explicitly identify criteria where the rule applies vs where exceptions arise.`,
+        visibility: 'teacher_edition',
+        createdDate: new Date().toISOString().split('T')[0],
+      },
+    ] as TeacherAuthorNoteRecord[];
+  }, [chapter.teacherAuthorNotes, isSva, chapter.title, isMath, isScience, isHistory, seriesProject]);
 
   const [notes, setNotes] = useState<TeacherAuthorNoteRecord[]>(initialNotes);
   const [filterType, setFilterType] = useState<string>('all');
@@ -121,8 +174,8 @@ export const TeacherAuthorNotesView: React.FC<TeacherAuthorNotesViewProps> = ({
       seriesProject?.activeSystemId ||
       seriesProject?.targetBoard ||
       'CISCE';
-    const subject = chapterAny.subject || seriesProject?.subject || 'English Grammar & Composition';
-    const topic = chapter.title || 'Subject-Verb Agreement';
+    const subject = chapterAny.subject || seriesProject?.subject || (isGrammar ? 'English Grammar & Composition' : 'Academic Studies');
+    const topic = chapter.title || (isGrammar ? 'Subject-Verb Agreement' : 'Core Study');
 
     try {
       const res = await fetch('/api/chapter-studio/generate-component', {

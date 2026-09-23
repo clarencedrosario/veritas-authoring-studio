@@ -75,6 +75,23 @@ export const ChapterProductionDashboardHeader: React.FC<ChapterProductionDashboa
     [chapter, architecture]
   );
 
+  const chapterAny = chapter as any;
+  const effectiveSubject = chapterAny.subject || '';
+  const isGrammar = /grammar|syntax|english language/i.test(chapter.category || '') || /grammar/i.test(effectiveSubject);
+  const isMath = /math/i.test(chapter.category || '') || /math/i.test(effectiveSubject);
+  const isScience = /science|biology|physics|chemistry/i.test(chapter.category || '') || /science|biology|physics|chemistry/i.test(effectiveSubject);
+  const isHistory = /history|civics|social/i.test(chapter.category || '') || /history|civics|social/i.test(effectiveSubject);
+
+  const rulesLabel = isGrammar
+    ? (metrics.rulesCount === 1 ? 'Rule' : 'Rules')
+    : isMath
+    ? (metrics.rulesCount === 1 ? 'Formula/Method' : 'Formulae & Methods')
+    : isScience
+    ? (metrics.rulesCount === 1 ? 'Principle' : 'Concepts & Principles')
+    : isHistory
+    ? (metrics.rulesCount === 1 ? 'Event/Theme' : 'Events & Themes')
+    : (metrics.rulesCount === 1 ? 'Key Concept' : 'Key Concepts');
+
   return (
     <div
       className="border-b border-[#CBBEAC] py-1.5 px-3 sm:px-4 shrink-0 shadow-2xs select-none bg-[#EDE4D6] text-[#292521] relative"
@@ -194,7 +211,7 @@ export const ChapterProductionDashboardHeader: React.FC<ChapterProductionDashboa
 
         {/* Center: Live Production Metrics - Dynamic single source of truth */}
         <div className="hidden lg:flex items-center gap-2.5 text-xs font-serif text-[#71685E]">
-          <span className="font-medium text-[#292521]"><strong className="text-[#5A1832]">{metrics.rulesCount}</strong> {metrics.rulesCount === 1 ? 'Rule' : 'Rules'}</span>
+          <span className="font-medium text-[#292521]"><strong className="text-[#5A1832]">{metrics.rulesCount}</strong> {rulesLabel}</span>
           <span className="text-[#CBBEAC]">•</span>
           <span className="font-medium text-[#292521]"><strong className="text-[#5A1832]">{metrics.exercisesCount}</strong> {metrics.exerciseLettersDisplay}</span>
           <span className="text-[#CBBEAC]">•</span>

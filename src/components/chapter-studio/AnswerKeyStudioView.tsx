@@ -37,6 +37,7 @@ export interface AnswerKeyRecord {
   correctAnswer: string;
   acceptableAlternatives?: string[];
   grammarRationale?: string;
+  rationale?: string;
   partialCreditGuidance?: string;
   diagnosticErrorNote?: string;
   marks?: number;
@@ -48,6 +49,23 @@ export const AnswerKeyStudioView: React.FC<AnswerKeyStudioViewProps> = ({
   seriesProject,
   isDarkMode = false,
 }) => {
+  const chapterAny = chapter as any;
+  const effectiveSubject = chapterAny.subject || seriesProject?.subject || 'Academic Studies';
+  const isGrammar = /grammar|syntax|english language/i.test(chapter.category || '') || /grammar/i.test(effectiveSubject);
+  const isMath = /math/i.test(chapter.category || '') || /math/i.test(effectiveSubject);
+  const isScience = /science|biology|physics|chemistry/i.test(chapter.category || '') || /science|biology|physics|chemistry/i.test(effectiveSubject);
+  const isHistory = /history|civics|social/i.test(chapter.category || '') || /history|civics|social/i.test(effectiveSubject);
+
+  const rationaleLabel = isGrammar
+    ? 'Grammatical Rationale'
+    : isMath
+    ? 'Mathematical Derivation'
+    : isScience
+    ? 'Scientific Reasoning'
+    : isHistory
+    ? 'Historical Analysis'
+    : 'Analytical Rationale';
+
   const [activeScope, setActiveScope] = useState<'all' | 'exercises' | 'assessment'>('all');
   const [isTeacherView, setIsTeacherView] = useState(true);
   const [placementOption, setPlacementOption] = useState<
@@ -77,18 +95,46 @@ export const AnswerKeyStudioView: React.FC<AnswerKeyStudioViewProps> = ({
           promptSummary: q.prompt || q.blanksSentence || q.originalSentence || 'Exercise question',
           correctAnswer: q.correctAnswer || (q as any).answer || 'See model text',
           acceptableAlternatives: (q as any).acceptableAlternatives || [
-            'Equivalent syntactic formulation preserving tense and concord',
+            isGrammar
+              ? 'Equivalent syntactic formulation preserving tense and concord'
+              : 'Equivalent valid formulation adhering to syllabus requirements',
           ],
           grammarRationale:
             q.explanation ||
             (q as any).rationale ||
-            'Conforms strictly to standard grammatical concord rules.',
+            (isGrammar
+              ? 'Conforms strictly to standard grammatical concord rules.'
+              : isMath
+              ? 'Conforms to verified mathematical derivation and method.'
+              : isScience
+              ? 'Conforms to established scientific laws and mechanisms.'
+              : 'Conforms to standard academic syllabus principles.'),
+          rationale:
+            q.explanation ||
+            (q as any).rationale ||
+            (isGrammar
+              ? 'Conforms strictly to standard grammatical concord rules.'
+              : isMath
+              ? 'Conforms to verified mathematical derivation and method.'
+              : isScience
+              ? 'Conforms to established scientific laws and mechanisms.'
+              : 'Conforms to standard academic syllabus principles.'),
           partialCreditGuidance:
             (q as any).partialCreditGuidance ||
-            'Full mark for exact concord; zero credit for agreement violations.',
+            (isGrammar
+              ? 'Full mark for exact concord; zero credit for agreement violations.'
+              : isMath
+              ? 'Award partial credit for correct method steps despite arithmetic slip.'
+              : isScience
+              ? 'Award partial credit for identifying core mechanism with minor descriptive gap.'
+              : 'Award partial credit for valid core understanding with minor omissions.'),
           diagnosticErrorNote:
             (q as any).diagnosticErrorNote ||
-            'Watch for false attraction to intervening prepositional phrases.',
+            (isGrammar
+              ? 'Watch for false attraction to intervening prepositional phrases.'
+              : isMath
+              ? 'Watch for sign inversion or skipped steps.'
+              : 'Watch for common conceptual pitfalls.'),
           marks: q.marks || 1,
         });
       });
@@ -107,11 +153,15 @@ export const AnswerKeyStudioView: React.FC<AnswerKeyStudioViewProps> = ({
             correctAnswer: q.correctAnswer || 'See test rubric',
             acceptableAlternatives: (q as any).acceptableAlternatives || [],
             grammarRationale: q.explanation || 'Evaluated against official exam rubric.',
+            rationale: q.explanation || 'Evaluated against official exam rubric.',
             partialCreditGuidance:
               (q as any).partialCreditGuidance ||
-              'Award partial credit (50%) if the finite verb root is correct but inflection slip occurs.',
+              (isGrammar
+                ? 'Award partial credit (50%) if the finite verb root is correct but inflection slip occurs.'
+                : 'Award partial credit (50%) for sound conceptual reasoning with minor precision gaps.'),
             diagnosticErrorNote:
-              (q as any).diagnosticErrorNote || 'Commonly confused with plural form.',
+              (q as any).diagnosticErrorNote ||
+              (isGrammar ? 'Commonly confused with plural form.' : 'Watch for typical misconception traps.'),
             marks: q.marks || 1,
           });
         });
@@ -119,7 +169,7 @@ export const AnswerKeyStudioView: React.FC<AnswerKeyStudioViewProps> = ({
     }
 
     return list;
-  }, [exercises, chapterTest]);
+  }, [exercises, chapterTest, isGrammar, isMath, isScience]);
 
   // Read persisted answerKey from chapter or fall back to derived
   const records = useMemo(() => {
@@ -172,8 +222,8 @@ export const AnswerKeyStudioView: React.FC<AnswerKeyStudioViewProps> = ({
       seriesProject?.activeSystemId ||
       seriesProject?.targetBoard ||
       'CISCE';
-    const subject = chapterAny.subject || seriesProject?.subject || 'English Grammar & Composition';
-    const topic = chapter.title || 'Subject-Verb Agreement';
+    const subject = chapterAny.subject || seriesProject?.subject || (isGrammar ? 'English Grammar & Composition' : 'Academic Studies');
+    const topic = chapter.title || (isGrammar ? 'Subject-Verb Agreement' : 'Core Study');
 
     try {
       const res = await fetch('/api/chapter-studio/generate-component', {
@@ -203,7 +253,8 @@ export const AnswerKeyStudioView: React.FC<AnswerKeyStudioViewProps> = ({
           promptSummary: item.promptSummary || `Specimen ${idx + 1}`,
           correctAnswer: item.correctAnswer || '',
           acceptableAlternatives: item.acceptableAlternatives || [],
-          grammarRationale: item.grammarRationale || '',
+          grammarRationale: item.grammarRationale || item.rationale || '',
+          rationale: item.rationale || item.grammarRationale || '',
           partialCreditGuidance: item.partialCreditGuidance || '',
           diagnosticErrorNote: item.diagnosticErrorNote || '',
           marks: 1,
@@ -246,7 +297,7 @@ export const AnswerKeyStudioView: React.FC<AnswerKeyStudioViewProps> = ({
                 Complete Answer Key &amp; Evaluation Rubrics
               </h2>
               <p className="text-xs text-[#71685E] mt-0.5">
-                Manage canonical solutions, acceptable linguistic alternatives, diagnostic notes, and partial-credit marking rubrics.
+                Manage canonical solutions, acceptable {isGrammar ? 'linguistic' : 'domain'} alternatives, diagnostic notes, and partial-credit marking rubrics.
               </p>
             </div>
           </div>
@@ -405,13 +456,17 @@ export const AnswerKeyStudioView: React.FC<AnswerKeyStudioViewProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="text-[11px] font-bold text-[#5A1832] block mb-1">
-                      Grammatical Rationale:
+                      {rationaleLabel}:
                     </label>
                     <textarea
                       rows={2}
-                      value={editForm.grammarRationale || ''}
+                      value={editForm.rationale || editForm.grammarRationale || ''}
                       onChange={(e) =>
-                        setEditForm({ ...editForm, grammarRationale: e.target.value })
+                        setEditForm({
+                          ...editForm,
+                          grammarRationale: e.target.value,
+                          rationale: e.target.value,
+                        })
                       }
                       className="w-full text-xs p-2 rounded-lg bg-[#F6F0E7] border border-[#CBBEAC] text-[#292521]"
                     />
@@ -498,11 +553,11 @@ export const AnswerKeyStudioView: React.FC<AnswerKeyStudioViewProps> = ({
                     )}
                   </div>
 
-                  {rec.grammarRationale && (
+                  {(rec.rationale || rec.grammarRationale) && (
                     <div className="text-xs text-[#71685E] pl-2 flex items-start gap-1.5">
-                      <span className="font-semibold text-[#5A1832]">Grammar Rationale:</span>
+                      <span className="font-semibold text-[#5A1832]">{rationaleLabel}:</span>
                       <span className="font-serif italic text-[#292521]">
-                        {rec.grammarRationale}
+                        {rec.rationale || rec.grammarRationale}
                       </span>
                     </div>
                   )}

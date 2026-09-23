@@ -1392,36 +1392,46 @@ export function createChapterFromArchitecture(
     // Called as: (arch, newTopicId, title, chapterNumber, classLevel, board)
     architecture = archOrTitle;
     chapterId = topicIdOrCategory || `top-${Date.now()}`;
-    title = titleOrClassLevel || 'New Grammar Chapter';
     chapterNumber = typeof chapterNumberOrArchitecture === 'number' ? chapterNumberOrArchitecture : 1;
+    title = titleOrClassLevel || `Chapter ${chapterNumber}: Untitled Chapter`;
     classLevel = typeof classLevelOrChapterNumber === 'string' ? classLevelOrChapterNumber : 'Class 6';
-    category = 'Grammar & Syntax';
+    category = 'General';
   } else {
     // Called as: (title, category, classLevel, architecture, chapterNumber)
-    title = archOrTitle;
-    category = topicIdOrCategory;
+    category = topicIdOrCategory || 'General';
     classLevel = titleOrClassLevel || 'Class 6';
     architecture = (chapterNumberOrArchitecture as BookArchitectureConfig);
     chapterNumber = typeof classLevelOrChapterNumber === 'number' ? classLevelOrChapterNumber : 1;
+    title = archOrTitle || `Chapter ${chapterNumber}: Untitled Chapter`;
     chapterId = `top-${Date.now()}`;
   }
+
+  const isGrammar = /grammar|syntax|english language/i.test(category || '') || /grammar|syntax/i.test(title || '');
+  const isMath = /math/i.test(category || '') || /algebra|geometry|calculus|arithmetic/i.test(title || '');
+  const isScience = /science|biology|physics|chemistry/i.test(category || '');
 
   const components = architecture.chapterArchitecture?.components || [];
 
   const defaultOpening: ChapterOpeningData = {
     chapterNumber,
     title,
-    subtitle: `${category} Structural Framework`,
+    subtitle: isGrammar ? `${category} Structural Framework` : `${category} Curriculum Framework`,
     openingHook: '',
     shortIntroduction: '',
-    learningObjectives: [
-      `Define the core linguistic principles of ${title}`,
-      `Apply structural rules with grammatical precision`,
-      `Identify and rectify frequent errors in examination contexts`,
-    ],
-    keyVocabulary: [title, 'Rule', 'Syntactic Harmony'],
-    conceptsCovered: [title, 'Core Rules', 'Common Pitfalls'],
-    priorKnowledge: 'Foundational grade-level parts of speech and basic sentence syntax.',
+    learningObjectives: isGrammar
+      ? [
+          `Define the core linguistic principles of ${title}`,
+          `Apply structural rules with grammatical precision`,
+          `Identify and rectify frequent errors in examination contexts`,
+        ]
+      : [
+          `Understand the foundational concepts and principles of ${title}`,
+          `Apply core conceptual frameworks and methods in practice`,
+          `Identify and rectify common misconceptions in examinations`,
+        ],
+    keyVocabulary: [title, isGrammar ? 'Rule' : isMath ? 'Formula' : 'Concept', 'Core Principle'],
+    conceptsCovered: [title, 'Core Concepts', 'Common Misconceptions'],
+    priorKnowledge: 'Foundational prerequisite concepts and grade-level skills.',
     estimatedStudyTimeMinutes: 90,
   };
 
@@ -1440,10 +1450,16 @@ export function createChapterFromArchitecture(
       blocks: [
         {
           id: `blk-${Date.now()}-rule`,
-          type: 'grammar_rule',
-          title: `${title} Rule`,
-          calloutTitle: `RULE: ${title.toUpperCase()}`,
-          calloutText: 'Formal grammatical rule statement to be authored.',
+          type: isGrammar ? 'grammar_rule' : 'key_concept',
+          title: `${title} Principle`,
+          calloutTitle: isGrammar
+            ? `RULE: ${title.toUpperCase()}`
+            : isMath
+            ? `FORMULA / THEOREM: ${title.toUpperCase()}`
+            : `KEY PRINCIPLE: ${title.toUpperCase()}`,
+          calloutText: isGrammar
+            ? 'Formal grammatical rule statement to be authored.'
+            : 'Formal concept, theorem, or principle statement to be authored.',
           order: 1,
           visibility: 'student',
         },
@@ -1452,76 +1468,138 @@ export function createChapterFromArchitecture(
   }
 
   // Construct standard graded exercises A through E based on architecture
-  const exercises: StudioExercise[] = [
-    {
-      id: `ex-${Date.now()}-A`,
-      letter: 'A',
-      title: 'Exercise A: Recognition & Identification',
-      progression: 'foundation',
-      instructions: `Identify and underline the target ${title.toLowerCase()} structures in each sentence.`,
-      difficulty: 'Easy',
-      suggestedMarks: 5,
-      questionCount: 0,
-      questions: [],
-    },
-    {
-      id: `ex-${Date.now()}-B`,
-      letter: 'B',
-      title: 'Exercise B: Fill in the Blanks / Selection',
-      progression: 'understanding',
-      instructions: 'Select the correct grammatical form from the brackets.',
-      difficulty: 'Medium',
-      suggestedMarks: 5,
-      questionCount: 0,
-      questions: [],
-    },
-    {
-      id: `ex-${Date.now()}-C`,
-      letter: 'C',
-      title: 'Exercise C: Sentence Rewriting & Transformation',
-      progression: 'transformation',
-      instructions: 'Rewrite the following sentences according to the given instructions.',
-      difficulty: 'Medium',
-      suggestedMarks: 5,
-      questionCount: 0,
-      questions: [],
-    },
-    {
-      id: `ex-${Date.now()}-D`,
-      letter: 'D',
-      title: 'Exercise D: Error Correction & Editing',
-      progression: 'error_analysis',
-      instructions: 'Identify the grammatical error in each sentence and write the correction.',
-      difficulty: 'Hard',
-      suggestedMarks: 5,
-      questionCount: 0,
-      questions: [],
-    },
-    {
-      id: `ex-${Date.now()}-E`,
-      letter: 'E',
-      title: 'Exercise E: Contextual Application & Composition',
-      progression: 'contextual',
-      instructions: 'Compose sentences demonstrating the correct application of the rules.',
-      difficulty: 'Hard',
-      suggestedMarks: 5,
-      questionCount: 0,
-      questions: [],
-    },
-  ];
+  const exercises: StudioExercise[] = isGrammar
+    ? [
+        {
+          id: `ex-${Date.now()}-A`,
+          letter: 'A',
+          title: 'Exercise A: Recognition & Identification',
+          progression: 'foundation',
+          instructions: `Identify and underline the target ${title.toLowerCase()} structures in each sentence.`,
+          difficulty: 'Easy',
+          suggestedMarks: 5,
+          questionCount: 0,
+          questions: [],
+        },
+        {
+          id: `ex-${Date.now()}-B`,
+          letter: 'B',
+          title: 'Exercise B: Fill in the Blanks / Selection',
+          progression: 'understanding',
+          instructions: 'Select the correct grammatical form from the brackets.',
+          difficulty: 'Medium',
+          suggestedMarks: 5,
+          questionCount: 0,
+          questions: [],
+        },
+        {
+          id: `ex-${Date.now()}-C`,
+          letter: 'C',
+          title: 'Exercise C: Sentence Rewriting & Transformation',
+          progression: 'transformation',
+          instructions: 'Rewrite the following sentences according to the given instructions.',
+          difficulty: 'Medium',
+          suggestedMarks: 5,
+          questionCount: 0,
+          questions: [],
+        },
+        {
+          id: `ex-${Date.now()}-D`,
+          letter: 'D',
+          title: 'Exercise D: Error Correction & Editing',
+          progression: 'error_analysis',
+          instructions: 'Identify the grammatical error in each sentence and write the correction.',
+          difficulty: 'Hard',
+          suggestedMarks: 5,
+          questionCount: 0,
+          questions: [],
+        },
+        {
+          id: `ex-${Date.now()}-E`,
+          letter: 'E',
+          title: 'Exercise E: Contextual Application & Composition',
+          progression: 'contextual',
+          instructions: 'Compose sentences demonstrating the correct application of the rules.',
+          difficulty: 'Hard',
+          suggestedMarks: 5,
+          questionCount: 0,
+          questions: [],
+        },
+      ]
+    : [
+        {
+          id: `ex-${Date.now()}-A`,
+          letter: 'A',
+          title: 'Exercise A: Foundation & Key Concepts',
+          progression: 'foundation',
+          instructions: `Answer the following introductory questions on ${title}.`,
+          difficulty: 'Easy',
+          suggestedMarks: 5,
+          questionCount: 0,
+          questions: [],
+        },
+        {
+          id: `ex-${Date.now()}-B`,
+          letter: 'B',
+          title: 'Exercise B: Core Understanding & Application',
+          progression: 'understanding',
+          instructions: 'Apply the core principles to solve the following problems.',
+          difficulty: 'Medium',
+          suggestedMarks: 5,
+          questionCount: 0,
+          questions: [],
+        },
+        {
+          id: `ex-${Date.now()}-C`,
+          letter: 'C',
+          title: 'Exercise C: Analysis & Problem Solving',
+          progression: 'transformation',
+          instructions: 'Solve the following analytical questions with full reasoning.',
+          difficulty: 'Medium',
+          suggestedMarks: 5,
+          questionCount: 0,
+          questions: [],
+        },
+        {
+          id: `ex-${Date.now()}-D`,
+          letter: 'D',
+          title: 'Exercise D: Critical Evaluation & Common Pitfalls',
+          progression: 'error_analysis',
+          instructions: 'Identify common errors or fallacies and provide accurate corrections.',
+          difficulty: 'Hard',
+          suggestedMarks: 5,
+          questionCount: 0,
+          questions: [],
+        },
+        {
+          id: `ex-${Date.now()}-E`,
+          letter: 'E',
+          title: 'Exercise E: Advanced Synthesis & Extension',
+          progression: 'contextual',
+          instructions: 'Complete the following comprehensive synthesis and challenge problems.',
+          difficulty: 'Hard',
+          suggestedMarks: 5,
+          questionCount: 0,
+          questions: [],
+        },
+      ];
 
   const defaultEnding: ChapterEndingData = {
     whatYouLearned: [`Core definition and application of ${title}.`],
     rulesAtAGlance: [
       {
-        rule: `Fundamental Rule for ${title}`,
+        rule: isGrammar
+          ? `Fundamental Rule for ${title}`
+          : isMath
+          ? `Key Formula/Method for ${title}`
+          : `Core Principle of ${title}`,
         example: 'Consult chapter notes for specimen usage.',
       },
     ],
     commonMistakes: [],
-    quickRevisionChecklist: ['Reviewed core rules', 'Completed exercises'],
+    quickRevisionChecklist: ['Reviewed core principles', 'Completed exercises'],
     keyVocabulary: [title],
-    examReminders: ['Check context and agreement carefully.'],
+    examReminders: ['Review core concepts and verify all steps carefully.'],
   };
 
   const initialCustomizations: Record<string, ChapterComponentCustomization> = {};
