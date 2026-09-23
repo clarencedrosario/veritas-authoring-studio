@@ -240,7 +240,7 @@ export const AnswerKeyStudioView: React.FC<AnswerKeyStudioViewProps> = ({
 
       const data = await res.json();
       if (!res.ok || data.error) {
-        throw new Error(data.error || 'Failed to generate answer key');
+        throw new Error(data.error || 'AI generation could not be completed. Your existing content has not been changed.');
       }
 
       const generatedList = data.data?.answerKey || [];
@@ -262,7 +262,7 @@ export const AnswerKeyStudioView: React.FC<AnswerKeyStudioViewProps> = ({
         persistRecords(merged);
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Error communicating with AI service');
+      setErrorMessage(err.message || 'AI generation could not be completed. Your existing content has not been changed.');
     } finally {
       setIsAiGenerating(false);
     }
@@ -407,9 +407,44 @@ export const AnswerKeyStudioView: React.FC<AnswerKeyStudioViewProps> = ({
         </div>
       )}
 
+      {/* Error Notice */}
+      {errorMessage && (
+        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleAiGenerate}
+              className="px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-amber-950 rounded font-semibold text-xs cursor-pointer transition-colors"
+            >
+              Retry
+            </button>
+            <button
+              type="button"
+              onClick={() => setErrorMessage(null)}
+              className="px-2 py-1 text-amber-800 hover:text-amber-950 font-semibold text-xs cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Solutions Grid / List */}
       <div className="space-y-4">
-        {filteredRecords.map((rec) => {
+        {filteredRecords.length === 0 ? (
+          <div className="bg-[#FFFDF8] border border-dashed border-[#CBBEAC] rounded-xl p-8 text-center space-y-3">
+            <Key className="w-8 h-8 text-[#CBBEAC] mx-auto" />
+            <h4 className="text-sm font-serif font-bold text-[#35101F]">No Answer Key Entries Available</h4>
+            <p className="text-xs text-[#71685E] max-w-md mx-auto">
+              Answers will be populated from your chapter exercises and assessment questions once added, or you can synchronize solutions from the chapter.
+            </p>
+          </div>
+        ) : (
+          filteredRecords.map((rec) => {
           const isEditing = editingRecordId === rec.id;
 
           if (isEditing && editForm) {
@@ -587,7 +622,7 @@ export const AnswerKeyStudioView: React.FC<AnswerKeyStudioViewProps> = ({
               )}
             </div>
           );
-        })}
+        }))}
       </div>
     </div>
   );

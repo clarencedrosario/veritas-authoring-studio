@@ -34,7 +34,19 @@ export const RuleStudioView: React.FC<RuleStudioViewProps> = ({
   onNavigateToStage,
   isDarkMode,
 }) => {
-  const rules = chapter.rules && chapter.rules.length > 0 ? chapter.rules : CANONICAL_SVA_RULES;
+  const isSvaChapter =
+    chapter.id === 'chapter-6-sva' ||
+    chapter.title?.toLowerCase().includes('subject–verb agreement') ||
+    chapter.title?.toLowerCase().includes('subject-verb agreement') ||
+    chapter.curriculumTopic?.toLowerCase().includes('subject–verb agreement') ||
+    chapter.curriculumTopic?.toLowerCase().includes('subject-verb agreement');
+
+  const rules =
+    chapter.rules && chapter.rules.length > 0
+      ? chapter.rules
+      : isSvaChapter
+      ? CANONICAL_SVA_RULES
+      : [];
   const [selectedRuleId, setSelectedRuleId] = useState<string>(rules[0]?.id || '');
   const [isEditing, setIsEditing] = useState(false);
   const [filterDifficulty, setFilterDifficulty] = useState<'All' | 'Foundation' | 'Standard' | 'Challenge'>('All');
@@ -225,7 +237,7 @@ export const RuleStudioView: React.FC<RuleStudioViewProps> = ({
 
         {/* Right Column: Rule Detail / Editor */}
         <div className="lg:col-span-8">
-          {selectedRule && (
+          {selectedRule ? (
             <div className="bg-[#FFFDF8] border border-[#CBBEAC] rounded-2xl p-6 shadow-xs space-y-6">
               {/* Card Header */}
               <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-[#CBBEAC]/50">
@@ -448,6 +460,12 @@ export const RuleStudioView: React.FC<RuleStudioViewProps> = ({
                   )}
                 </div>
               </div>
+            </div>
+          ) : (
+            <div className="bg-[#FFFDF8] border border-dashed border-[#CBBEAC] rounded-2xl p-8 text-center">
+              <Award className="w-8 h-8 text-[#CBBEAC] mx-auto mb-2" />
+              <p className="text-sm font-serif font-bold text-[#292521]">No rules authored yet</p>
+              <p className="text-xs text-[#71685E] mt-1">Click "+ Add Rule" above to author rules for this chapter.</p>
             </div>
           )}
         </div>

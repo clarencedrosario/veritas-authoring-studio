@@ -112,174 +112,22 @@ export const ChapterAssessmentView: React.FC<ChapterAssessmentViewProps> = ({
     if (isCreatingTest) return;
     setIsCreatingTest(true);
 
-    const isSva =
-      isGrammar &&
-      chapter.title?.toLowerCase().includes('subject') &&
-      chapter.title?.toLowerCase().includes('verb');
-
-    let defaultSections: AssessmentSection[];
-
-    if (isSva) {
-      defaultSections = [
-        {
-          id: 'sec-a',
-          title: 'Section A: Objective Identification & Recall',
-          instructions: 'Choose or state the grammatically accurate option.',
-          marksAllocation: 5,
-          questions: [
-            {
-              id: 'q-sva-1',
-              type: 'mcq',
-              prompt: 'Identify the sentence exhibiting strictly accurate grammatical concord:',
-              options: [
-                'A) The list of participating schools have been posted on the bulletin board.',
-                'B) Neither the captain nor the crew members was able to navigate the reef.',
-                'C) The commander, along with his gallant officers, has received the medal.',
-                'D) Ten thousand rupees are too exorbitant a price for this dictionary.',
-              ],
-              correctAnswer: 'C) The commander, along with his gallant officers, has received the medal.',
-              explanation:
-                '"Along with his gallant officers" is an intervening parenthetical adjunct; the singular head noun "commander" takes the singular verb "has received".',
-              marks: 1,
-              difficulty: 'Medium',
-              cognitiveLevel: 'Analysing',
-              conceptTested: 'Intervening Parenthetical Phrases',
-            },
-            {
-              id: 'q-sva-2',
-              type: 'fill_in_blanks',
-              prompt: 'Complete the sentence with the appropriate verb from brackets:',
-              blanksSentence: 'Ten kilometres ___ [is / are] a demanding distance for novice runners.',
-              correctAnswer: 'is',
-              explanation:
-                'Expressions of distance, measurement, or monetary amounts denoting a single collective unit take a singular verb.',
-              marks: 1,
-              difficulty: 'Easy',
-              cognitiveLevel: 'Remembering',
-              conceptTested: 'Units of Measurement',
-            },
-          ],
-        },
-        {
-          id: 'sec-b',
-          title: 'Section B: Syntactic Application & Error Analysis',
-          instructions: 'Rewrite the sentences or rectify the underlined concord discrepancies.',
-          marksAllocation: 10,
-          questions: [
-            {
-              id: 'q-sva-3',
-              type: 'error_correction',
-              prompt: 'Detect the error of concord and rewrite the sentence correctly:',
-              originalSentence: 'The bouquet of scarlet roses were presented to the dignitary.',
-              correctedSentence: 'The bouquet of scarlet roses was presented to the dignitary.',
-              correctAnswer: 'was presented',
-              explanation:
-                'The head noun is singular "bouquet"; the intervening plural prepositional phrase "of scarlet roses" does not alter the verb requirement.',
-              marks: 2,
-              difficulty: 'Medium',
-              cognitiveLevel: 'Evaluating',
-              conceptTested: 'Prepositional Phrase Distractors',
-            },
-            {
-              id: 'q-sva-4',
-              type: 'transformation',
-              prompt: 'Synthesize the pair of sentences using "Neither...nor", maintaining proximity concord:',
-              originalSentence: 'The instructor was not present. The students were not present.',
-              correctedSentence: 'Neither the instructor nor the students were present in the laboratory.',
-              correctAnswer: 'Neither the instructor nor the students were present in the laboratory.',
-              explanation:
-                'In correlative pairings with "neither...nor", the verb agrees with the closer subject noun ("students" -> plural "were").',
-              marks: 3,
-              difficulty: 'Hard',
-              cognitiveLevel: 'Applying',
-              conceptTested: 'Correlative Conjunction Concord',
-            },
-          ],
-        },
-      ];
-    } else {
-      defaultSections = [
-        {
-          id: 'sec-a',
-          title: `Section A: Foundational Concepts & Identification`,
-          instructions: `Attempt all questions. Select or supply the accurate answer.`,
-          marksAllocation: 5,
-          questions: [
-            {
-              id: `q-${Date.now()}-1`,
-              type: 'mcq',
-              prompt: `Which of the following statements best defines the fundamental principle of ${chapter.title}?`,
-              options: [
-                `A) Primary conceptual formulation of ${chapter.title} under standard conditions.`,
-                `B) Incomplete or boundary-case exception misapplied as general law.`,
-                `C) Inverted definition lacking necessary qualifying terms.`,
-                `D) Unrelated secondary theorem.`,
-              ],
-              correctAnswer: `A) Primary conceptual formulation of ${chapter.title} under standard conditions.`,
-              explanation: `Option A accurately states the governing definition and standard criteria for ${chapter.title}.`,
-              marks: 1,
-              difficulty: 'Easy',
-              cognitiveLevel: 'Remembering',
-              conceptTested: `${chapter.title} Core Definition`,
-            },
-            {
-              id: `q-${Date.now()}-2`,
-              type: 'fill_in_blanks',
-              prompt: `Complete the key principle statement for ${chapter.title}:`,
-              blanksSentence: `In the study of ${chapter.title}, the primary principle is ___ [fundamentally verified].`,
-              correctAnswer: 'fundamentally verified',
-              explanation: `Standard formulation required by the syllabus for ${chapter.title}.`,
-              marks: 1,
-              difficulty: 'Medium',
-              cognitiveLevel: 'Understanding',
-              conceptTested: `${chapter.title} Key Terms`,
-            },
-          ],
-        },
-        {
-          id: 'sec-b',
-          title: isMath
-            ? 'Section B: Problem Solving & Derivations'
-            : isScience
-            ? 'Section B: Analysis & Scientific Reasoning'
-            : isHistory
-            ? 'Section B: Historical Source & Causation Analysis'
-            : 'Section B: Analytical Application & Problem Solving',
-          instructions: isMath
-            ? 'Provide complete step-by-step working and units.'
-            : isScience
-            ? 'State scientific principles and clear causal reasoning.'
-            : isHistory
-            ? 'Support your analysis with chronology, factors, and outcomes.'
-            : 'Provide comprehensive, step-by-step explanations.',
-          marksAllocation: 10,
-          questions: [
-            {
-              id: `q-${Date.now()}-3`,
-              type: 'short_answer' as any,
-              prompt: `Explain the fundamental concept of ${chapter.title} and illustrate its application with a worked example.`,
-              correctAnswer: `Comprehensive explanation covering definition, methodology, and verified application of ${chapter.title}.`,
-              explanation: `Demonstrates conceptual grasp and procedural competence in ${chapter.title}.`,
-              marks: 3,
-              difficulty: 'Medium',
-              cognitiveLevel: 'Applying',
-              conceptTested: `${chapter.title} Application`,
-            },
-            {
-              id: `q-${Date.now()}-4`,
-              type: 'short_answer' as any,
-              prompt: `Analyze a non-routine scenario involving ${chapter.title} and resolve the underlying challenge systematically.`,
-              correctAnswer: `Step-by-step resolution addressing boundary conditions and validating the final outcome.`,
-              explanation: `Tests higher-order problem-solving and critical reasoning.`,
-              marks: 4,
-              difficulty: 'Hard',
-              cognitiveLevel: 'Analysing',
-              conceptTested: `${chapter.title} Higher-Order Problem Solving`,
-            },
-          ],
-        },
-      ];
-    }
+    const defaultSections: AssessmentSection[] = [
+      {
+        id: 'sec-a',
+        title: 'Section A: Objective Questions',
+        instructions: 'Answer all questions in this section.',
+        marksAllocation: 10,
+        questions: [],
+      },
+      {
+        id: 'sec-b',
+        title: 'Section B: Short Answer Questions',
+        instructions: 'Answer all questions in this section.',
+        marksAllocation: 15,
+        questions: [],
+      },
+    ];
 
     const newPaper: AssessmentPaper = {
       id: `paper-${Date.now()}`,
@@ -338,7 +186,7 @@ export const ChapterAssessmentView: React.FC<ChapterAssessmentViewProps> = ({
 
       const data = await res.json();
       if (!res.ok || data.error) {
-        throw new Error(data.error || 'Failed to generate assessment');
+        throw new Error(data.error || 'AI generation could not be completed. Your existing content has not been changed.');
       }
 
       const generatedTest = data.data;
@@ -379,7 +227,7 @@ export const ChapterAssessmentView: React.FC<ChapterAssessmentViewProps> = ({
         persistTest(fullPaper);
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Error communicating with AI service');
+      setErrorMessage(err.message || 'AI generation could not be completed. Your existing content has not been changed.');
     } finally {
       setIsAiGenerating(false);
     }
@@ -494,9 +342,34 @@ export const ChapterAssessmentView: React.FC<ChapterAssessmentViewProps> = ({
           </div>
 
           {errorMessage && (
-            <div className="max-w-md mx-auto p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
-              <span>{errorMessage}</span>
+            <div className="max-w-xl mx-auto p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
+                <span>{errorMessage}</span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleAiGenerateAssessment}
+                  className="px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-amber-950 rounded font-semibold text-xs cursor-pointer transition-colors"
+                >
+                  Retry
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateAssessment}
+                  className="px-2.5 py-1 bg-[#5A1832] hover:bg-[#35101F] text-white rounded font-semibold text-xs cursor-pointer transition-colors"
+                >
+                  Write Manually
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setErrorMessage(null)}
+                  className="px-2 py-1 text-amber-800 hover:text-amber-950 font-semibold text-xs cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           )}
 
@@ -643,9 +516,37 @@ export const ChapterAssessmentView: React.FC<ChapterAssessmentViewProps> = ({
 
       {/* Error Notice */}
       {errorMessage && (
-        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
-          <span>{errorMessage}</span>
+        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleAiGenerateAssessment}
+              className="px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-amber-950 rounded font-semibold text-xs cursor-pointer transition-colors"
+            >
+              Retry
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsAddingQuestion(true);
+                setErrorMessage(null);
+              }}
+              className="px-2.5 py-1 bg-[#5A1832] hover:bg-[#35101F] text-white rounded font-semibold text-xs cursor-pointer transition-colors"
+            >
+              Write Manually
+            </button>
+            <button
+              type="button"
+              onClick={() => setErrorMessage(null)}
+              className="px-2 py-1 text-amber-800 hover:text-amber-950 font-semibold text-xs cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 

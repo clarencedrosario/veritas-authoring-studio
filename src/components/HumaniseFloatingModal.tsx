@@ -75,19 +75,21 @@ export const HumaniseFloatingModal: React.FC<HumaniseFloatingModalProps> = ({
       }
 
       const data = await res.json();
+      if (data.error) {
+        throw new Error(data.error);
+      }
       if (data.result) {
         setRevisedText(data.result);
       } else {
-        throw new Error('No revision was returned.');
+        throw new Error('Humanise could not be completed. Your original text is unchanged.');
       }
     } catch (err: any) {
-      // Graceful local editorial fallback if offline/backend issue
-      const mockBurstiness = currentDraft
-        .replace(/\bAdditionally,\b/g, 'Moreover,')
-        .replace(/\bFurthermore,\b/g, 'Then,')
-        .replace(/\bIn conclusion,\b/g, 'Ultimately,')
-        .replace(/\bit is important to note that\b/gi, 'notably,');
-      setRevisedText(mockBurstiness);
+      setRevisedText(null);
+      setErrorMsg(
+        err.message?.includes('Humanise')
+          ? err.message
+          : 'Humanise could not be completed. Your original text is unchanged.'
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -179,6 +181,32 @@ export const HumaniseFloatingModal: React.FC<HumaniseFloatingModalProps> = ({
             <span>{isProcessing ? 'Calibrating Rhythm...' : 'Humanise Prose'}</span>
           </button>
         </div>
+
+        {/* Error Banner */}
+        {errorMsg && (
+          <div className="mx-6 mt-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleRunHumanise}
+                className="px-2.5 py-1 bg-amber-200 dark:bg-amber-800 hover:bg-amber-300 text-amber-950 dark:text-amber-100 rounded font-semibold text-xs cursor-pointer transition-colors"
+              >
+                Retry
+              </button>
+              <button
+                type="button"
+                onClick={() => setErrorMsg(null)}
+                className="px-2 py-1 text-amber-800 dark:text-amber-300 hover:text-amber-950 font-semibold text-xs cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Comparison Body */}
         <div className="p-6 overflow-y-auto flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">

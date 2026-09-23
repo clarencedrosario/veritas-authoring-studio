@@ -323,6 +323,12 @@ ${continuityBlock}
     const ai = getGenAI();
     let resultText = "";
 
+    if (!ai && mode === "humanize") {
+      return res.status(503).json({
+        error: "Humanise could not be completed. Your original text is unchanged.",
+      });
+    }
+
     if (ai) {
       const response = await ai.models.generateContent({
         model: "gemini-3.8-flash",
@@ -335,89 +341,26 @@ ${continuityBlock}
       resultText = response.text || "";
     }
 
-    // High-quality contextual fallback if Gemini is offline or API key is not configured
     if (!resultText) {
-      if (mode === "humanize" || mode === "vary_pacing") {
-        resultText = textToWorkWith
-          ? `The cold didn’t creep into the conservatory; it took up residence. Julian pressed a thumb against the mortar line beneath the lintel, testing the lime. Brittle. It gave way with a dry, mineral whisper that settled onto the cuffs of his coat.\n\nThree years. Long enough for salt air to etch glass and turn iron bolts into rust-red powder.\n\n"Mr. Holloway?" Julian didn't turn around. He didn't need to. The floorboards behind him had groaned twice—first near the vestibule threshold, then six paces in. A man with a bad knee favoring his right heel.\n\n"You're standing on the seam," Holloway said from the gloom. "At dusk, the floor shifts four inches west. Watch your balance."`
-          : `Julian rested his palm against the rough limestone. It was cold, colder than the Atlantic gale lashing the outside glass. Beneath his fingertips, the lime mortar felt dry, chalky, and oddly alive with a faint, rhythmic vibration.`;
-      } else if (mode === "deepen_sensory") {
-        resultText = `${textToWorkWith}\n\nA sharp tang of ozone cut through the dry reek of calcified stone. Rain hammered the glass vault overhead in uneven, syncopated bursts—each drop detonating like birdshot against the leaded panes. His coat smelled of sea damp, diesel exhaust from the causeway, and the bitter almond trace of antique binder.`;
-      } else if (mode === "improve_dialogue") {
-        resultText = `"You came across the tide bell," Holloway said. No greeting. Just the observation, heavy as wet wool.\n\n"The causeway was clear enough."\n\n"It wasn't clear ten minutes ago." Holloway held the lantern higher, letting the amber wick light illuminate the lintel. "The Trust sends young men when they want something cataloged, and stubborn men when they want someone to blame."`;
-      } else if (mode === "strengthen_opening") {
-        resultText = `The tide swallowed the causeway four minutes after Julian crossed it. Behind him, the Atlantic locked the iron gates; ahead, Highclere Conservatory waited like a drowned cathedral, its glass ribs gleaming in the dusk.`;
-      } else if (mode === "strengthen_ending") {
-        resultText = `Julian shone his surveyor's torch along the lower course of ashlar stone. There, three inches above the flagstones and concealed beneath a century of salt crust, the letters were unmistakable. Clara’s handwriting, carved deep into the limestone: *DO NOT LET THE TIDE FILL THE ATRIUM.*`;
-      } else {
-        resultText = `Julian reached into his pocket for the brass plumb-bob. The weight of the metal was familiar, reassuring against the impossible geometry of the room. He suspended the cord from the center arch. It swung twice, then hung rigidly at an angle twelve degrees off true vertical. The house wasn't settling. It was leaning toward the sea.`;
-      }
+      return res.status(502).json({
+        error:
+          mode === "humanize"
+            ? "Humanise could not be completed. Your original text is unchanged."
+            : "AI generation failed. Your existing content has not been changed.",
+      });
     }
 
     return res.json({ result: resultText });
   } catch (error: any) {
     console.error("Gemini draft error:", error);
-    return res.status(500).json({ error: error.message || "Failed to generate text" });
+    return res.status(502).json({
+      error:
+        req.body?.mode === "humanize"
+          ? "Humanise could not be completed. Your original text is unchanged."
+          : "AI generation failed. Your existing content has not been changed.",
+    });
   }
 });
-
-// Helper: Generate rich canonical curriculum benchmark for any topic when offline or AI quota depleted
-function generateCanonicalBenchmarkForTopic(
-  title: string,
-  sub: string,
-  board: string,
-  classLevel: string,
-  num: number | string
-) {
-  const cleanTitle = title || "English Grammar & Syntax";
-  const cleanSub = sub || `Foundations, Core Principles and Practical Usage of ${cleanTitle}`;
-  const chapNum = Number(num) || 1;
-
-  return {
-    component1: {
-      chapterNumber: chapNum,
-      title: cleanTitle,
-      subtitle: cleanSub,
-      openingHook: `Why is understanding ${cleanTitle} essential to expressing our ideas with absolute clarity and grammatical precision? How do subtle structural variations completely transform the meaning and tone of what we communicate?`,
-      shortIntroduction: `In English language and academic writing, ${cleanTitle} forms an indispensable pillar of grammatical coherence and syntactic balance. Mastery of this concept equips students to analyze structural nuances, identify subtle inflections, and express complex arguments with clarity across formal, academic, and literary contexts. In this chapter, we explore the foundational rules, common stylistic traps, and architectural principles of ${cleanTitle} aligned with the ${board} ${classLevel} curriculum standards.`,
-      estimatedStudyTimeMinutes: 120,
-      keyVocabulary: [
-        cleanTitle,
-        "Syntactic Concord",
-        "Grammatical Form",
-        "Inflection",
-        "Contextual Usage",
-        "Linguistic Nuance"
-      ],
-      conceptsCovered: [
-        `Core Definition & Principles of ${cleanTitle}`,
-        `Structural Identification & Categories`,
-        `Syntactic Application & Sentence Patterns`,
-        `Error Diagnosis & Editorial Polish`
-      ]
-    },
-    component2: {
-      learningObjectives: [
-        `Identify the grammatical structures and key markers of ${cleanTitle} across varied sentence constructions.`,
-        `Classify and distinguish standard categories, types, and inflections associated with ${cleanTitle}.`,
-        `Apply prescriptive rules of ${cleanTitle} to craft syntactically accurate and stylistically sound sentences.`,
-        `Analyze authentic literary and expository texts to evaluate how ${cleanTitle} impacts tone and readability.`,
-        `Diagnose and rectify subtle grammatical errors and non-standard usage related to ${cleanTitle}.`,
-        `Synthesize original paragraphs demonstrating creative mastery and grammatical elegance.`
-      ]
-    },
-    component3: {
-      warmUpActivity: `The Sentence Repair Workshop (2-Minute Diagnostic Starter)\n\nRead these three pairs of sentences. In each pair, one sentence demonstrates standard grammatical application of ${cleanTitle}, while the other exhibits a common syntactic or inflectional error:\n\n• Pair A:\n  (a) Carefully examine the structural balance in this sentence.\n  (b) Notice how a missing element creates immediate confusion for the reader.\n\n• Pair B:\n  (a) The formal report was presented with impeccable clarity.\n  (b) The draft contained several structural mismatches that obscured its meaning.\n\n• Pair C:\n  (a) When writers apply precise grammar rules, their message resonates with confidence.\n  (b) Ambiguous sentence structures distract readers from the author's true intent.\n\nQuick Diagnostic Task:\n1. Read each pair aloud and compare how the rhythm and clarity differ.\n2. Underline the key words directly linked to ${cleanTitle}.\n3. Discuss with your partner what specific rule distinguishes the more effective sentence.`,
-      priorKnowledge: `Prerequisites Check (${board} ${classLevel}):\n1. Basic Sentence Structure: Familiarity with complete subjects, predicates, and clause boundaries.\n2. Parts of Speech: Core understanding of nouns, verbs, pronouns, and qualifying words.\n3. Punctuation & Orthography: Standard capitalization, commas, and terminal punctuation conventions.`
-    },
-    component4: {
-      sectionTitle: `Concept Discovery: Investigating ${cleanTitle}`,
-      discoveryVignette: `It was a quiet afternoon in the St. Jude's library. Priya and Arjun, preparing for the upcoming ${board} language exhibition, noticed an intriguing passage in a vintage manuscript.\n\n\"Arjun, look closely at this line,\" Priya whispered. \"The author uses ${cleanTitle} in a way that creates vivid emphasis without sounding awkward.\"\n\nArjun leaned in and read the excerpt carefully. \"You're right. Notice how the arrangement of words leads the reader's eye naturally from the initial concept to the key conclusion.\"\n\n\"Exactly,\" smiled Priya. \"When we understand the underlying rule rather than just memorizing a definition, we can see why great writers make these deliberate structural choices.\"\n\nTogether, they began noting down how each element worked in harmony to communicate the central idea with effortless clarity.`,
-      discoveryQuestions: `Work with a partner to examine the linguistic patterns Priya and Arjun discovered:\n\n1. Structural Observation: What is the central role played by ${cleanTitle} in making the passage clear and engaging?\n2. Pattern Recognition: Compare two sentences that use ${cleanTitle}—how do the surrounding words adapt to support it?\n3. Rule Deduction: Based on your observations, formulate a general rule in your own words that describes how ${cleanTitle} operates.\n4. Real-World Application: Write one original sentence of your own applying the rule you just deduced.`,
-      teacherGuidance: `Facilitate an inductive dialogue encouraging students to notice patterns and articulate rules in their own words before presenting formal definitions.`
-    }
-  };
-}
 
 // Chapter Studio Authoring Engine: Components 1–4
 app.post("/api/chapter-studio/author-components", async (req, res) => {
@@ -426,73 +369,19 @@ app.post("/api/chapter-studio/author-components", async (req, res) => {
     const classLevel = req.body.classLevel || "Class 6";
     const subject = req.body.subject || req.body.category || "English Grammar";
     const chapterNumber = Number(req.body.chapterNumber) || 1;
-    const chapterTitle = (req.body.chapterTitle || req.body.title || "Subject–Verb Agreement: Concord & Syntactic Synthesis").trim();
-    const subtitle = (req.body.subtitle || `Foundations and Principles of ${chapterTitle}`).trim();
-
-    const isSubjectVerbAgreement =
-      chapterTitle.toLowerCase().includes("subject") &&
-      (chapterTitle.toLowerCase().includes("verb") || chapterTitle.toLowerCase().includes("agreement") || chapterTitle.toLowerCase().includes("concord"));
-
-    // Authoritative canonical curriculum benchmark for CISCE Class 6 Subject-Verb Agreement
-    const canonicalBenchmark = {
-      component1: {
-        chapterNumber: Number(chapterNumber) || 1,
-        title: chapterTitle || "Subject–Verb Agreement: Concord & Syntactic Synthesis",
-        subtitle:
-          subtitle ||
-          "Foundations of Grammatical Concord, Person–Number Harmony & Syntactic Structure",
-        openingHook:
-          "Consider these two sentences: \"The choir sings in perfect unison\" versus \"The members of the choir sing in different keys.\" Why does a single group take a singular verb in one sentence, but a plural verb in the next? How do we determine who or what is truly performing the action in an English sentence?",
-        shortIntroduction:
-          "In English grammar, a sentence works like a finely tuned orchestra. Every instrument has its place, and every part must play in harmony. The most vital partnership in any sentence is between the Subject—who or what the sentence is about—and the Finite Verb—the action or state of being. When the subject and verb harmonize in number (singular or plural) and person (first, second, or third), we achieve Concord, also known as Subject–Verb Agreement. In this chapter, we explore how English sentences maintain balance, how to spot the true subject when other words try to distract us, and how to craft sentences with syntactic precision.",
-        estimatedStudyTimeMinutes: 120,
-        keyVocabulary: [
-          "Subject",
-          "Finite Verb",
-          "Concord",
-          "Number (Singular/Plural)",
-          "Person (First/Second/Third)",
-          "Syntactic Agreement",
-          "Intervening Phrase"
-        ],
-        conceptsCovered: [
-          "Subject-Verb Core Harmony",
-          "Number and Person Concord",
-          "Identifying the Head Noun",
-          "Distinguishing Singular from Plural Verbs"
-        ]
-      },
-      component2: {
-        learningObjectives: [
-          "Identify the grammatical head subject and finite verb accurately across declarative, interrogative, and inverted sentence structures.",
-          "Recognise singular and plural subjects, distinguishing between singular base nouns and plural inflections (-s, -es, and irregular plurals).",
-          "Select verbs that agree grammatically with their subjects in number and person across standard sentence patterns.",
-          "Apply fundamental concord rules to compound subjects connected by 'and', 'or', and 'nor'.",
-          "Diagnose and correct common subject–verb agreement errors in unedited sentences and contextual paragraphs.",
-          "Synthesize original sentences demonstrating flawless agreement in descriptive writing and formal dialogues."
-        ]
-      },
-      component3: {
-        warmUpActivity:
-          "The Sentence Repair Workshop (2-Minute Diagnostic Starter)\n\nRead these three pairs of sentences. In each pair, one sentence displays grammatical concord, while the other creates a discord between the subject and verb:\n\n• Pair A:\n  (a) The whistle blows sharply at noon.\n  (b) The whistle blow sharply at noon.\n\n• Pair B:\n  (a) Two noisy squirrels chases each other up the banyan tree.\n  (b) Two noisy squirrels chase each other up the banyan tree.\n\n• Pair C:\n  (a) The captain of the school cricket team have scored three centuries.\n  (b) The captain of the school cricket team has scored three centuries.\n\nQuick Diagnostic Task:\n1. Read both sentences in each pair aloud. Which sentence sounds balanced and natural?\n2. Underline the word or phrase doing the action (the Subject).\n3. Circle the action or state word (the Finite Verb).\n4. In Pair C, identify why the verb does NOT agree with the noun \"team\".",
-        priorKnowledge:
-          "Prerequisites Check (" + board + " " + classLevel + "):\n1. Subject & Predicate Division: Distinguishing the naming part from the action part in declarative sentences.\n2. Noun Number: Recognizing regular (-s, -es) and irregular plural nouns (children, mice, geese, criteria).\n3. Primary Helping Verbs: Familiarity with basic auxiliary forms (is/are, was/were, has/have, does/do)."
-      },
-      component4: {
-        sectionTitle: "Concept Discovery: The School Newspaper Dilemma",
-        discoveryVignette:
-          "It was Thursday afternoon in the St. Jude's Middle School media room. Ananya and Kabir, the student editors of The Junior Chronicle, were proofreading the front-page draft before sending it to the printing press.\n\nKabir frowned at the opening sports headline. \"Listen to this line, Ananya: 'The captain of the school cricket team have scored three centuries this season.' Does that sound right to your ear?\"\n\nAnanya read the sentence aloud twice. \"No, Kabir. Something sounds discordant. Read it again, but pause after each part.\"\n\n\"Well,\" said Kabir, \"we are talking about 'centuries', which is plural, and 'team', which has eleven players!\"\n\n\"Wait,\" Ananya pointed her pencil at the first three words. \"Ask yourself: Who scored the centuries? Was it the entire team, or was it the captain?\"\n\n\"The captain!\" Kabir exclaimed. \"Just one person! So if we say 'The captain has scored', it sounds natural and balanced.\"\n\n\"Exactly,\" agreed Ananya. \"The words 'of the school cricket team' are just describing which captain we mean. If you take them away, the real sentence is 'The captain has scored'. But look at line four in our sports report: 'The enthusiastic spectators cheers loudly from the grandstand.' What happened there?\"\n\nKabir grinned. \"Now the writer did the opposite! 'Spectators' is more than one person, but the verb has an 's' on the end like a singular noun!\"",
-        discoveryQuestions:
-          "Work with a partner to examine the clues Ananya and Kabir discovered in the newsroom:\n\n1. Subject Hunt: In Kabir's first sentence, what is the single key noun (the head subject) performing the action? What words are simply describing that person?\n2. Verb Spotting: What is the verb in \"The captain has scored\" versus \"The players have scored\"? What happens to the verb when we change the subject from one person (singular) to several people (plural)?\n3. The 'S' Mystery: Examine the words 'spectators' and 'cheers'. In English, when a noun takes an '-s' (like spectators), does its present-tense verb also take an '-s'? What rule does your ear discover?\n4. Ear Check: Read these two sentences out loud:\n   (a) The bird sings sweetly in the rain.\n   (b) The birds sing sweetly in the rain.\n   Which word carries the '-s' in each sentence? What pattern do you observe about nouns versus verbs?",
-        teacherGuidance:
-          "Conduct paired dialogue reading in character as Kabir and Ananya. Guide students to inductively deduce the inverse '-s' inflection between nouns and verbs prior to presenting formal rule terminology."
-      }
-    };
+    const chapterTitle = (req.body.chapterTitle || req.body.title || "").trim();
+    const subtitle = (req.body.subtitle || "").trim();
 
     const ai = getGenAI();
-    if (ai) {
-      try {
-        const prompt = `You are the Chief Academic Curriculum Author for VERITAS Academic Publishing. Author the definitive, textbook-grade pedagogical content for Components 1–4 of the following textbook chapter:
+    if (!ai) {
+      return res.status(502).json({
+        success: false,
+        error: "AI generation failed. Your existing content has not been changed.",
+      });
+    }
+
+    try {
+      const prompt = `You are the Chief Academic Curriculum Author for VERITAS Academic Publishing. Author the definitive, textbook-grade pedagogical content for Components 1–4 of the following textbook chapter:
 Board: ${board}
 Class Level: ${classLevel}
 Subject: ${subject}
@@ -528,53 +417,47 @@ Produce strict, valid JSON conforming to this schema:
   }
 }`;
 
-        const response = await ai.models.generateContent({
-          model: "gemini-3.8-flash",
-          contents: prompt,
-          config: {
-            temperature: 0.7,
-            responseMimeType: "application/json",
-          },
-        });
+      const response = await ai.models.generateContent({
+        model: "gemini-3.8-flash",
+        contents: prompt,
+        config: {
+          temperature: 0.7,
+          responseMimeType: "application/json",
+        },
+      });
 
-        const text = response.text;
-        if (text) {
-          const parsed = JSON.parse(text);
-          if (
-            parsed.component1?.title &&
-            parsed.component1?.shortIntroduction &&
-            parsed.component2?.learningObjectives?.length >= 3 &&
-            parsed.component3?.warmUpActivity &&
-            parsed.component4?.discoveryVignette
-          ) {
-            return res.json({
-              success: true,
-              components: parsed,
-              data: parsed,
-              source: "gemini-3.8-flash"
-            });
-          }
+      const text = response.text;
+      if (text) {
+        const parsed = JSON.parse(text);
+        if (
+          parsed.component1?.title &&
+          parsed.component1?.shortIntroduction &&
+          parsed.component2?.learningObjectives?.length >= 3 &&
+          parsed.component3?.warmUpActivity &&
+          parsed.component4?.discoveryVignette
+        ) {
+          return res.json({
+            success: true,
+            components: parsed,
+            data: parsed,
+            source: "gemini-3.8-flash"
+          });
         }
-      } catch (geminiError: any) {
-        console.warn("Gemini authoring call failed, utilizing canonical academic benchmark:", geminiError?.message || geminiError);
       }
+      return res.status(502).json({
+        success: false,
+        error: "AI generation failed. Your existing content has not been changed.",
+      });
+    } catch (geminiError: any) {
+      console.warn("Gemini authoring call failed:", geminiError?.message || geminiError);
+      return res.status(502).json({
+        success: false,
+        error: "AI generation failed. Your existing content has not been changed.",
+      });
     }
-
-    // Return the high-quality canonical curriculum benchmark (supplying both components and data for full client compatibility)
-    const benchmarkData = isSubjectVerbAgreement
-      ? canonicalBenchmark
-      : generateCanonicalBenchmarkForTopic(chapterTitle, subtitle, board, classLevel, chapterNumber);
-
-    return res.json({
-      success: true,
-      components: benchmarkData,
-      data: benchmarkData,
-      source: "canonical_pedagogical_engine",
-      note: "Authored via Veritas Canonical Pedagogical Curriculum Engine"
-    });
   } catch (error: any) {
     console.error("Author components endpoint error:", error);
-    return res.status(500).json({ success: false, error: error.message || "Failed to author chapter components" });
+    return res.status(500).json({ success: false, error: "AI generation failed. Your existing content has not been changed." });
   }
 });
 
@@ -659,62 +542,23 @@ You MUST respond strictly with valid JSON conforming to this exact structure:
             });
           }
         }
+        return res.status(502).json({
+          error: "AI generation failed. Your existing content has not been changed.",
+        });
       } catch (geminiError: any) {
-        console.warn("Gemini discovery vignette generation failed, using canonical pedagogical fallback:", geminiError?.message || geminiError);
+        console.warn("Gemini discovery vignette generation failed:", geminiError?.message || geminiError);
+        return res.status(502).json({
+          error: "AI generation failed. Your existing content has not been changed.",
+        });
       }
     }
 
-    // Canonical pedagogical fallback if offline, quota exhausted, or response invalid
-    const isAgreement = effectiveTopic.toLowerCase().includes("agreement") ||
-      effectiveTopic.toLowerCase().includes("concord") ||
-      chapterTitle.toLowerCase().includes("agreement") ||
-      chapterTitle.toLowerCase().includes("concord");
-
-    if (isAgreement) {
-      return res.json({
-        contextualVignette: `It was Thursday afternoon in the St. Jude's Middle School media room. Ananya and Kabir, the student editors of The Junior Chronicle, were proofreading the front-page draft before sending it to print.
-
-Kabir frowned at the opening headline. "Listen to this line, Ananya: 'The captain of the school cricket team have scored three centuries this season.' Does that sound right to your ear?"
-
-Ananya read the sentence aloud twice. "No, Kabir. Something sounds discordant. Read it again, but pause after each part."
-
-"Well," said Kabir, "we are talking about 'centuries', which is plural, and 'team', which has eleven players!"
-
-"Wait," Ananya pointed her pencil at the first three words. "Ask yourself: Who scored the centuries? Was it the entire team, or was it the captain?"
-
-"The captain!" Kabir exclaimed. "Just one person! So if we say 'The captain has scored', it sounds natural and balanced."
-
-"Exactly," agreed Ananya. "The words 'of the school cricket team' are just describing which captain we mean. If you take them away, the real sentence is 'The captain has scored'. But look at line four in our sports report: 'The enthusiastic spectators cheers loudly from the grandstand.' What happened there?"
-
-Kabir grinned. "Now the writer did the opposite! 'Spectators' is more than one person, but the verb has an 's' on the end like a singular noun!"`,
-        guidedDiscoveryQuestions: [
-          "1. Subject Hunt: In Kabir's first sentence ('The captain of the school cricket team have scored...'), what is the single key head noun performing the action? Which words merely describe that person?",
-          "2. Verb Spotting: Compare 'The captain has scored' versus 'The players have scored'. What happens to the auxiliary verb when the subject changes from one person (singular) to several people (plural)?",
-          "3. The 'S' Mystery: Examine the words 'spectators' and 'cheers'. In English, when a noun takes an '-s' (like spectators), does its present-tense verb also take an '-s'? What pattern does your ear discover?",
-          "4. Ear Check: Read these two sentences out loud:\n   (a) The bird sings sweetly in the rain.\n   (b) The birds sing sweetly in the rain.\n   Which word carries the '-s' in each sentence? What rule can you formulate about nouns versus verbs?"
-        ],
-      });
-    }
-
-    // Generic fallback for any other grammar topic
-    return res.json({
-      contextualVignette: `During their weekly editorial meeting for the ${effectiveBoard} ${effectiveGrade} class magazine, Rohan and Meera were reviewing submissions.
-
-"Look at this sentence," Rohan remarked, pointing to a draft article about the annual science fair. "Something about the phrasing feels awkward when read aloud."
-
-Meera leaned over to inspect the line. "Read it again carefully. Notice how the sentence connects the main actor with the action being performed."
-
-Together, they experimented with modifying the structure, listening closely to how each slight variation changed both the rhythm and clarity of the message. "When we adjust that specific element," Rohan observed, "the whole sentence suddenly flows naturally and makes immediate sense to the reader."`,
-      guidedDiscoveryQuestions: [
-        `1. Notice the Form: In the passage above, identify the key words that demonstrate ${effectiveTopic}. What do you notice about their placement?`,
-        `2. Compare & Contrast: How does changing one word or ending in the sentence affect the words around it?`,
-        `3. Syntactic Pattern: What pattern can you detect between the naming part and the action part of the sentence?`,
-        `4. Formulate the Rule: In your own words, describe why harmony between these elements makes the sentence sound correct to your ear.`
-      ],
+    return res.status(502).json({
+      error: "AI generation failed. Your existing content has not been changed.",
     });
   } catch (error: any) {
     console.error("Discovery vignette route error:", error);
-    return res.status(500).json({ error: error.message || "Failed to generate discovery vignette" });
+    return res.status(500).json({ error: "AI generation failed. Your existing content has not been changed." });
   }
 });
 
@@ -867,197 +711,19 @@ Output ONLY pure, valid JSON with keys: "conceptualExplanation", "syntacticAnaly
             },
           });
         }
+        return res.status(502).json({
+          error: "AI generation failed. Your existing content has not been changed.",
+        });
       } catch (geminiError: any) {
-        console.warn("Gemini theoretical content generation failed, using canonical pedagogical fallback:", geminiError?.message || geminiError);
+        console.warn("Gemini theoretical content generation failed:", geminiError?.message || geminiError);
+        return res.status(502).json({
+          error: "AI generation failed. Your existing content has not been changed.",
+        });
       }
     }
 
-    // Canonical pedagogical benchmark fallback for CISCE Class 6 Subject–Verb Agreement
-    const isAgreement =
-      effectiveTopic.toLowerCase().includes("agreement") ||
-      effectiveTopic.toLowerCase().includes("concord") ||
-      chapterTitle.toLowerCase().includes("agreement") ||
-      chapterTitle.toLowerCase().includes("concord");
-
-    if (isAgreement) {
-      const benchmarkExplanation = `Every complete English sentence consists of two fundamental pillars: the naming part, known as the subject, and the telling part, known as the predicate. The subject identifies who or what performs the action or exists in a particular state, while the predicate contains the finite verb that expresses that action or condition.
-
-For a sentence to be grammatically harmonious, these two components must enter into an essential grammatical contract termed Subject–Verb Agreement or concord. The governing principle of concord is straightforward: the finite verb must match its grammatical subject in person and number. When the subject denotes a single entity (singular), the verb must assume its singular form; when the subject denotes more than one entity (plural), the verb must take its plural form.
-
-A frequent source of difficulty in written English arises when descriptive words or phrases intervene between the subject and the verb. In sentences such as "The captain of the school cricket team has scored three centuries", the complete subject includes descriptive details about the school cricket team. However, the true grammatical controller—the head noun—is "captain". Because "captain" is singular, the auxiliary verb must be "has", regardless of the plural noun "centuries" or the collective nature of "team". The verb looks back directly to the head noun and ignores any modifying prepositional phrases that sit in between.
-
-Furthermore, learners must observe the unique behavioural contrast between nouns and verbs in the present tense. While regular English nouns add an "-s" or "-es" to form their plural (one captain, two captains), present-tense verbs do the exact reverse: they take an "-s" or "-es" exclusively in the third-person singular (he plays, she scores, the bird sings), but shed the ending in the plural (they play, they score, the birds sing). Mastering concord requires training the eye to isolate the true head noun before determining the verb form.`;
-
-      const benchmarkAnalysis = [
-        {
-          sentence: "The captain of the school cricket team has scored three centuries.",
-          subjectHeadNoun: "captain",
-          expandedSubject: "The captain of the school cricket team",
-          interveningPhrase: "of the school cricket team",
-          verbPhrase: "has scored",
-          grammaticalNumber: "singular",
-          person: "3rd person",
-          agreementRelationship: "captain (singular, 3rd person) → has scored (singular auxiliary)",
-          explanation: "The noun 'team' occurs nearer the verb, but it belongs to the prepositional phrase 'of the school cricket team'. The head noun of the subject is 'captain'; therefore the auxiliary verb agrees with the singular noun 'captain'.",
-          notes: "Proximity trap: 'team' is adjacent to the verb, but 'captain' is the structural governor.",
-          isContrastivePair: true
-        },
-        {
-          sentence: "The players of the school cricket team have scored three centuries.",
-          subjectHeadNoun: "players",
-          expandedSubject: "The players of the school cricket team",
-          interveningPhrase: "of the school cricket team",
-          verbPhrase: "have scored",
-          grammaticalNumber: "plural",
-          person: "3rd person",
-          agreementRelationship: "players (plural, 3rd person) → have scored (plural auxiliary)",
-          explanation: "In contrast to the previous sentence, the head noun here is the plural 'players'. Even though the singular collective noun 'team' sits immediately before the verb, the finite verb must assume the plural form 'have scored' to match 'players'.",
-          notes: "Contrastive pair with Sentence 1: demonstrates that changing the head noun alters the finite verb, regardless of the intervening phrase.",
-          isContrastivePair: true
-        },
-        {
-          sentence: "The melodious sound of the ancient church bells echoes across the valley.",
-          subjectHeadNoun: "sound",
-          expandedSubject: "The melodious sound of the ancient church bells",
-          interveningPhrase: "of the ancient church bells",
-          verbPhrase: "echoes",
-          grammaticalNumber: "singular",
-          person: "3rd person",
-          agreementRelationship: "sound (singular, 3rd person) → echoes (singular present verb with -s)",
-          explanation: "The intervening prepositional phrase contains the plural noun 'bells'. However, the action of echoing belongs to the singular head noun 'sound', requiring the third-person singular inflection '-es' on the finite verb.",
-          notes: "Present-tense inflection check: singular head noun 'sound' requires '-es' on the verb.",
-          isContrastivePair: false
-        },
-        {
-          sentence: "A vibrant bouquet of fresh yellow daffodils sits gracefully on the mantle.",
-          subjectHeadNoun: "bouquet",
-          expandedSubject: "A vibrant bouquet of fresh yellow daffodils",
-          interveningPhrase: "of fresh yellow daffodils",
-          verbPhrase: "sits",
-          grammaticalNumber: "singular",
-          person: "3rd person",
-          agreementRelationship: "bouquet (singular, 3rd person) → sits (singular verb with -s)",
-          explanation: "Students frequently allow their eye to fixate on the plural noun 'daffodils'. Because 'daffodils' is merely the object of the preposition 'of', the true subject remains the singular head noun 'bouquet', which governs 'sits'.",
-          notes: "Partitive/collective noun trap: 'daffodils' is the object of preposition; 'bouquet' is the head noun.",
-          isContrastivePair: false
-        }
-      ];
-
-      const benchmarkConceptChecks = [
-        "Which noun in the subject phrase actually controls the verb, and how can you separate it from surrounding descriptive words?",
-        "Why does the noun positioned closest to the verb not always determine whether the verb is singular or plural?",
-        "If you remove the intervening prepositional phrase 'of the school cricket team', does the grammatical agreement between subject and verb become more obvious?",
-        "What structural change occurs in the verb when the head noun transitions from singular 'captain' to plural 'players'?"
-      ];
-
-      const benchmarkInsight = "A finite verb agrees with the grammatical head noun of its subject clause—not automatically with whatever noun happens to stand closest to it in an intervening descriptive phrase.";
-
-      const benchmarkTeacherAnnotations = {
-        teachingFocus: "Guide students to isolate the head noun in subjects expanded by prepositional phrases, overcoming the 'attraction by proximity' error.",
-        terminologyGuidance: "Consistently reinforce 'head noun' vs 'intervening phrase' and 'concord' vs 'inflection'. Emphasize that in the present tense, an '-s' on a verb signals singular concord, whereas on a noun it signals plural.",
-        commonMisconceptions: [
-          "Attraction to proximity: selecting the verb based on the noun immediately preceding it.",
-          "Confusing noun plurals (which add -s) with verb singulars (which also add -s).",
-          "Treating collective nouns inside prepositional phrases (e.g., 'of the team') as subject controllers."
-        ],
-        suggestedBoardExplanation: "Write: '[The captain] (of the cricket team) [has scored].' Draw brackets around the head noun and finite verb, with a bridging arrow connecting them over the parenthesised prepositional phrase.",
-        questioningStrategies: [
-          "Ask: 'Who or what is performing the action?' (to locate the head noun).",
-          "Ask: 'Can we place our thumb over the words between the commas/prepositions?'",
-          "Ask: 'If there were three captains, what would the verb become?'"
-        ],
-        diagnosticObservations: "Check if students underline the true head noun or accidentally circle the noun nearest the verb when proofreading sentences.",
-        extensionSuggestions: "Challenge advanced pupils with inverted sentences (e.g. 'Along the corridor walks the headmistress with her staff') or compound subjects with correlative conjunctions."
-      };
-
-      return res.json({
-        conceptualExplanation: benchmarkExplanation,
-        syntacticAnalysis: benchmarkAnalysis,
-        conceptChecks: benchmarkConceptChecks,
-        linguisticInsight: benchmarkInsight,
-        teacherAnnotations: benchmarkTeacherAnnotations,
-        wordCount: benchmarkExplanation.split(/\s+/).length,
-        generationMetadata: {
-          board: effectiveBoard,
-          grade: effectiveGrade,
-          topic: effectiveTopic,
-          model: "canonical-benchmark",
-          generatedAt: new Date().toISOString(),
-        },
-      });
-    }
-
-    // Generic fallback for any other grammar topic
-    return res.json({
-      conceptualExplanation: `Every grammatical structure in the English language serves a precise expressive function. In the study of ${effectiveTopic}, understanding the foundational logic of sentence formation allows learners to construct clear, coherent, and elegant prose.
-
-At the core of ${effectiveTopic} is the relationship between functional elements within the clause. Rather than viewing sentences as mere strings of disconnected words, syntactic analysis reveals how individual units—head words, modifiers, and verbal operators—interlock in systematic patterns governed by the rules of standard ${effectiveBoard} English.
-
-As students discovered in the preceding inquiry scenario, altering one grammatical feature systematically triggers corresponding shifts throughout the clause. Mastering this concept requires not mechanical memorisation, but developing an analytical awareness of how grammatical categories operate in live discourse.`,
-      syntacticAnalysis: [
-        {
-          sentence: `The primary rule of ${effectiveTopic} governs sentence construction in formal prose.`,
-          subjectHeadNoun: "rule",
-          expandedSubject: `The primary rule of ${effectiveTopic}`,
-          interveningPhrase: `of ${effectiveTopic}`,
-          verbPhrase: "governs",
-          grammaticalNumber: "singular",
-          person: "3rd person",
-          agreementRelationship: "rule (singular) → governs (singular)",
-          explanation: "The head noun 'rule' dictates the singular form of the finite verb.",
-          notes: "Focus on isolating the central controlling word before applying inflectional endings.",
-          isContrastivePair: false
-        },
-        {
-          sentence: "Several prominent examples illustrate this syntactic principle in modern English.",
-          subjectHeadNoun: "examples",
-          expandedSubject: "Several prominent examples",
-          interveningPhrase: "",
-          verbPhrase: "illustrate",
-          grammaticalNumber: "plural",
-          person: "3rd person",
-          agreementRelationship: "examples (plural) → illustrate (base form)",
-          explanation: "The plural head noun requires the plural base form of the finite verb.",
-          notes: "Contrast singular and plural configurations to observe structural variation.",
-          isContrastivePair: false
-        },
-        {
-          sentence: "Each student in the classroom observes the linguistic pattern carefully.",
-          subjectHeadNoun: "student",
-          expandedSubject: "Each student in the classroom",
-          interveningPhrase: "in the classroom",
-          verbPhrase: "observes",
-          grammaticalNumber: "singular",
-          person: "3rd person",
-          agreementRelationship: "student (singular distributive) → observes (singular verb)",
-          explanation: "Intervening prepositional phrases do not change the number of the distributive head noun.",
-          notes: "Distributive pronoun/noun takes singular verb.",
-          isContrastivePair: false
-        }
-      ],
-      conceptChecks: [
-        `What is the primary function of ${effectiveTopic} in shaping clear sentence meaning?`,
-        "How can you identify the key controlling word when complex modifiers surround it?",
-        "What changes occur in sentence structure when the core grammatical category shifts from singular to plural?"
-      ],
-      linguisticInsight: `Syntactic clarity depends on recognizing the hierarchical relationship between the controlling head word and its dependent modifiers.`,
-      teacherAnnotations: {
-        teachingFocus: `Develop conceptual clarity regarding ${effectiveTopic} before moving to formal rule memorisation.`,
-        terminologyGuidance: "Differentiate between grammatical function and lexical meaning.",
-        commonMisconceptions: ["Confusing superficial proximity with grammatical governance."],
-        suggestedBoardExplanation: "Model sentence decomposition into head elements and dependent modifiers.",
-        questioningStrategies: ["Ask students to isolate the head word before determining the dependent form."],
-        diagnosticObservations: "Observe whether students identify structural heads accurately.",
-        extensionSuggestions: "Provide complex multi-clause sentences for syntactic diagramming."
-      },
-      wordCount: 160,
-      generationMetadata: {
-        board: effectiveBoard,
-        grade: effectiveGrade,
-        topic: effectiveTopic,
-        model: "generic-benchmark",
-        generatedAt: new Date().toISOString(),
-      },
+    return res.status(502).json({
+      error: "AI generation failed. Your existing content has not been changed.",
     });
   } catch (error: any) {
     console.error("Theoretical content generation route error:", error);
@@ -1228,279 +894,23 @@ Output pure, valid JSON only. No markdown ticks or explanation.`;
             },
           });
         }
+        return res.status(502).json({
+          error: "AI generation failed. Your existing content has not been changed.",
+        });
       } catch (geminiError: any) {
-        console.warn("Gemini grammar rules generation failed, using canonical pedagogical fallback:", geminiError?.message || geminiError);
+        console.warn("Gemini grammar rules generation failed:", geminiError?.message || geminiError);
+        return res.status(502).json({
+          error: "AI generation failed. Your existing content has not been changed.",
+        });
       }
     }
 
-    // Canonical pedagogical benchmark fallback for CISCE Class 6 Subject–Verb Agreement
-    const isAgreement =
-      effectiveTopic.toLowerCase().includes("agreement") ||
-      effectiveTopic.toLowerCase().includes("concord") ||
-      chapterTitle.toLowerCase().includes("agreement") ||
-      chapterTitle.toLowerCase().includes("concord");
-
-    if (isAgreement) {
-      const benchmarkData = {
-        ruleIdentifier: "RULE 1.1",
-        formalRuleStatement:
-          "A finite verb must agree with its grammatical subject in person (first, second, or third) and number (singular or plural), irrespective of any intervening descriptive words, prepositional phrases, or parenthetical expressions.",
-        pedagogicalSummary:
-          "A singular subject requires a singular verb; a plural subject requires a plural verb. Keep your focus strictly on the head noun and ignore descriptive words in between.",
-        structuralFormula: "[Subject: Person & Number] ⟷ [Finite Verb: Matching Person & Number]",
-        formulaTokens: [
-          { text: "[Singular Subject]", role: "subject", highlight: true },
-          { text: "+", role: "operator", highlight: false },
-          { text: "[Singular Finite Verb]", role: "verb", highlight: true },
-        ],
-        ruleVariations: [
-          {
-            id: "var-1",
-            title: "Rule 1A: Basic Person and Number Concord",
-            condition: "Standard simple sentences with single head noun or personal pronoun",
-            ruleStatement:
-              "In the present indefinite tense, third-person singular subjects append '-s' or '-es' to regular finite verbs, while plural subjects take the base verb form without suffixation.",
-            formula: "[Singular Noun/Pronoun] + [Verb + -s/-es]  |  [Plural Noun/Pronoun] + [Base Verb]",
-            formulaTokens: [
-              { text: "[Singular Noun/Pronoun]", role: "subject", highlight: true },
-              { text: "+", role: "operator" },
-              { text: "[Verb + -s/-es]", role: "verb", highlight: true },
-            ],
-            correctExample: "The swallow flies southward before the onset of winter.",
-            incorrectExample: "The swallow fly southward before the onset of winter.",
-            explanation:
-              "The third-person singular subject 'swallow' demands the inflected singular verb 'flies'. In plural usage, 'swallows' would take the base form 'fly'.",
-            learnerNote:
-              "Note the inverse pattern: Nouns add '-s' to become plural (swallows), but verbs add '-s' to become singular (flies)!",
-          },
-          {
-            id: "var-2",
-            title: "Rule 1B: Intervening Prepositional Phrases & Modifiers",
-            condition: "Subjects followed by prepositional phrases (of, with, along with, in addition to)",
-            ruleStatement:
-              "A finite verb agrees exclusively with the primary head noun of the subject phrase. Modifying phrases enclosed between the head noun and the verb exert no grammatical control over verb number.",
-            formula: "[Head Noun (Singular)] + (of / with + Plural Modifiers) + [Singular Finite Verb]",
-            formulaTokens: [
-              { text: "[Head Noun (Singular)]", role: "subject", highlight: true },
-              { text: "+", role: "operator" },
-              { text: "(Prepositional Phrase)", role: "modifier", highlight: false },
-              { text: "+", role: "operator" },
-              { text: "[Singular Verb]", role: "verb", highlight: true },
-            ],
-            correctExample:
-              "The captain of the school cricket players has received the championship trophy.",
-            incorrectExample:
-              "The captain of the school cricket players have received the championship trophy.",
-            explanation:
-              "The plural noun 'players' is merely the object of the preposition 'of'. The head noun is the singular 'captain', which governs the singular auxiliary 'has'.",
-            learnerNote:
-              "Proximity Trap: Never allow the noun closest to the verb to deceive your ear into making an agreement error.",
-          },
-          {
-            id: "var-3",
-            title: "Rule 1C: Compound Subjects Joined by 'And'",
-            condition: "Two or more distinct subjects linked by the coordinating conjunction 'and'",
-            ruleStatement:
-              "Two or more nouns or pronouns joined by 'and' form a compound plural subject and require a plural finite verb, except when both nouns express a single unified concept.",
-            formula: "[Subject 1] + and + [Subject 2] + [Plural Finite Verb]",
-            formulaTokens: [
-              { text: "[Subject 1]", role: "subject", highlight: true },
-              { text: "+ and +", role: "conjunction" },
-              { text: "[Subject 2]", role: "subject", highlight: true },
-              { text: "+", role: "operator" },
-              { text: "[Plural Verb]", role: "verb", highlight: true },
-            ],
-            correctExample: "The flautist and the cellist perform the evening sonata with exquisite precision.",
-            incorrectExample: "The flautist and the cellist performs the evening sonata with exquisite precision.",
-            explanation:
-              "Two individual performers joined by 'and' constitute two distinct entities, necessitating the plural verb form 'perform'.",
-            learnerNote:
-              "Exception: When two foods or concepts form a single customary unit (e.g. 'Bread and butter is a wholesome breakfast'), use a singular verb.",
-          },
-          {
-            id: "var-4",
-            title: "Rule 1D: Correlative Conjunctions (Either...or, Neither...nor)",
-            condition: "Subjects coordinated with disjunctive correlative pairs",
-            ruleStatement:
-              "When subjects differing in number or person are joined by 'either...or' or 'neither...nor', the finite verb agrees in person and number with the subject component nearest to it.",
-            formula: "Neither + [Subject 1] + nor + [Subject 2] + [Verb agreeing with Subject 2]",
-            formulaTokens: [
-              { text: "Neither + [Subject 1]", role: "subject" },
-              { text: "+ nor +", role: "conjunction" },
-              { text: "[Subject 2]", role: "subject", highlight: true },
-              { text: "+", role: "operator" },
-              { text: "[Verb agreeing with Subject 2]", role: "verb", highlight: true },
-            ],
-            correctExample: "Neither the headmaster nor the prefects were present at the assembly rehearsal.",
-            incorrectExample: "Neither the headmaster nor the prefects was present at the assembly rehearsal.",
-            explanation:
-              "Under the CISCE rule of proximity for correlatives, 'prefects' is the nearer subject element to the verb, compelling the plural verb 'were'.",
-            learnerNote:
-              "Tip: Put your finger over the first subject and 'neither/nor'; let the remaining closer noun guide the verb.",
-          },
-        ],
-        ruleOfThumb: {
-          title: "The Golden Rule of Suffix Inversion",
-          summary:
-            "In regular English present-tense syntax, the suffix '-s' is almost never shared by both the subject and the verb in a two-word core. If the noun takes an '-s' (plural), the verb loses its '-s'. If the noun has no '-s' (singular), the verb gains an '-s'.",
-          mnemonicOrContrast: "Noun + S = Plural | Verb + S = Singular (Only one '-s' per core pair!)",
-        },
-        exceptions: [
-          {
-            id: "ex-1",
-            caseTitle: "Plural Nouns Denoting a Single Quantity, Period, or Sum",
-            condition: "Nouns indicating units of measurement, distance, time, or currency",
-            explanation:
-              "Although the noun is syntactically plural in form, conceptually it represents an indivisible singular quantity or mass.",
-            example: "Fifty kilometres is an exhausting distance to traverse on a bicycle in one afternoon.",
-          },
-          {
-            id: "ex-2",
-            caseTitle: "Titles of Books, Poems, and Works of Art",
-            condition: "Proper nouns ending in plural inflections",
-            explanation:
-              "A title names a singular intellectual work, irrespective of plural nouns in its phrasing.",
-            example: "'Gulliver's Travels' was composed by Jonathan Swift as a sharp social satire.",
-          },
-          {
-            id: "ex-3",
-            caseTitle: "Distributive Indefinite Pronouns",
-            condition: "Subjects introduced by 'each', 'either', 'neither', or 'everyone'",
-            explanation:
-              "Distributive pronouns consider members of a group singly rather than collectively, requiring a singular verb even when followed by a plural prepositional phrase ('of the students').",
-            example: "Each of the prize recipients receives an inscribed brass medal.",
-          },
-        ],
-        teacherAnnotations: {
-          introductionStrategy:
-            "Model the structural formula box on the blackboard using two distinct chalk/marker colours: one for the subject, one for the finite verb. Have students physically bracket intervening phrases to prove they do not affect concord.",
-          commonConfusionPoints: [
-            "Proximity error: choosing the verb that sounds right next to the adjacent plural noun in an intervening phrase.",
-            "Confusing the noun plural suffix '-s' with the verb third-person singular suffix '-s'.",
-            "Assuming every conjunction functions like 'and' (e.g., misapplying compound plural rules to 'as well as').",
-          ],
-          boardExamAlignmentNote:
-            "CISCE Class 6 English Language syllabus requires mastery of concord with intervening phrases and correlative conjunctions, directly preparing candidates for Class 8 and ICSE Question 5 (Do as Directed / Sentence Synthesis).",
-          blackboardSummarySchema:
-            "DRAW ON BOARD:\n[Head Noun] ────── (intervening prepositional phrase) ──────> [Finite Verb]\n\"Bridge over the prepositional phrase!\"",
-          diagnosticCheckSuggestion:
-            "Read aloud three rapid diagnostic sentences containing proximity traps. Ask students to flash 'S' (Singular) or 'P' (Plural) cards to instantly assess visual head-noun isolation.",
-        },
-      };
-
-      const wordCount = [
-        benchmarkData.formalRuleStatement,
-        benchmarkData.pedagogicalSummary,
-        ...benchmarkData.ruleVariations.map((v) => `${v.title} ${v.ruleStatement} ${v.explanation}`),
-        benchmarkData.ruleOfThumb.summary,
-        ...benchmarkData.exceptions.map((e) => `${e.caseTitle} ${e.explanation}`),
-      ].join(" ").split(/\s+/).length;
-
-      return res.json({
-        ...benchmarkData,
-        wordCount,
-        generationMetadata: {
-          board: effectiveBoard,
-          grade: effectiveGrade,
-          topic: effectiveTopic,
-          model: "canonical-benchmark",
-          generatedAt: new Date().toISOString(),
-        },
-      });
-    }
-
-    // Generic fallback for any other grammar topic
-    const genericData = {
-      ruleIdentifier: "RULE 1.1",
-      formalRuleStatement: `In standard formal prose, the grammatical elements of ${effectiveTopic} must conform to systematic syntactic rules governing clause structure, positioning, and morphological inflection.`,
-      pedagogicalSummary: `Master the fundamental rule of ${effectiveTopic} by recognizing the key controlling words and positioning modifiers in their proper structural place.`,
-      structuralFormula: `[Core Element] + [Syntactic Operator] + [Dependent Element]`,
-      formulaTokens: [
-        { text: "[Core Element]", role: "subject", highlight: true },
-        { text: "+", role: "operator" },
-        { text: "[Syntactic Operator]", role: "verb", highlight: true },
-        { text: "+", role: "operator" },
-        { text: "[Dependent Element]", role: "modifier", highlight: false },
-      ],
-      ruleVariations: [
-        {
-          id: "var-1",
-          title: `Primary Usage of ${effectiveTopic}`,
-          condition: "Standard declarative clause in formal discourse",
-          ruleStatement: `When constructing clauses involving ${effectiveTopic}, ensure the primary structural element governs dependent modifiers.`,
-          formula: `[Governing Element] + [Standard Form]`,
-          formulaTokens: [
-            { text: "[Governing Element]", role: "subject", highlight: true },
-            { text: "+", role: "operator" },
-            { text: "[Standard Form]", role: "verb", highlight: true },
-          ],
-          correctExample: `The precise application of ${effectiveTopic} produces lucid and elegant sentences.`,
-          incorrectExample: `Improper placement in ${effectiveTopic} causes structural confusion.`,
-          explanation: `The governing element determines clause cohesion and prevents ambiguity.`,
-          learnerNote: "Always identify the controlling head word before determining inflection or placement.",
-        },
-        {
-          id: "var-2",
-          title: `Complex Configurations in ${effectiveTopic}`,
-          condition: "Clauses expanded with multiple modifiers or coordinate elements",
-          ruleStatement: `When additional descriptive elements expand the clause, preserve the underlying grammatical relationship between core parts.`,
-          formula: `[Core Unit] + (Descriptive Phrase) + [Governed Element]`,
-          formulaTokens: [
-            { text: "[Core Unit]", role: "subject", highlight: true },
-            { text: "+ (Modifier)", role: "modifier" },
-            { text: "+ [Governed Element]", role: "verb", highlight: true },
-          ],
-          correctExample: `The central principle, despite numerous variations, remains consistent throughout.`,
-          incorrectExample: `The central principle, despite numerous variations, lose their consistency.`,
-          explanation: `Modifying phrases do not alter the fundamental grammatical relationship of the core units.`,
-          learnerNote: "Bracket or isolate parenthetical phrases when checking structural correctness.",
-        },
-      ],
-      ruleOfThumb: {
-        title: "Rule of Thumb for Clear Syntax",
-        summary: `Isolate the core structural backbone of the sentence before adding or evaluating peripheral modifiers.`,
-        mnemonicOrContrast: "Core First, Modifiers Second",
-      },
-      exceptions: [
-        {
-          id: "ex-1",
-          caseTitle: "Irregular or Idiomatic Formations",
-          condition: "Specific idiomatic phrases or historical constructions",
-          explanation: "Certain established idioms preserve archaic grammatical forms that diverge from the general rule.",
-          example: "Fixed expressions retain their historical syntax without alteration.",
-        },
-      ],
-      teacherAnnotations: {
-        introductionStrategy: `Introduce the structural formula on the board before examining textbook examples. Contrast correct and incorrect sentences side by side.`,
-        commonConfusionPoints: ["Failing to separate the core grammatical unit from incidental modifiers."],
-        boardExamAlignmentNote: `Standard ${effectiveBoard} assessments test structural accuracy and error identification in transformation questions.`,
-        blackboardSummarySchema: "DRAW: [Core Unit] ──> [Governed Element] (highlighting the direct connection)",
-        diagnosticCheckSuggestion: "Ask students to underline the controlling element and circle the governed element in three test sentences.",
-      },
-    };
-
-    const wordCount = [
-      genericData.formalRuleStatement,
-      genericData.pedagogicalSummary,
-      ...genericData.ruleVariations.map((v) => `${v.title} ${v.ruleStatement} ${v.explanation}`),
-      genericData.ruleOfThumb.summary,
-      ...genericData.exceptions.map((e) => `${e.caseTitle} ${e.explanation}`),
-    ].join(" ").split(/\s+/).length;
-
-    return res.json({
-      ...genericData,
-      wordCount,
-      generationMetadata: {
-        board: effectiveBoard,
-        grade: effectiveGrade,
-        topic: effectiveTopic,
-        model: "generic-benchmark",
-        generatedAt: new Date().toISOString(),
-      },
+    return res.status(502).json({
+      error: "AI generation failed. Your existing content has not been changed.",
     });
   } catch (error: any) {
     console.error("Grammar rules generation route error:", error);
-    return res.status(500).json({ error: error.message || "Failed to generate grammar rules" });
+    return res.status(500).json({ error: "AI generation failed. Your existing content has not been changed." });
   }
 });
 
@@ -1555,282 +965,6 @@ function getBoardProgrammeGuidance(board: string): string {
   return `Board / Programme: ${board} (Custom / Independent Curriculum). Focus on universal academic rigor, clear conceptual progression, and transparent instructional scaffolding.`;
 }
 
-function generatePedagogicalComponentFallback(
-  componentId: string,
-  subject: string,
-  topic: string,
-  classLevel: string,
-  board: string
-): any {
-  const isGrammar = /grammar|syntax|english language/i.test(subject) || /grammar/i.test(topic);
-  const isMath = /math/i.test(subject) || /math/i.test(topic);
-  const isScience = /science|biology|physics|chemistry/i.test(subject) || /science/i.test(topic);
-
-  switch (componentId) {
-    case 'comp-19': // Challenge Drills
-      return {
-        challengeProblems: [
-          {
-            id: `chal-fallback-1`,
-            title: `${topic}: Advanced Diagnostic & Edge Case Challenge`,
-            prompt: isMath
-              ? `A complex multi-step application problem in ${topic} involving multiple operations and boundary conditions.`
-              : isScience
-              ? `Analyze an anomalous experimental outcome where the observed phenomenon in ${topic} appears to diverge from standard theoretical prediction.`
-              : `Analyze the subtle syntactic contrast in ${topic} where surface word order disguises the underlying structural governing relationship.`,
-            hint: `Break down the system into primary constituents before applying the governing rule or theorem.`,
-            modelAnswer: `Complete step-by-step verified solution demonstrating mastery of ${topic}.`,
-            rationale: `Rigorous analytical rationale detailing why alternative approaches fail and the governing principle holds.`,
-            grammaticalRationale: `Rigorous analytical rationale detailing why alternative approaches fail and the governing principle holds.`,
-            commonPitfall: `Assuming superficial pattern matching rather than analyzing structural invariants.`,
-            marks: 3,
-            difficulty: 'Hard',
-            cognitiveLevel: 'Evaluating',
-          },
-          {
-            id: `chal-fallback-2`,
-            title: `${topic}: Olympiad Synthesis Challenge`,
-            prompt: `Evaluate a compound scenario requiring simultaneous application of two core principles in ${topic}.`,
-            hint: `Isolate each constituent variable sequentially.`,
-            modelAnswer: `Synthesized verified resolution meeting all constraints.`,
-            rationale: `Proof of conceptual validity under ${board} standard conventions.`,
-            grammaticalRationale: `Proof of conceptual validity under ${board} standard conventions.`,
-            commonPitfall: `Premature simplification without evaluating edge conditions.`,
-            marks: 4,
-            difficulty: 'Hard',
-            cognitiveLevel: 'Evaluating',
-          },
-        ],
-      };
-
-    case 'comp-20': // Chapter Summary & Review
-      return {
-        rulesAtAGlance: [
-          {
-            rule: `Core Principle 1: Foundational Law of ${topic}`,
-            summary: `All primary elements in ${topic} must maintain structural consistency according to governing rules.`,
-            example: `Specimen demonstration showing correct application in standard context.`,
-            trap: `Beware of intervening modifiers or superficial distractors that obscure the root structure.`,
-          },
-          {
-            rule: `Core Principle 2: Modifiers and Contextual Constraints`,
-            summary: `Descriptive or secondary elements do not alter the fundamental properties of the primary subject.`,
-            example: `Model case demonstrating invariant behavior under transformation.`,
-            trap: `Misattributing properties of the secondary modifier to the core entity.`,
-          },
-          {
-            rule: `Core Principle 3: Compound and Correlative Relations`,
-            summary: `When combining multiple elements, apply proximity and conjunction rules methodically.`,
-            example: `Parallel specimen illustrating composite structure.`,
-            trap: `Applying a single-element rule to composite constructions without checking agreement rules.`,
-          },
-        ],
-        whatYouLearned: [
-          `Mastered the definition and foundational principles governing ${topic}.`,
-          `Learned to isolate and filter out intervening distractors and modifiers.`,
-          `Applied systematic problem-solving steps across foundational and complex scenarios.`,
-          `Inoculated against common examination traps and deceptive distractors.`,
-        ],
-        commonMistakes: [
-          {
-            mistake: `Selecting a response based on the nearest adjacent term rather than the true governing head.`,
-            correction: `Trace back to the root subject or entity before selecting the matching solution.`,
-            why: `The closest term is often an intervening modifier or secondary element with no governing authority.`,
-          },
-          {
-            mistake: `Over-generalizing the regular rule to irregular or special compound cases.`,
-            correction: `Verify whether the construction constitutes an idiomatic, collective, or compound exception.`,
-            why: `Special composite forms carry distinct conventions in ${subject}.`,
-          },
-        ],
-        keyVocabulary: [
-          { term: `${topic} Core Entity`, definition: `The primary governing subject or operand in the given structure.` },
-          { term: `Governing Relation`, definition: `The formal dependency or concordance requirement binding elements.` },
-          { term: `Intervening Phrase`, definition: `Descriptive modifiers positioned between governing elements that do not alter core properties.` },
-          { term: `Notional Agreement`, definition: `Agreement based on conceptual meaning rather than purely surface morphology.` },
-        ],
-        quickCheckQuestions: [
-          { prompt: `What is the primary governing rule for ${topic}?`, answer: `The core elements must agree in number, person, or physical invariants regardless of intervening phrases.` },
-          { prompt: `How do intervening modifiers affect the core relationship in ${topic}?`, answer: `They provide descriptive context but have zero control over the primary outcome.` },
-          { prompt: `What step should always be performed before committing to a final answer?`, answer: `Isolate and strip away secondary modifiers to verify direct concordance between primary entities.` },
-        ],
-        selfAssessmentChecklist: [
-          { statement: `I can state and explain the core governing principle of ${topic}.`, canDo: true },
-          { statement: `I can reliably identify and isolate intervening distractors or modifiers.`, canDo: true },
-          { statement: `I can solve complex and edge-case challenge problems without falling for common traps.`, canDo: true },
-          { statement: `I can explain my reasoning and justify why my solution is correct.`, canDo: true },
-        ],
-      };
-
-    case 'comp-21': // Chapter Assessment Test
-      return {
-        title: `${topic} — Mastery Assessment Test`,
-        totalMarks: 25,
-        durationMinutes: 45,
-        instructions: [
-          "Read each question carefully before attempting.",
-          "Marks for each question are indicated against it.",
-          "Show all working, derivations, or grammatical reasoning clearly where applicable.",
-        ],
-        sections: [
-          {
-            id: 'sec-a',
-            title: 'Section A: Objective & Foundational Identification',
-            instructions: 'Select the correct option from the choices provided.',
-            marksAllocation: 5,
-            questions: [
-              {
-                id: 'q-test-1',
-                type: 'mcq',
-                prompt: `Identify the correct statement regarding ${topic}:`,
-                options: [
-                  'A) The governing rule applies strictly to the true head entity.',
-                  'B) Intervening modifiers alter the grammatical or logical number.',
-                  'C) Plural modifiers always override singular subjects.',
-                  'D) Core rules do not apply in formal writing.',
-                ],
-                correctAnswer: 'A) The governing rule applies strictly to the true head entity.',
-                explanation: `Core rules are determined strictly by the true governing head noun or operand.`,
-                marks: 1,
-                difficulty: 'Easy',
-                cognitiveLevel: 'Remembering',
-              },
-              {
-                id: 'q-test-2',
-                type: 'mcq',
-                prompt: `Which of the following demonstrates proper compliance with ${topic}?`,
-                options: ['A) Option showing correct application', 'B) Option showing proximity trap', 'C) Option showing incorrect agreement', 'D) Option showing modifier confusion'],
-                correctAnswer: 'A) Option showing correct application',
-                explanation: `Option A correctly balances the governing elements.`,
-                marks: 1,
-                difficulty: 'Easy',
-                cognitiveLevel: 'Understanding',
-              },
-            ],
-          },
-          {
-            id: 'sec-b',
-            title: 'Section B: Conceptual Application & Structured Problems',
-            instructions: 'Complete the statements or solve the items as directed.',
-            marksAllocation: 8,
-            questions: [
-              {
-                id: 'q-test-6',
-                type: 'fill_in_blanks',
-                prompt: `Complete the sentence with the appropriate form: "The specimen [along with its controls] ___ verified."`,
-                blanksSentence: `The specimen [along with its controls] ___ verified.`,
-                correctAnswer: 'was',
-                explanation: `The head noun "specimen" is singular; the parenthetical phrase does not alter subject number.`,
-                marks: 1,
-                difficulty: 'Medium',
-                cognitiveLevel: 'Applying',
-              },
-            ],
-          },
-          {
-            id: 'sec-c',
-            title: 'Section C: Analytical Synthesis & Problem-Solving',
-            instructions: 'Analyze each problem, detect any errors, and provide complete rectified reasoning.',
-            marksAllocation: 12,
-            questions: [
-              {
-                id: 'q-test-14',
-                type: 'error_correction',
-                prompt: `Detect the error in the following statement and provide the fully corrected revision: "Each of the experimental trials have concluded successfully."`,
-                correctAnswer: `Correction: "Each of the experimental trials HAS concluded successfully." (Head pronoun "Each" is singular).`,
-                explanation: `The distributive pronoun "Each" governs the singular verb form regardless of the plural object of preposition.`,
-                marks: 2,
-                difficulty: 'Hard',
-                cognitiveLevel: 'Analyzing',
-              },
-            ],
-          },
-        ],
-      };
-
-    case 'comp-22': // Answer Key
-      return {
-        answerKey: [
-          {
-            id: 'ak-1',
-            exerciseLetterOrNumber: 'Exercise A',
-            questionNumber: 1,
-            questionType: 'identification',
-            promptSummary: `Identification of core governing element in ${topic}`,
-            correctAnswer: 'Standard verified solution',
-            acceptableAlternatives: ['Permissible equivalent phrasing'],
-            rationale: `Adheres strictly to the foundational rule of ${topic} for ${classLevel} (${board}).`,
-            grammarRationale: `Adheres strictly to the foundational rule of ${topic} for ${classLevel} (${board}).`,
-            partialCreditGuidance: `Full credit (1.0) for exact identification; 0 credit for confusing modifier with head entity.`,
-          },
-          {
-            id: 'ak-2',
-            exerciseLetterOrNumber: 'Exercise B',
-            questionNumber: 1,
-            questionType: 'application',
-            promptSummary: `Fill in the blank with verified concord`,
-            correctAnswer: 'Verified term',
-            acceptableAlternatives: [],
-            rationale: `Subject-verb concord requires singular agreement with singular head noun.`,
-            grammarRationale: `Subject-verb concord requires singular agreement with singular head noun.`,
-            partialCreditGuidance: `Full credit (1.0) for correct term; 0.5 if minor spelling mistake with correct root.`,
-          },
-        ],
-        generalScoringRubric: {
-          fullCredit: 'Comprehensive, accurate response fully satisfying all requirements and demonstrating sound principles.',
-          partialCredit: 'Core concept applied correctly but with minor calculation, spelling, or formatting oversight.',
-          zeroCredit: 'Fundamental conceptual misconception or invalid reasoning.',
-        },
-      };
-
-    case 'comp-23': // Teacher Notes
-      return {
-        learningObjectives: [
-          `Identify and apply the core principles of ${topic} across varied contexts in ${subject}.`,
-          `Isolate and neutralize intervening distractors, modifiers, or secondary terms.`,
-          `Analyze and rectify subtle errors and edge-case exceptions with rigorous justification.`,
-        ],
-        prerequisites: `Foundational concepts and prerequisite vocabulary for ${classLevel} (${board}).`,
-        pacingGuide: [
-          { period: 1, topic: 'Inductive Discovery & Core Concept', duration: '40 mins', activities: `Diagnostic warmup and exploration of ${topic} patterns.` },
-          { period: 2, topic: 'Formal Principles & Modelled Analysis', duration: '40 mins', activities: 'Walk through worked examples and contrastive error pairs.' },
-          { period: 3, topic: 'Scaffolded & Collaborative Practice', duration: '40 mins', activities: 'Guided exercises, peer review, and bracket-isolation drills.' },
-          { period: 4, topic: 'Mastery Assessment & Reflection', duration: '40 mins', activities: 'Summative assessment test and self-evaluation checklist.' },
-        ],
-        teachingStrategies: [
-          'The Parenthetical Isolation Method: Have students isolate intervening phrases to reveal the core governing relationship.',
-          'Visual Invariant Balance: Emphasize the direct balance requirement binding governing elements.',
-          'Contrastive Pair Analysis: Present two nearly identical problems side-by-side where only the secondary condition changes.',
-        ],
-        commonMisconceptions: [
-          { misconception: 'Proximity Attraction: Choosing the response that matches the immediately adjacent term.', intervention: 'Train students to identify the head entity before inspecting response options.' },
-          { misconception: 'Treating secondary modifiers as compounding the primary subject.', intervention: 'Clarify that modifiers do not compound or alter the fundamental subject number.' },
-        ],
-        differentiatedInstruction: {
-          remedial: 'Provide colour-coded tokens with guided templates for struggling learners.',
-          extension: 'Challenge advanced students with multi-step non-routine problems and edge-case exceptions.',
-        },
-        classroomActivities: [
-          'Interactive Concept Line-Up: Students hold cards representing core entities, modifiers, and outcomes to visually demonstrate dependencies.',
-          'Error Analysis Circle: Small groups audit prepared solutions containing subtle traps and debate corrections.',
-        ],
-        whiteboardLayout: 'Left Panel: Core Governing Laws | Center Panel: Model Problems & Stepwise Analysis | Right Panel: Traps & Diagnostics',
-        assessmentAdvice: 'Check whether errors stem from superficial proximity attraction or conceptual gaps in understanding core invariants.',
-      };
-
-    default:
-      return {
-        items: [
-          {
-            id: `${componentId}-fallback-1`,
-            title: `${topic} Unit Study`,
-            content: `Verified curriculum material for ${topic} in ${subject} (${board} ${classLevel}).`,
-          },
-        ],
-      };
-  }
-}
-
 app.post("/api/chapter-studio/generate-component", async (req, res) => {
   try {
     const {
@@ -1876,15 +1010,10 @@ app.post("/api/chapter-studio/generate-component", async (req, res) => {
 
     const ai = getGenAI();
     if (!ai) {
-      console.warn("AI service unavailable: GEMINI_API_KEY is not configured. Using pedagogical fallback.");
-      const fallbackData = generatePedagogicalComponentFallback(
-        componentId,
-        effectiveSubject,
-        trimmedTopic,
-        trimmedClass,
-        trimmedBoard
-      );
-      return res.json({ data: fallbackData, fallback: true });
+      console.warn("AI service unavailable: GEMINI_API_KEY is not configured.");
+      return res.status(503).json({
+        error: "AI generation could not be completed. Your existing content has not been changed.",
+      });
     }
 
     const systemPrompt = `You are a distinguished educational curriculum author and academic textbook creator developing content for ${effectiveSubject} for ${trimmedBoard} ${trimmedClass}.
@@ -2559,35 +1688,24 @@ Output JSON only with this structure:
         }
       }
     } catch (aiErr: any) {
-      console.warn("Gemini generation call failed, deploying pedagogical fallback:", aiErr?.message || aiErr);
+      console.warn("Gemini generation call failed:", aiErr?.message || aiErr);
+      return res.status(502).json({
+        error: "AI generation could not be completed. Your existing content has not been changed.",
+      });
     }
 
     if (!parsed) {
-      parsed = generatePedagogicalComponentFallback(
-        componentId,
-        effectiveSubject,
-        trimmedTopic,
-        trimmedClass,
-        trimmedBoard
-      );
+      return res.status(502).json({
+        error: "AI generation could not be completed. Your existing content has not been changed.",
+      });
     }
 
     return res.json({ data: parsed });
   } catch (error: any) {
     console.error("Component generation route error:", error);
-    try {
-      const { componentId, subject, topic, classLevel, board } = req.body || {};
-      const fallbackData = generatePedagogicalComponentFallback(
-        componentId || 'comp-19',
-        subject || 'Academic Curriculum',
-        topic || 'Study Unit',
-        classLevel || 'Class 6',
-        board || 'Standard Curriculum'
-      );
-      return res.json({ data: fallbackData, fallback: true });
-    } catch {
-      return res.status(500).json({ error: error.message || "Failed to generate component content" });
-    }
+    return res.status(500).json({
+      error: "AI generation could not be completed. Your existing content has not been changed.",
+    });
   }
 });
 
@@ -3583,125 +2701,8 @@ PEDAGOGICAL CALIBRATION FOR ${classLevel}:
 `;
 
     if (!ai) {
-      // Algorithmic Fallback when API key is not configured
-      const sampleId = `gen-${Date.now()}`;
-      if (mode === "definitions") {
-        return res.json({
-          definitions: [
-            {
-              id: `def-${sampleId}-1`,
-              term: topic,
-              partOfSpeechOrCategory: "Core Grammar Rule",
-              ageAppropriateExplanation: `In ${classLevel}, ${topic} teaches us how words link together correctly so our sentences make clear sense.`,
-              formulaOrSyntax: "Subject (Singular/Plural) + Verb (Matches Subject Number & Person)",
-              rules: [
-                "A singular subject requires a singular verb.",
-                "A plural subject requires a plural verb.",
-                "Words coming between subject and verb do not change the number of the subject.",
-              ],
-              examples: [
-                { sentence: "The bouquet of yellow roses smells fragrant.", highlightWord: "smells", note: "Subject is 'bouquet' (singular), not 'roses'." },
-                { sentence: "Neither the teacher nor the students were present.", highlightWord: "were", note: "Verb agrees with the closer subject 'students'." },
-              ],
-              exceptions: [
-                "Titles of books or movies take singular verbs even if plural in form (e.g. 'Gulliver's Travels is a classic').",
-              ],
-              commonMistakes: [
-                {
-                  incorrect: "Each of the boys have finished their work.",
-                  correct: "Each of the boys has finished his work.",
-                  reason: "'Each' is an indefinite singular pronoun requiring a singular verb 'has'.",
-                },
-              ],
-            },
-          ],
-          notesAndTheoryMarkdown: `### ${topic} (${classLevel} Study Guide)\n\nMastering **${topic}** is essential for error-free English composition.\n\n#### Key Principles\n1. Identify the true subject before choosing the verb.\n2. Ignore prepositional phrases (like *of the players*, *with his friends*).\n3. Keep collective nouns singular unless acting individually.`,
-        });
-      }
-
-      // Fallback for exercises & tests
-      const fallbackQuestions = [
-        {
-          id: `q-${sampleId}-1`,
-          type: "mcq",
-          prompt: `Choose the grammatically correct verb to complete the sentence: "Neither of the two candidates ___ qualified for the post."`,
-          instruction: "Select the option that adheres to standard formal grammar rules.",
-          difficulty: difficulty,
-          marks: 1,
-          options: ["A) is", "B) are", "C) were", "D) have been"],
-          correctAnswer: "A) is",
-          explanation: "'Neither' is grammatically singular and takes the singular verb 'is'.",
-        },
-        {
-          id: `q-${sampleId}-2`,
-          type: "fill_in_blanks",
-          prompt: "Fill in the blank with the appropriate form of the verb given in brackets:",
-          blanksSentence: "The committee ___ (has / have) reached a unanimous decision today.",
-          hints: "has / have",
-          acceptableAnswers: ["has"],
-          difficulty: difficulty,
-          marks: 1,
-          correctAnswer: "has",
-          explanation: "When a collective noun acts as a single unified body, it takes a singular verb ('has').",
-        },
-        {
-          id: `q-${sampleId}-3`,
-          type: "match_column",
-          prompt: "Match the grammatical rule in Column A with its correct application in Column B:",
-          instruction: "Pair each rule with the sentence demonstrating it.",
-          difficulty: difficulty,
-          marks: 4,
-          columnA: [
-            { id: "a1", text: "1. Collective noun as single unit" },
-            { id: "a2", text: "2. Subject separated by 'along with'" },
-            { id: "a3", text: "3. Indefinite pronoun 'Everyone'" },
-            { id: "a4", text: "4. Plural form with singular meaning" },
-          ],
-          columnB: [
-            { id: "b1", text: "A. The captain, along with his crew, is ready." },
-            { id: "b2", text: "B. The jury has delivered its verdict." },
-            { id: "b3", text: "C. Mathematics is an interesting subject." },
-            { id: "b4", text: "D. Everyone wants to succeed in life." },
-          ],
-          matchPairs: [
-            { aId: "a1", bId: "b2" },
-            { aId: "a2", bId: "b1" },
-            { aId: "a3", bId: "b4" },
-            { aId: "a4", bId: "b3" },
-          ],
-          correctAnswer: "1-B, 2-A, 3-D, 4-C",
-          explanation: "Each sentence reflects the precise grammatical agreement principle indicated in Column A.",
-        },
-        {
-          id: `q-${sampleId}-4`,
-          type: "error_correction",
-          prompt: "Identify the grammatical error in the sentence and write the corrected version:",
-          originalSentence: "Bread and butter are his favorite breakfast every morning.",
-          correctedSentence: "Bread and butter is his favorite breakfast every morning.",
-          difficulty: difficulty,
-          marks: 2,
-          correctAnswer: "Change 'are' to 'is'",
-          explanation: "'Bread and butter' represents a single composite food item/idea, so it takes a singular verb.",
-        },
-        {
-          id: `q-${sampleId}-5`,
-          type: "transformation",
-          prompt: "Transform the sentence as directed in brackets without changing its meaning:",
-          originalSentence: "No sooner did the bell ring than the students rushed outside.",
-          instruction: "Begin with 'As soon as...'",
-          correctedSentence: "As soon as the bell rang, the students rushed outside.",
-          difficulty: difficulty,
-          marks: 2,
-          correctAnswer: "As soon as the bell rang, the students rushed outside.",
-          explanation: "Replacing 'No sooner did... than' with 'As soon as' requires the past tense verb 'rang' and a comma.",
-        },
-      ];
-
-      return res.json({
-        title: `${topic} Practice Exercises (${classLevel})`,
-        instructions: `Complete the following exercises carefully according to ${classLevel} syllabus norms.`,
-        questions: fallbackQuestions.slice(0, count || 5),
-        maxMarks: fallbackQuestions.slice(0, count || 5).reduce((acc, q) => acc + q.marks, 0),
+      return res.status(503).json({
+        error: "AI generation failed. Your existing content has not been changed.",
       });
     }
 

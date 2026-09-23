@@ -68,93 +68,16 @@ export const ChapterChallengeDrillView: React.FC<ChapterChallengeDrillViewProps>
     title: cp.title || `Challenge Problem ${idx + 1}`,
     prompt: cp.prompt || '',
     modelAnswer: cp.modelAnswer || '',
-    hint: (cp as any).hint || (isGrammar ? 'Look closely at intervening parenthetical clauses and structural head nouns.' : 'Analyze the core constraints and governing principles.'),
+    hint: (cp as any).hint || '',
     rationale: (cp as any).rationale || (cp as any).solutionReasoning || (cp as any).grammaticalRationale || '',
     grammaticalRationale: (cp as any).grammaticalRationale || (cp as any).rationale || '',
-    commonPitfall: (cp as any).commonPitfall || (isGrammar ? 'Proximity attraction to the noun immediately preceding the verb.' : 'Common surface misconception or sign error.'),
+    commonPitfall: (cp as any).commonPitfall || '',
     marks: (cp as any).marks || 3,
-    difficulty: (cp as any).difficulty || 'Olympiad',
+    difficulty: (cp as any).difficulty || 'Advanced',
     cognitiveLevel: (cp as any).cognitiveLevel || 'Evaluating',
   }));
 
-  const defaultProblem: ChallengeProblemItem = isGrammar
-    ? {
-        id: 'chal-sva-1',
-        title: 'The Royal Fleet & Inverted Complementation',
-        prompt:
-          'Analyze the sentence: "Down the stormy channel, accompanied by three smaller escorts, (sail / sails) the flagship of the Admiral." Determine the correct finite verb and provide full syntactic justification.',
-        hint: 'Identify the true head noun after subject-verb inversion.',
-        modelAnswer:
-          'The correct verb is "sails". The sentence is inverted; the true grammatical subject is the singular noun phrase "the flagship of the Admiral", not the fronted adverbial or the parenthetical escort adjunct.',
-        rationale:
-          'Inversion does not alter concord requirements; the singular head noun "flagship" requires the singular verb "sails".',
-        grammaticalRationale:
-          'Inversion does not alter concord requirements; the singular head noun "flagship" requires the singular verb "sails".',
-        commonPitfall:
-          'Attraction to the plural noun "escorts" in the parenthetical phrase or "channel" in the fronted prepositional phrase.',
-        marks: 3,
-        difficulty: 'Olympiad',
-        cognitiveLevel: 'Evaluating',
-      }
-    : isMath
-    ? {
-        id: `chal-math-1`,
-        title: `${chapter.title} — Non-Routine Olympiad Challenge`,
-        prompt: `Evaluate the given conditions for ${chapter.title} under multi-step constraints and determine the exact solution with step-by-step mathematical reasoning.`,
-        hint: 'Apply structural decomposition or algebraic invariant principles.',
-        modelAnswer: 'Complete multi-step mathematical derivation yielding verified solution.',
-        rationale: 'Derived from fundamental theorems without approximation errors.',
-        grammaticalRationale: 'Derived from fundamental theorems without approximation errors.',
-        commonPitfall: 'Sign error or overlooking boundary/domain restrictions.',
-        marks: 4,
-        difficulty: 'Olympiad',
-        cognitiveLevel: 'Evaluating',
-      }
-    : isScience
-    ? {
-        id: `chal-sci-1`,
-        title: `${chapter.title} — Experimental Analysis & Reasoning`,
-        prompt: `Anomalous observational data is gathered in a controlled experiment testing ${chapter.title}. Account for the phenomenon using core scientific laws.`,
-        hint: 'Examine independent and confounding variables.',
-        modelAnswer: 'Scientific explanation establishing the causal mechanism.',
-        rationale: 'Grounded in empirical laws and validated experimental evidence.',
-        grammaticalRationale: 'Grounded in empirical laws and validated experimental evidence.',
-        commonPitfall: 'Confusing correlation with causation or relying on surface analogies.',
-        marks: 4,
-        difficulty: 'Olympiad',
-        cognitiveLevel: 'Analysing',
-      }
-    : isHistory
-    ? {
-        id: `chal-hist-1`,
-        title: `${chapter.title} — Historiographical Inquiry`,
-        prompt: `Evaluate conflicting historical interpretations regarding ${chapter.title}. What primary evidence best supports the prevailing consensus?`,
-        hint: 'Critique the provenance and reliability of the conflicting sources.',
-        modelAnswer: 'Structured historical synthesis integrating contextual evidence.',
-        rationale: 'Corroborated by primary documentary evidence and critical source analysis.',
-        grammaticalRationale: 'Corroborated by primary documentary evidence and critical source analysis.',
-        commonPitfall: 'Anachronistic projection of modern concepts onto historical agents.',
-        marks: 4,
-        difficulty: 'Advanced',
-        cognitiveLevel: 'Evaluating',
-      }
-    : {
-        id: `chal-gen-1`,
-        title: `${chapter.title} — High-Order Analytical Application`,
-        prompt: `Analyze the core theoretical framework of ${chapter.title} in a complex scenario and formulate a rigorous solution.`,
-        hint: 'Synthesize foundational principles with contextual constraints.',
-        modelAnswer: 'Comprehensive analytical solution.',
-        rationale: 'Rigorous application of conceptual frameworks.',
-        grammaticalRationale: 'Rigorous application of conceptual frameworks.',
-        commonPitfall: 'Superficial recall without deep conceptual synthesis.',
-        marks: 4,
-        difficulty: 'Advanced',
-        cognitiveLevel: 'Analysing',
-      };
-
-  const [problems, setProblems] = useState<ChallengeProblemItem[]>(
-    initialProblems.length > 0 ? initialProblems : [defaultProblem]
-  );
+  const [problems, setProblems] = useState<ChallengeProblemItem[]>(initialProblems);
 
   const [isTeacherView, setIsTeacherView] = useState(true);
   const [revealedSolutions, setRevealedSolutions] = useState<Record<string, boolean>>({});
@@ -208,37 +131,15 @@ export const ChapterChallengeDrillView: React.FC<ChapterChallengeDrillViewProps>
   const handleAddNew = () => {
     const newItem: ChallengeProblemItem = {
       id: `chal-${Date.now()}`,
-      title: isGrammar
-        ? `Challenge ${problems.length + 1}: Syntactic Trap`
-        : isMath
-        ? `Challenge ${problems.length + 1}: Non-Routine Problem`
-        : isScience
-        ? `Challenge ${problems.length + 1}: Deep Experimental Problem`
-        : isHistory
-        ? `Challenge ${problems.length + 1}: Historiographical Synthesis`
-        : `Challenge ${problems.length + 1}: High-Order Analytical Application`,
-      prompt: 'Enter the Olympiad or competition-level challenge question prompt...',
-      hint: isGrammar
-        ? 'Guide students toward structural decomposition without revealing the answer.'
-        : 'Guide students toward foundational principles and decomposition without revealing the answer.',
-      modelAnswer: isGrammar
-        ? 'Enter verified model solution and syntactic reasoning...'
-        : isMath
-        ? 'Enter verified model solution and step-by-step mathematical derivation...'
-        : 'Enter verified model solution and analytical justification...',
-      rationale: isGrammar
-        ? 'State the formal grammatical rule and concord justification...'
-        : isMath
-        ? 'State the formal mathematical theorem and proof...'
-        : isScience
-        ? 'State the governing empirical principle and reasoning...'
-        : 'State the core theoretical framework and rationale...',
-      grammaticalRationale: isGrammar
-        ? 'State the formal grammatical rule and concord justification...'
-        : 'State the formal academic justification...',
-      commonPitfall: 'Describe the false intuition or trap students should avoid...',
+      title: `Challenge ${problems.length + 1}`,
+      prompt: '',
+      hint: '',
+      modelAnswer: '',
+      rationale: '',
+      grammaticalRationale: '',
+      commonPitfall: '',
       marks: 3,
-      difficulty: 'Olympiad',
+      difficulty: 'Advanced',
       cognitiveLevel: 'Evaluating',
     };
     const updated = [...problems, newItem];
@@ -290,20 +191,20 @@ export const ChapterChallengeDrillView: React.FC<ChapterChallengeDrillViewProps>
 
       const data = await res.json();
       if (!res.ok || data.error) {
-        throw new Error(data.error || 'Failed to generate challenge drills');
+        throw new Error(data.error || 'AI generation could not be completed. Your existing content has not been changed.');
       }
 
       const generated: ChallengeProblemItem[] = (data.data?.challengeProblems || []).map((cp: any, idx: number) => ({
         id: `chal-ai-${Date.now()}-${idx}`,
-        title: cp.title || `Olympiad Drill ${problems.length + idx + 1}`,
+        title: cp.title || `Challenge Problem ${problems.length + idx + 1}`,
         prompt: cp.prompt || '',
-        hint: cp.hint || (isGrammar ? 'Carefully analyze syntactic relations.' : 'Examine fundamental constraints and invariants.'),
+        hint: cp.hint || '',
         modelAnswer: cp.modelAnswer || '',
         rationale: cp.rationale || cp.solutionReasoning || cp.conceptualExplanation || cp.grammaticalRationale || '',
         grammaticalRationale: cp.grammaticalRationale || cp.rationale || '',
         commonPitfall: cp.commonPitfall || '',
         marks: cp.marks || 3,
-        difficulty: (cp.difficulty as any) || 'Olympiad',
+        difficulty: (cp.difficulty as any) || 'Advanced',
         cognitiveLevel: cp.cognitiveLevel || 'Evaluating',
       }));
 
@@ -312,7 +213,7 @@ export const ChapterChallengeDrillView: React.FC<ChapterChallengeDrillViewProps>
         persistProblems(merged);
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to connect to AI generator.');
+      setErrorMessage(err.message || 'AI generation could not be completed. Your existing content has not been changed.');
     } finally {
       setIsAiGenerating(false);
     }
@@ -384,9 +285,68 @@ export const ChapterChallengeDrillView: React.FC<ChapterChallengeDrillViewProps>
 
       {/* Error Banner if any */}
       {errorMessage && (
-        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
-          <span>{errorMessage}</span>
+        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleAiGenerate}
+              className="px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-amber-950 rounded font-semibold text-xs cursor-pointer transition-colors"
+            >
+              Retry
+            </button>
+            <button
+              type="button"
+              onClick={handleAddNew}
+              className="px-2.5 py-1 bg-[#5A1832] hover:bg-[#35101F] text-white rounded font-semibold text-xs cursor-pointer transition-colors"
+            >
+              Write Manually
+            </button>
+            <button
+              type="button"
+              onClick={() => setErrorMessage(null)}
+              className="px-2 py-1 text-amber-800 hover:text-amber-950 font-semibold text-xs cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {problems.length === 0 && (
+        <div className="bg-[#FFFDF8] border-2 border-dashed border-[#CBBEAC] rounded-2xl p-12 text-center space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-[#EDE4D6] text-[#5A1832] flex items-center justify-center mx-auto">
+            <Award className="w-8 h-8 text-[#C29A52]" />
+          </div>
+          <div className="max-w-md mx-auto space-y-1">
+            <h3 className="text-base font-serif font-bold text-[#35101F]">
+              No Challenge Drills Created Yet
+            </h3>
+            <p className="text-xs text-[#71685E]">
+              Add high-order thinking problems, competitive drills, or analytical application tasks for this chapter.
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={handleAddNew}
+              className="px-4 py-2 bg-[#5A1832] hover:bg-[#35101F] text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
+            >
+              + Write Manually
+            </button>
+            <button
+              type="button"
+              onClick={handleAiGenerate}
+              disabled={isAiGenerating}
+              className="px-4 py-2 bg-[#EDE4D6] hover:bg-[#CBBEAC]/50 text-[#5A1832] text-xs font-bold rounded-xl border border-[#CBBEAC] transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {isAiGenerating ? 'Synthesizing...' : 'AI Generate Drills'}
+            </button>
+          </div>
         </div>
       )}
 

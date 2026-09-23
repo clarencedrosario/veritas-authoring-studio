@@ -21,7 +21,6 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { StudioChapter, TeacherAuthorNoteRecord } from '../../types';
-import { CANONICAL_SVA_TEACHER_NOTES } from '../../utils/chapterStudioData';
 
 export interface TeacherAuthorNotesViewProps {
   chapter: StudioChapter;
@@ -43,55 +42,12 @@ export const TeacherAuthorNotesView: React.FC<TeacherAuthorNotesViewProps> = ({
   const isScience = /science|biology|physics|chemistry/i.test(chapter.category || '') || /science|biology|physics|chemistry/i.test(effectiveSubject);
   const isHistory = /history|civics|social/i.test(chapter.category || '') || /history|civics|social/i.test(effectiveSubject);
 
-  const isSva =
-    isGrammar &&
-    chapter.title?.toLowerCase().includes('subject') &&
-    chapter.title?.toLowerCase().includes('verb');
-
   const initialNotes = useMemo(() => {
     if (chapter.teacherAuthorNotes && chapter.teacherAuthorNotes.length > 0) {
       return chapter.teacherAuthorNotes;
     }
-    if (isSva) {
-      return CANONICAL_SVA_TEACHER_NOTES;
-    }
-    return [
-      {
-        id: `tg-pace-init`,
-        type: 'pacing_guide',
-        title: `Suggested Lesson Pacing Guide (${seriesProject?.activeSystemId || 'Curriculum'})`,
-        content: `• Period 1 (40 mins): Diagnostic Warmup & Core Concept Introduction for ${chapter.title}.\n• Period 2 (40 mins): Deep-Dive Exploration & Guided Problem Solving.\n• Period 3 (40 mins): Collaborative Student Drills & Error Analysis.\n• Period 4 (40 mins): Summative Assessment & Mastery Verification.`,
-        visibility: 'teacher_edition',
-        createdDate: new Date().toISOString().split('T')[0],
-      },
-      {
-        id: `tg-strat-init`,
-        type: 'teaching_strategy',
-        title: `Pedagogical Strategies for ${chapter.title}`,
-        content: isMath
-          ? `1. Concrete-Representational-Abstract (CRA) Sequence: Begin with concrete representations before algebraic abstractions.\n2. Dual-Coding: Require students to write mathematical reasoning steps adjacent to symbolic derivations.\n3. Error Reflection: Prompt students to audit deliberate sign or procedural missteps.`
-          : isScience
-          ? `1. Inquiry-Based Phenomenon: Open the lesson by demonstrating the real-world observation before giving the formal definition.\n2. Concept-Mapping: Connect ${chapter.title} to foundational physical or biological laws.\n3. Laboratory Safety & Verification: Have students verify hypotheses with controlled observations.`
-          : isHistory
-          ? `1. Primary Source Interrogation: Present excerpts or contemporary artifacts before textbook narrative.\n2. Multi-Perspective Causation: Analyze socio-political, economic, and cultural triggers.\n3. Chronological Sequencing: Use comparative timelines to anchor cause-and-effect relationships.`
-          : `1. Direct Guided Instruction: Present foundational definitions with clear specimen applications.\n2. Scaffolding: Transition gradually from teacher modeling to independent mastery.\n3. Formative Checkpoints: Use brief diagnostic checks at every conceptual transition.`,
-        visibility: 'teacher_edition',
-        createdDate: new Date().toISOString().split('T')[0],
-      },
-      {
-        id: `tg-misc-init`,
-        type: 'common_misconception',
-        title: `Anticipated Student Misconceptions & Inoculations`,
-        content: isMath
-          ? `• Misconception: Confusing procedural memorization with conceptual understanding.\n  Inoculation: Require verbal explanation of each step's mathematical validity.\n• Misconception: Overlooking boundary constraints or units.\n  Inoculation: Enforce dimensional analysis and sanity checks.`
-          : isScience
-          ? `• Misconception: Conflating everyday colloquial meanings with precise scientific definitions.\n  Inoculation: Explicitly contrast colloquial versus scientific terminology.\n• Misconception: Treating correlation as direct causation.\n  Inoculation: Guide students to isolate controlled variables.`
-          : `• Misconception: Surface-level pattern matching without understanding core principles.\n  Inoculation: Present boundary-case counter-examples that break superficial assumptions.\n• Misconception: Over-generalizing special cases.\n  Inoculation: Explicitly identify criteria where the rule applies vs where exceptions arise.`,
-        visibility: 'teacher_edition',
-        createdDate: new Date().toISOString().split('T')[0],
-      },
-    ] as TeacherAuthorNoteRecord[];
-  }, [chapter.teacherAuthorNotes, isSva, chapter.title, isMath, isScience, isHistory, seriesProject]);
+    return [] as TeacherAuthorNoteRecord[];
+  }, [chapter.teacherAuthorNotes]);
 
   const [notes, setNotes] = useState<TeacherAuthorNoteRecord[]>(initialNotes);
   const [filterType, setFilterType] = useState<string>('all');
@@ -192,7 +148,7 @@ export const TeacherAuthorNotesView: React.FC<TeacherAuthorNotesViewProps> = ({
 
       const data = await res.json();
       if (!res.ok || data.error) {
-        throw new Error(data.error || 'Failed to generate teacher notes');
+        throw new Error(data.error || 'AI generation could not be completed. Your existing content has not been changed.');
       }
 
       const generated = data.data;
@@ -277,7 +233,7 @@ export const TeacherAuthorNotesView: React.FC<TeacherAuthorNotesViewProps> = ({
         }
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Error communicating with AI generator');
+      setErrorMessage(err.message || 'AI generation could not be completed. Your existing content has not been changed.');
     } finally {
       setIsAiGenerating(false);
     }
@@ -391,9 +347,37 @@ export const TeacherAuthorNotesView: React.FC<TeacherAuthorNotesViewProps> = ({
 
       {/* Error Banner */}
       {errorMessage && (
-        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
-          <span>{errorMessage}</span>
+        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleAiGenerate}
+              className="px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-amber-950 rounded font-semibold text-xs cursor-pointer transition-colors"
+            >
+              Retry
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsAddingNote(true);
+                setErrorMessage(null);
+              }}
+              className="px-2.5 py-1 bg-[#5A1832] hover:bg-[#35101F] text-white rounded font-semibold text-xs cursor-pointer transition-colors"
+            >
+              Write Manually
+            </button>
+            <button
+              type="button"
+              onClick={() => setErrorMessage(null)}
+              className="px-2 py-1 text-amber-800 hover:text-amber-950 font-semibold text-xs cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 
@@ -521,7 +505,16 @@ export const TeacherAuthorNotesView: React.FC<TeacherAuthorNotesViewProps> = ({
 
       {/* Notes List */}
       <div className="space-y-4">
-        {filteredNotes.map((note) => {
+        {filteredNotes.length === 0 ? (
+          <div className="bg-[#FFFDF8] border border-dashed border-[#CBBEAC] rounded-xl p-8 text-center space-y-3">
+            <GraduationCap className="w-8 h-8 text-[#CBBEAC] mx-auto" />
+            <h4 className="text-sm font-serif font-bold text-[#35101F]">No Teacher Notes Available</h4>
+            <p className="text-xs text-[#71685E] max-w-md mx-auto">
+              No pedagogical notes have been added yet for this chapter. You can write custom guidance using "+ Add Note" or generate lesson notes with AI.
+            </p>
+          </div>
+        ) : (
+          filteredNotes.map((note) => {
           const isEditing = editingNoteId === note.id;
 
           if (isEditing && editForm) {
@@ -625,7 +618,7 @@ export const TeacherAuthorNotesView: React.FC<TeacherAuthorNotesViewProps> = ({
               </div>
             </div>
           );
-        })}
+        }))}
       </div>
     </div>
   );

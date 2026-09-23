@@ -3,6 +3,7 @@ import {
   Layers,
   Award,
   AlertTriangle,
+  AlertCircle,
   Bookmark,
   CheckCircle2,
   HelpCircle,
@@ -16,7 +17,6 @@ import {
   Save,
 } from 'lucide-react';
 import { StudioChapter, ChapterRevisionData } from '../../types';
-import { CANONICAL_SVA_REVISION_DATA } from '../../utils/chapterStudioData';
 
 export interface ChapterSummaryRevisionViewProps {
   chapter: StudioChapter;
@@ -30,189 +30,37 @@ export function getInitialRevisionDataForChapter(chapter: StudioChapter, seriesP
     return chapter.revisionData;
   }
 
-  const effectiveSubject = (chapter as any).subject || seriesProject?.subject || 'Academic Studies';
-  const isGrammar = /grammar|syntax|english language/i.test(chapter.category || '') || /grammar/i.test(effectiveSubject);
-  const isMath = /math/i.test(chapter.category || '') || /math/i.test(effectiveSubject);
-  const isScience = /science|biology|physics|chemistry/i.test(chapter.category || '') || /science|biology|physics|chemistry/i.test(effectiveSubject);
-  const isHistory = /history|civics|social/i.test(chapter.category || '') || /history|civics|social/i.test(effectiveSubject);
-
-  // If this is the Subject-Verb Agreement chapter in English Grammar, use the rich canonical data
-  const isSva =
-    isGrammar &&
-    chapter.title?.toLowerCase().includes('subject') &&
-    chapter.title?.toLowerCase().includes('verb');
-  if (isSva) {
-    return CANONICAL_SVA_REVISION_DATA;
-  }
-
-  // If chapter.ending exists, construct from it
-  if (chapter.ending) {
-    const rulesAtAGlance =
-      chapter.ending.rulesRecap?.map((r) => ({
-        ruleTitle: r.rule,
-        summary: `${r.example} ${r.trap ? `(Watch out: ${r.trap})` : ''}`,
-      })) ||
-      chapter.ending.rulesAtAGlance?.map((r) => ({
-        ruleTitle: r.rule,
-        summary: r.example,
-      })) ||
-      (chapter.rules && chapter.rules.length > 0
-        ? chapter.rules.map((r) => ({ ruleTitle: r.ruleName, summary: r.ruleStatement }))
-        : [
-            {
-              ruleTitle: isGrammar
-                ? `Core Principle of ${chapter.title}`
-                : isMath
-                ? `Core Theorem/Method of ${chapter.title}`
-                : isScience
-                ? `Core Scientific Law of ${chapter.title}`
-                : isHistory
-                ? `Key Periodization/Theme of ${chapter.title}`
-                : `Core Concept of ${chapter.title}`,
-              summary: isGrammar
-                ? `Fundamental grammatical law governing ${chapter.title}.`
-                : isMath
-                ? `Standard mathematical definition and application rule for ${chapter.title}.`
-                : isScience
-                ? `Governing scientific principle and mechanism for ${chapter.title}.`
-                : isHistory
-                ? `Contextual overview and historical significance of ${chapter.title}.`
-                : `Fundamental academic principle governing ${chapter.title}.`,
-            },
-          ]);
-
-    const commonMistakes =
-      chapter.ending.commonTraps?.map((t) => ({
-        mistake: t.trap,
-        correction: t.fix,
-        why: `Violates standard principles for ${chapter.title}.`,
-      })) ||
-      chapter.ending.commonMistakes?.map((cm) => ({
-        mistake: cm.incorrectSentence,
-        correction: cm.correctSentence,
-        why: cm.explanation,
-      })) || [];
-
-    const keyVocabulary =
-      chapter.ending.keyVocabulary?.map((term) => ({
-        term,
-        definition: `Essential terminology used in ${chapter.title}.`,
-      })) ||
-      chapter.opening?.keyVocabulary?.map((term) => ({
-        term,
-        definition: `Core academic term for ${chapter.title}.`,
-      })) || [];
-
-    const rememberPoints =
-      chapter.ending.summaryPoints ||
-      chapter.ending.whatYouLearned || [
-        `Always verify conceptual principles and context in ${chapter.title}.`,
-        'Apply rules systematically before choosing your answer.',
-      ];
-
+  // If author has authored rules or ending recap, reflect them
+  if (chapter.rules && chapter.rules.length > 0) {
     return {
-      rulesAtAGlance,
-      keyConcepts: isGrammar
-        ? [chapter.title, 'Syntax', 'Form & Function']
-        : isMath
-        ? [chapter.title, 'Formulae', 'Analytical Steps']
-        : isScience
-        ? [chapter.title, 'Empirical Principles', 'Mechanisms']
-        : isHistory
-        ? [chapter.title, 'Historical Factors', 'Significance']
-        : [chapter.title, 'Core Principles', 'Applications'],
-      commonMistakes,
-      rememberPoints,
-      keyVocabulary,
-      quickCheckQuestions: [
-        {
-          prompt: isGrammar
-            ? `State the primary grammatical rule governing ${chapter.title}.`
-            : isMath
-            ? `State the primary formula or principle governing ${chapter.title}.`
-            : isScience
-            ? `State the primary scientific mechanism explaining ${chapter.title}.`
-            : isHistory
-            ? `State the primary historical causes and outcomes of ${chapter.title}.`
-            : `Explain the fundamental concept of ${chapter.title}.`,
-          answer: `Consult chapter section 1 for the fundamental definition and exemplary application.`,
-        },
-      ],
-      revisionExercises: [chapter.title],
-      challengeQuestions: [
-        `Formulate an original response demonstrating advanced mastery of ${chapter.title}.`,
-      ],
-      selfAssessmentChecklist: [
-        {
-          statement: `I can state the core rules of ${chapter.title} in my own words.`,
-          canDo: true,
-        },
-        {
-          statement: `I can identify common exam traps and correct them accurately.`,
-          canDo: true,
-        },
-        {
-          statement: `I can solve textbook and examination questions on ${chapter.title} with confidence.`,
-          canDo: true,
-        },
-      ],
+      rulesAtAGlance: chapter.rules.map((r) => ({
+        ruleTitle: r.ruleName,
+        summary: r.ruleStatement,
+      })),
+      keyConcepts: [chapter.title],
+      commonMistakes: [],
+      rememberPoints: [],
+      keyVocabulary: chapter.opening?.keyVocabulary?.map((term) => ({
+        term,
+        definition: '',
+      })) || [],
+      quickCheckQuestions: [],
+      revisionExercises: [],
+      challengeQuestions: [],
+      selfAssessmentChecklist: [],
     };
   }
 
-  // Fallback derived cleanly from chapter attributes without fabricating other topic nouns
   return {
-    rulesAtAGlance:
-      chapter.rules && chapter.rules.length > 0
-        ? chapter.rules.map((r) => ({ ruleTitle: r.ruleName, summary: r.ruleStatement }))
-        : [
-            {
-              ruleTitle: isGrammar
-                ? `Core Principle of ${chapter.title}`
-                : isMath
-                ? `Core Formula of ${chapter.title}`
-                : isScience
-                ? `Core Law of ${chapter.title}`
-                : isHistory
-                ? `Key Period of ${chapter.title}`
-                : `Core Concept of ${chapter.title}`,
-              summary: isGrammar
-                ? `Fundamental grammatical rule governing ${chapter.title}.`
-                : `Fundamental academic principle governing ${chapter.title}.`,
-            },
-          ],
-    keyConcepts: isGrammar
-      ? [chapter.title, 'Grammatical Rules', 'Standard English Usage']
-      : [chapter.title, 'Core Principles', 'Academic Foundations'],
+    rulesAtAGlance: [],
+    keyConcepts: [],
     commonMistakes: [],
-    rememberPoints: [
-      `Review key definitions and exemplary patterns for ${chapter.title}.`,
-      'Pay close attention to exceptions and boundary conditions.',
-    ],
-    keyVocabulary:
-      chapter.opening?.keyVocabulary?.map((term) => ({
-        term,
-        definition: `Key term for ${chapter.title}.`,
-      })) || [{ term: chapter.title, definition: 'Subject of this chapter study unit.' }],
-    quickCheckQuestions: [
-      {
-        prompt: `Explain the fundamental concept of ${chapter.title}.`,
-        answer: `See Chapter notes for the formal definition and worked models.`,
-      },
-    ],
-    revisionExercises: [chapter.title],
-    challengeQuestions: [
-      `Analyze an advanced problem applying the principles of ${chapter.title}.`,
-    ],
-    selfAssessmentChecklist: [
-      {
-        statement: `I understand the fundamental concepts of ${chapter.title}.`,
-        canDo: true,
-      },
-      {
-        statement: `I can apply these principles in written exercises accurately.`,
-        canDo: true,
-      },
-    ],
+    rememberPoints: [],
+    keyVocabulary: [],
+    quickCheckQuestions: [],
+    revisionExercises: [],
+    challengeQuestions: [],
+    selfAssessmentChecklist: [],
   };
 }
 
@@ -291,7 +139,7 @@ export const ChapterSummaryRevisionView: React.FC<ChapterSummaryRevisionViewProp
 
       const data = await res.json();
       if (!res.ok || data.error) {
-        throw new Error(data.error || 'Failed to generate chapter summary');
+        throw new Error(data.error || 'AI generation could not be completed. Your existing content has not been changed.');
       }
 
       const generated = data.data;
@@ -330,7 +178,7 @@ export const ChapterSummaryRevisionView: React.FC<ChapterSummaryRevisionViewProp
         updateRevision(() => updatedRevision);
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Error generating summary');
+      setErrorMessage(err.message || 'AI generation could not be completed. Your existing content has not been changed.');
     } finally {
       setIsAiGenerating(false);
     }
@@ -448,6 +296,42 @@ export const ChapterSummaryRevisionView: React.FC<ChapterSummaryRevisionViewProp
           </div>
         </div>
       </div>
+
+      {/* Error Banner if any */}
+      {errorMessage && (
+        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleAiGenerateSummary}
+              className="px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-amber-950 rounded font-semibold text-xs cursor-pointer transition-colors"
+            >
+              Retry
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsEditing(true);
+                setErrorMessage(null);
+              }}
+              className="px-2.5 py-1 bg-[#5A1832] hover:bg-[#35101F] text-white rounded font-semibold text-xs cursor-pointer transition-colors"
+            >
+              Write Manually
+            </button>
+            <button
+              type="button"
+              onClick={() => setErrorMessage(null)}
+              className="px-2 py-1 text-amber-800 hover:text-amber-950 font-semibold text-xs cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Tab 1: Rules at a Glance */}
       {activeTab === 'rules_glance' && (
