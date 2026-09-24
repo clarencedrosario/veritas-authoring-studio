@@ -62,6 +62,8 @@ import { ChapterChallengeDrillView } from './ChapterChallengeDrillView';
 import { ChapterAuditStudioView } from './ChapterAuditStudioView';
 import { Component06RulesAuthoring } from './Component06RulesAuthoring';
 import { ReusableComponentView } from './engine/ReusableComponentView';
+import { TextbookMarkdown } from '../common/TextbookMarkdown';
+import { cleanHeadingTitle, cleanMarkdownSyntax } from '../../utils/pedagogicalProfileSystem';
 
 export interface ChapterManuscriptCanvasProps {
   chapter: StudioChapter;
@@ -2039,7 +2041,7 @@ export const ChapterManuscriptCanvas: React.FC<ChapterManuscriptCanvasProps> = (
                   {activeSection.numberLabel || `${chapter.chapterNumber}.1`}
                 </span>
                 <h2 className="font-bold text-sm text-[#292521]">
-                  {activeSection.title}
+                  {cleanHeadingTitle(activeSection.title)}
                 </h2>
               </div>
               <span className="text-[11px] text-[#71685E] font-semibold">
@@ -2062,7 +2064,7 @@ export const ChapterManuscriptCanvas: React.FC<ChapterManuscriptCanvasProps> = (
                       </span>
                       {block.title && (
                         <span className="font-bold text-xs text-[#292521]">
-                          {block.title}
+                          {cleanHeadingTitle(block.title)}
                         </span>
                       )}
                       {block.visibility !== 'student' && (
@@ -2114,13 +2116,13 @@ export const ChapterManuscriptCanvas: React.FC<ChapterManuscriptCanvasProps> = (
                   {/* Block Content Display for All Types */}
                   {(block.type === 'heading' || block.type === 'subheading') && (
                     <h3 className="font-serif font-bold text-base text-[#35101F] leading-snug">
-                      {block.title || block.textContent}
+                      {cleanHeadingTitle(block.title || block.textContent || '')}
                     </h3>
                   )}
 
                   {block.type === 'text' && (
-                    <div className="text-[#292521] text-xs leading-relaxed whitespace-pre-line font-serif">
-                      {block.textContent}
+                    <div className="text-[#292521] text-xs leading-relaxed font-serif">
+                      <TextbookMarkdown content={block.textContent || ''} />
                     </div>
                   )}
 
@@ -2128,23 +2130,31 @@ export const ChapterManuscriptCanvas: React.FC<ChapterManuscriptCanvasProps> = (
                     <div className="p-3.5 rounded-xl border border-[#C29A52]/60 bg-[#F6F0E7] space-y-1.5">
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-[10px] uppercase text-[#5A1832] tracking-wider">
-                          DEFINITION: {block.definition?.term || block.title || 'KEY TERM'}
+                          DEFINITION: {cleanHeadingTitle(block.definition?.term || block.title || 'KEY TERM')}
                         </span>
                         {(block.definition?.partOfSpeechOrCategory || (block.definition as any)?.partOfSpeech) && (
                           <span className="font-mono italic text-[10px] text-[#71685E]">
-                            {block.definition.partOfSpeechOrCategory || (block.definition as any)?.partOfSpeech}
+                            {cleanMarkdownSyntax(block.definition.partOfSpeechOrCategory || (block.definition as any)?.partOfSpeech)}
                           </span>
                         )}
                       </div>
-                      <p className="font-serif text-[#292521] text-xs leading-relaxed">
-                        {block.definition?.ageAppropriateExplanation || (block.definition as any)?.definition || block.calloutText || block.textContent}
-                      </p>
+                      <div className="font-serif text-[#292521] text-xs leading-relaxed">
+                        <TextbookMarkdown
+                          content={
+                            block.definition?.ageAppropriateExplanation ||
+                            (block.definition as any)?.definition ||
+                            block.calloutText ||
+                            block.textContent ||
+                            ''
+                          }
+                        />
+                      </div>
                       {block.definition?.examples && block.definition.examples.length > 0 && (
                         <div className="pt-1.5 border-t border-[#CBBEAC]/50 space-y-0.5">
                           <span className="text-[10px] font-bold text-[#71685E]">Examples:</span>
                           {block.definition.examples.map((ex, i) => (
                             <p key={i} className="text-[11px] text-[#292521] italic">
-                              • {ex.sentence || (typeof ex === 'string' ? ex : '')}
+                              • {cleanMarkdownSyntax(ex.sentence || (typeof ex === 'string' ? ex : ''))}
                             </p>
                           ))}
                         </div>
@@ -2155,11 +2165,11 @@ export const ChapterManuscriptCanvas: React.FC<ChapterManuscriptCanvasProps> = (
                   {(block.type === 'grammar_rule' || block.type === 'key_concept') && (
                     <div className="p-3.5 rounded-xl border border-[#C29A52]/60 bg-[#F6F0E7] space-y-1.5">
                       <span className="font-bold text-[10px] uppercase text-[#5A1832] block tracking-wider">
-                        {block.calloutTitle || 'GRAMMAR RULE'}
+                        {cleanHeadingTitle(block.calloutTitle || 'GRAMMAR RULE')}
                       </span>
-                      <p className="font-medium text-[#292521] text-xs leading-relaxed font-serif">
-                        {block.calloutText || block.textContent}
-                      </p>
+                      <div className="font-medium text-[#292521] text-xs leading-relaxed font-serif">
+                        <TextbookMarkdown content={block.calloutText || block.textContent || ''} />
+                      </div>
                     </div>
                   )}
 

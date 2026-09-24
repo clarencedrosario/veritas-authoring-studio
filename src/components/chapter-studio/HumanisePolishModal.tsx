@@ -105,8 +105,6 @@ export const HumanisePolishModal: React.FC<HumanisePolishModalProps> = ({
   entireChapterText = '',
   onApplyPolishedText,
 }) => {
-  if (!isOpen) return null;
-
   // Determine initial scope
   const defaultScope: HumaniseScope = selectedText && selectedText.trim().length > 10
     ? 'selection'
@@ -201,6 +199,8 @@ export const HumanisePolishModal: React.FC<HumanisePolishModalProps> = ({
 
   const originalWordCount = sourceText.trim() ? sourceText.trim().split(/\s+/).length : 0;
   const polishedWordCount = polishedResult?.trim() ? polishedResult.trim().split(/\s+/).length : 0;
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">

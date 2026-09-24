@@ -17,6 +17,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { StudioChapter, ChapterSection, TextbookContentBlock } from '../../types';
+import { cleanHeadingTitle, cleanMarkdownSyntax } from '../../utils/pedagogicalProfileSystem';
 
 interface ProposedSection {
   id: string;
@@ -65,8 +66,6 @@ export const DraftChapterAiModal: React.FC<DraftChapterAiModalProps> = ({
   chapter,
   onAcceptSections,
 }) => {
-  if (!isOpen) return null;
-
   const [chapterTitle, setChapterTitle] = useState(chapter.title || '');
   const [classLevel, setClassLevel] = useState<string>(
     chapter.equivalentClass || CLASS_OPTIONS[0]
@@ -225,22 +224,74 @@ export const DraftChapterAiModal: React.FC<DraftChapterAiModalProps> = ({
     }
 
     const convertedSections: ChapterSection[] = selected.map((s, idx) => {
-      const blocks: TextbookContentBlock[] = [
-        {
+      // Split content by markdown headings if present (### or ####) to produce structured blocks
+      const cleanTitle = cleanHeadingTitle(s.title);
+      const rawContent = s.content || '';
+
+      // Check if content has subheadings like "### 1. Understanding Concord"
+      const parts = rawContent.split(/\n(?=#{1,4}\s+)/g);
+      const blocks: TextbookContentBlock[] = [];
+
+      if (parts.length > 1) {
+        parts.forEach((part, pIdx) => {
+          const trimmedPart = part.trim();
+          if (!trimmedPart) return;
+
+          const headingMatch = trimmedPart.match(/^#{1,4}\s+(.+)$/m);
+          if (headingMatch) {
+            const headingText = cleanHeadingTitle(headingMatch[1]);
+            const bodyText = trimmedPart.replace(/^#{1,4}\s+.+$/m, '').trim();
+
+            blocks.push({
+              id: `blk-${Date.now()}-${idx}-${pIdx}-h`,
+              type: 'heading',
+              order: blocks.length + 1,
+              visibility: 'student',
+              title: headingText,
+              textContent: headingText,
+              authorNotes: `Drafted heading for ${classLevel}`,
+            });
+
+            if (bodyText) {
+              blocks.push({
+                id: `blk-${Date.now()}-${idx}-${pIdx}-t`,
+                type: 'text',
+                order: blocks.length + 1,
+                visibility: 'student',
+                textContent: bodyText,
+                authorNotes: `Drafted via AI for ${classLevel} (${s.sectionType})`,
+              });
+            }
+          } else {
+            blocks.push({
+              id: `blk-${Date.now()}-${idx}-${pIdx}`,
+              type: 'text',
+              order: blocks.length + 1,
+              visibility: 'student',
+              textContent: trimmedPart,
+              authorNotes: `Drafted via AI for ${classLevel} (${s.sectionType})`,
+            });
+          }
+        });
+      }
+
+      // Fallback if no subheadings split
+      if (blocks.length === 0) {
+        blocks.push({
           id: `blk-${Date.now()}-${idx}-1`,
           type: 'text',
           order: 1,
           visibility: 'student',
-          textContent: s.content,
+          textContent: rawContent,
           authorNotes: `Drafted via AI for ${classLevel} (${s.sectionType})`,
-        },
-      ];
+        });
+      }
 
       return {
         id: `sec-ai-${Date.now()}-${idx}`,
         chapterId: chapter.id,
         numberLabel: `${chapter.chapterNumber}.${idx + 1}`,
-        title: s.title,
+        title: cleanTitle,
         order: idx + 1,
         blocks,
         metadata: {
@@ -255,6 +306,8 @@ export const DraftChapterAiModal: React.FC<DraftChapterAiModalProps> = ({
   };
 
   const selectedCount = proposedSections.filter((s) => s.isSelected).length;
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">

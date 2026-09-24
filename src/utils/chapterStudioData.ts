@@ -1833,25 +1833,19 @@ export function convertTopicToStudioChapter(
   systemId: CurriculumSystemId = 'CBSE',
   editionId?: string
 ): StudioChapter {
-  // Pre-authored flagship demonstration chapters are ONLY used for their explicit canonical IDs
+  // If chapter has an existing active studioChapter, always preserve the author's real manuscript
+  if (topic.studioChapter) {
+    return sanitizeChapterDataIntegrity(topic.studioChapter, topic.id).chapter;
+  }
+
+  // Pre-authored flagship demonstration chapters are ONLY used as initial seeds for explicit canonical IDs
   if (topic.id === 'icse-6-concord') {
-    if (
-      topic.studioChapter &&
-      (topic.studioChapter.rules?.length || 0) === 0 &&
-      topic.studioChapter.sections?.some((s) => s.id === 'sec-concept-discovery')
-    ) {
-      return sanitizeChapterDataIntegrity(topic.studioChapter, topic.id).chapter;
-    }
     const demo = createDefaultCisceClass6SubjectVerbAgreementChapter();
     demo.id = topic.id;
     demo.equivalentClass = classLevel;
     demo.systemId = 'CISCE';
     demo.editionId = editionId || 'ed-icse-c6';
     return sanitizeChapterDataIntegrity(demo, topic.id).chapter;
-  }
-
-  if (topic.studioChapter) {
-    return sanitizeChapterDataIntegrity(topic.studioChapter, topic.id).chapter;
   }
 
   if (topic.id === 'cbse-6-sva') {
