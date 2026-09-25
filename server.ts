@@ -17,6 +17,9 @@ import {
   cleanHeadingTitle,
   getPedagogicalClassProfile,
   getCurriculumBoardProfile,
+  parseClassLevelNumber,
+  cleanLeakedEditorialTerms,
+  sanitizeContentStrippingRationale,
 } from "./src/utils/pedagogicalProfileSystem";
 
 dotenv.config();
@@ -2295,9 +2298,13 @@ Return strictly valid JSON with this structure:
 }`;
 
     try {
+      const authorDirectivePrompt = instructions?.trim()
+        ? `\n\nAUTHOR DIRECTIVES (MANDATORY - MUST GOVERN STRUCTURE AND PROSE):\n"${instructions.trim()}"\nIf the author asks for prerequisite definitions (e.g. definitions of subject and verb before agreement), dedicate section(s) to them before the main topic rules.`
+        : "";
+
       const response = await ai.models.generateContent({
         model: "gemini-3.8-flash",
-        contents: `Draft the complete textbook chapter: "${trimmedTitle}" for ${effectiveClass} under ${effectiveBoard}.`,
+        contents: `Draft the complete textbook chapter: "${trimmedTitle}" for ${effectiveClass} under ${effectiveBoard}.${authorDirectivePrompt}`,
         config: {
           systemInstruction: systemPrompt,
           temperature: 0.65,
@@ -2320,14 +2327,22 @@ Return strictly valid JSON with this structure:
         throw new Error("Invalid or empty sections in AI response");
       }
 
-      // Sanitize titles and subtitles to eliminate any raw markdown characters
+      // Sanitize titles, subtitles, and section content rigorously
+      const classNum = parseClassLevelNumber(effectiveClass);
       parsed.chapterTitle = cleanHeadingTitle(parsed.chapterTitle || trimmedTitle);
       parsed.subtitle = cleanHeadingTitle(parsed.subtitle || '');
-      parsed.sections = parsed.sections.map((s: any, idx: number) => ({
-        ...s,
-        title: cleanHeadingTitle(s.title || `Section ${idx + 1}`),
-        content: s.content || '',
-      }));
+      parsed.pedagogicalOverview = cleanLeakedEditorialTerms(cleanMarkdownSyntax(parsed.pedagogicalOverview || ''), classNum);
+      parsed.sections = parsed.sections.map((s: any, idx: number) => {
+        const { cleanContent, extractedRationale } = sanitizeContentStrippingRationale(s.content || '');
+        const finalRationale = cleanMarkdownSyntax(s.rationale || extractedRationale || '');
+        const studentProse = cleanLeakedEditorialTerms(cleanContent, classNum);
+        return {
+          ...s,
+          title: cleanHeadingTitle(s.title || `Section ${idx + 1}`),
+          content: studentProse,
+          rationale: finalRationale,
+        };
+      });
 
       return res.json({
         success: true,

@@ -10,6 +10,8 @@ import {
   getCurriculumBoardProfile,
   cleanMarkdownSyntax,
   cleanHeadingTitle,
+  cleanLeakedEditorialTerms,
+  sanitizeContentStrippingRationale,
   PedagogicalTier,
 } from './pedagogicalProfileSystem';
 
@@ -31,6 +33,46 @@ export interface PedagogicalChapterDraft {
   subtitle: string;
   pedagogicalOverview: string;
   sections: PedagogicalDraftSection[];
+}
+
+/**
+ * Generic helper to extract and categorize author instructions.
+ */
+function parseAuthorDirectives(instructions?: string) {
+  if (!instructions || !instructions.trim()) {
+    return {
+      hasDirectives: false,
+      raw: '',
+      wantsSubjectVerbDefinition: false,
+      wantsPrerequisiteDefinitions: false,
+      wantsCollectiveNouns: false,
+      wantsExamFocus: false,
+    };
+  }
+  const raw = instructions.trim();
+  const lower = raw.toLowerCase();
+
+  const wantsSubjectVerbDefinition =
+    (lower.includes('subject') && lower.includes('verb')) &&
+    (lower.includes('definition') || lower.includes('define') || lower.includes('explain') || lower.includes('what is') || lower.includes('before') || lower.includes('introduce') || lower.includes('simple'));
+
+  const wantsPrerequisiteDefinitions =
+    wantsSubjectVerbDefinition ||
+    lower.includes('prerequisite') ||
+    lower.includes('foundational definition') ||
+    lower.includes('basic definition');
+
+  const wantsCollectiveNouns = lower.includes('collective noun');
+  const wantsExamFocus = lower.includes('exam') || lower.includes('board') || lower.includes('trap') || lower.includes('cisce') || lower.includes('icse');
+
+  return {
+    hasDirectives: true,
+    raw,
+    wantsSubjectVerbDefinition,
+    wantsPrerequisiteDefinitions,
+    wantsCollectiveNouns,
+    wantsExamFocus,
+  };
 }
 
 /**
@@ -411,12 +453,13 @@ export function generatePedagogicalChapterDraft(
   const classNum = parseClassLevelNumber(classLevel);
   const tier = getPedagogicalTier(classNum);
   const boardProfile = getCurriculumBoardProfile(board);
+  const directives = parseAuthorDirectives(instructions);
 
   // --------------------------------------------------------------------------
   // TIER 1: CLASSES 1–2 (Early Primary / Foundation)
   // --------------------------------------------------------------------------
   if (tier === 'foundation') {
-    return {
+    return sanitizeChapterDraft({
       chapterTitle: title,
       subtitle: `Fun Stories and Naming Words for Class ${classNum}`,
       pedagogicalOverview: `Introduces young learners to ${title} through playful stories, colourful picture words, and gentle practice suitable for 6–7 year olds.`,
@@ -479,31 +522,58 @@ Choose the right word from the box: [ dog , book , park ]
 • When you tell a story, naming words help your friends picture what you see!`,
         },
       ],
-    };
+    }, classNum);
   }
 
   // --------------------------------------------------------------------------
   // TIER 2: CLASSES 3–5 (Primary / Preparatory)
   // --------------------------------------------------------------------------
   if (tier === 'preparatory') {
-    return {
-      chapterTitle: title,
-      subtitle: `Clear Rules and Guided Practice for Class ${classNum} (${boardProfile.board})`,
-      pedagogicalOverview: `Builds clear conceptual understanding of ${title} through engaging stories, practical rule boxes, and scaffolded exercises.`,
-      sections: [
-        {
-          title: "Let Us Begin",
-          sectionType: "opener",
-          rationale: `Introduces the chapter through an engaging school scenario.`,
-          content: `During the morning assembly at St. Jude's School, the principal made an important announcement. "Our school choir sings at the music festival on Friday. The music teacher, along with forty students, travels by the school bus."
+    const prepSections: PedagogicalDraftSection[] = [];
 
-Notice the words in the announcement. Why do we say 'sings' for the school choir, and why do we say 'travels' when there are forty students mentioned? Words work as a team in every sentence. In this chapter, we will learn how words agree with each other so your writing is clear and correct.`,
-        },
-        {
-          title: "Understanding the Core Rules",
-          sectionType: "explanation",
-          rationale: `Clear, straightforward definitions and simple explanations.`,
-          content: `In every sentence, the subject and the verb must match each other. This is called subject-verb agreement.
+    if (directives.wantsSubjectVerbDefinition || directives.wantsPrerequisiteDefinitions) {
+      prepSections.push({
+        title: "What is a Subject and What is a Verb?",
+        sectionType: "explanation",
+        rationale: `Fulfills the author's instruction to provide simple definitions of subject and verb for primary learners.`,
+        content: `Before we learn how words work together, let us meet the two most important parts of every sentence: the Subject and the Verb!
+
+1. What is a Subject?
+The subject is the person, animal, place, or thing that the sentence is about. It tells us who or what is doing the action.
+• Example: Maya plays with a red ball. (Who is doing the action? 'Maya'. So, Maya is the subject.)
+• Example: The dogs run in the garden. (Who is running? 'The dogs'. So, The dogs is the subject.)
+
+2. What is a Verb?
+A verb is an action word. It tells us what the subject does.
+• Example: In "Maya plays with a red ball", the action word is 'plays'.
+• Example: In "The dogs run in the garden", the action word is 'run'.
+
+3. A Team in Every Sentence!
+The subject and the verb always work as a team. Once you can find the subject and the verb, learning how they match is easy and fun!`,
+      });
+    }
+
+    prepSections.push({
+      title: "Let Us Begin",
+      sectionType: "opener",
+      rationale: `Introduces the chapter through simple, relatable sentences and gentle guided observation.`,
+      content: `Read these two friendly sentences:
+
+Sentence 1: The boy plays with his pet dog.
+Sentence 2: The boys play with their pet dog.
+
+Look closely at the action word (verb):
+• When there is one boy, the verb adds an -s: plays.
+• When there are two or more boys, the verb stays in its base form: play.
+
+In English, the naming word (subject) and the action word (verb) must match each other. When they match, our writing sounds smooth and clear! In this chapter, you will learn the simple secrets of matching subjects and verbs.`,
+    });
+
+    prepSections.push({
+      title: "Understanding the Core Rules",
+      sectionType: "explanation",
+      rationale: `Clear, straightforward definitions and simple explanations.`,
+      content: `In every sentence, the subject and the verb must match each other. This is called subject-verb agreement.
 
 Rule 1: Singular Subject = Singular Verb
 When the subject talks about one person, animal, place, or thing, we use a singular verb. In the present tense, singular verbs usually end with an -s:
@@ -514,12 +584,13 @@ Rule 2: Plural Subject = Plural Verb
 When the subject talks about more than one, we use a plural verb without an -s:
 • The bells ring loudly.
 • Birds chirp in the tree.`,
-        },
-        {
-          title: "Examples and Everyday Usage",
-          sectionType: "examples",
-          rationale: `Clear model sentences from school life and hobbies.`,
-          content: `Let us examine these clear sentence models:
+    });
+
+    prepSections.push({
+      title: "Examples and Everyday Usage",
+      sectionType: "examples",
+      rationale: `Clear model sentences from school life and hobbies.`,
+      content: `Let us examine these clear sentence models:
 
 Model 1: Everyday Classroom Actions
 • Correct: Maya draws a map of the solar system. (One person -> draws)
@@ -529,12 +600,13 @@ Model 2: Watch Out for Extra Words
 Sometimes extra words come between the subject and the verb. Do not let them trick you!
 • Correct: The box of colourful pencils sits on the desk.
 Notice that the true subject is 'box' (one box), not the pencils inside it.`,
-        },
-        {
-          title: "Common Mistakes to Avoid",
-          sectionType: "common_errors",
-          rationale: `Highlights frequent primary school concord errors with clear corrections.`,
-          content: `Mistake 1: The 'Of' Trap
+    });
+
+    prepSections.push({
+      title: "Common Mistakes to Avoid",
+      sectionType: "common_errors",
+      rationale: `Highlights frequent primary school concord errors with clear corrections.`,
+      content: `Mistake 1: The 'Of' Trap
 • Incorrect: The basket of fresh apples are heavy.
 • Correct: The basket of fresh apples is heavy.
 • Why: The subject is 'basket' (singular). The words 'of fresh apples' just tell us what is inside the basket.
@@ -543,12 +615,13 @@ Mistake 2: Words Connected by 'And'
 • Incorrect: Ravi and his brother goes to cricket practice.
 • Correct: Ravi and his brother go to cricket practice.
 • Why: Two people joined by 'and' make a plural subject.`,
-        },
-        {
-          title: "Let's Practice",
-          sectionType: "exercises",
-          rationale: `Scaffolded exercises with a complete answer key.`,
-          content: `Exercise A: Choose the Right Verb
+    });
+
+    prepSections.push({
+      title: "Let's Practice",
+      sectionType: "exercises",
+      rationale: `Scaffolded exercises with a complete answer key.`,
+      content: `Exercise A: Choose the Right Verb
 1. The little kitten (sleeps / sleep) on the warm rug.
 2. All the players on our team (wears / wear) blue jerseys.
 3. A herd of cows (grazes / graze) peacefully in the meadow.
@@ -567,144 +640,210 @@ Answer Key:
 4. were
 5. Correction: The bouquet of red roses smells wonderful. (Subject is 'bouquet').
 6. Correction: Every child in our street rides a bicycle in the evening. (Subject is 'Every child').`,
-        },
-        {
-          title: "Chapter Summary",
-          sectionType: "summary",
-          rationale: `Quick revision checklist for primary students.`,
-          content: `Quick Revision Points:
+    });
+
+    prepSections.push({
+      title: "Chapter Summary",
+      sectionType: "summary",
+      rationale: `Quick revision checklist for primary students.`,
+      content: `Quick Revision Points:
 1. One person or thing takes a singular verb (adds -s in present tense).
 2. More than one person or thing takes a plural verb.
 3. Always find the true head noun—ignore the words in between!
 4. Two subjects joined by 'and' make a plural verb.`,
-        },
-      ],
-    };
+    });
+
+    return sanitizeChapterDraft({
+      chapterTitle: title,
+      subtitle: `Clear Rules and Guided Practice for Class ${classNum} (${boardProfile.board})`,
+      pedagogicalOverview: `Builds clear conceptual understanding of ${title} through engaging stories, practical rule boxes, and scaffolded exercises.`,
+      sections: prepSections,
+    }, classNum);
   }
 
   // --------------------------------------------------------------------------
   // TIER 3: CLASSES 6–8 (Middle School / Lower Secondary)
   // --------------------------------------------------------------------------
   if (tier === 'middle') {
-    return {
-      chapterTitle: title,
-      subtitle: `Understanding Rules, Usage, and Common Traps for Class ${classNum} (${boardProfile.board})`,
-      pedagogicalOverview: `Develops systematic mastery of ${title} for Class ${classNum} through inductive discovery, structured rules, clear worked examples, common trap warnings, and graded practice exercises aligned with ${boardProfile.board} expectations.`,
-      sections: [
-        {
-          title: "Let Us Begin",
-          sectionType: "opener",
-          rationale: `Engages Class ${classNum} students through a school newspaper scenario.`,
-          content: `Rohan is the junior editor for the school magazine. While proofreading the sports day report, he paused over two sentences:
+    const middleSections: PedagogicalDraftSection[] = [];
 
-Sentence 1: "The captain, along with the coach, **was** proud of the team's victory."
-Sentence 2: "Neither the players nor the referee **was** satisfied with the pitch conditions."
+    // Check if author requested prerequisite definitions (e.g. subject & verb definition before agreement)
+    if (directives.wantsSubjectVerbDefinition || directives.wantsPrerequisiteDefinitions) {
+      middleSections.push({
+        title: "What is a Subject and What is a Verb?",
+        sectionType: "explanation",
+        rationale: `Directly fulfills the author's instruction to provide clear, simple definitions of a subject and a verb before teaching agreement.`,
+        content: `Before we explore how words agree with each other in a sentence, let us make sure we understand the two most important building blocks of every English sentence: the Subject and the Verb.
 
-Rohan wondered: In the first sentence, why is the singular verb **was** used when both the captain and the coach are mentioned? In the second sentence, why did the author choose **was** instead of **were**?
+1. What is a Subject?
+In every complete sentence, the subject is who or what the sentence is about. It is the person, animal, place, thing, or idea that performs the action or is being spoken of.
+• Example: The boy plays football in the park.
+  Here, 'The boy' is the subject because he is performing the action.
+• Example: The children laugh at the funny puppet show.
+  Here, 'The children' is the subject.
 
-In English, the relationship between the subject and the verb is one of the most important rules of good writing. When the subject and verb agree in number and person, our sentences become clear, balanced, and easy to read. In this chapter, you will learn how to identify the true subject in every sentence, avoid common exam traps, and write with complete confidence.`,
-        },
-        {
-          title: "Understanding Subject–Verb Agreement",
-          sectionType: "explanation",
-          rationale: `Presents core rules in clean, structured middle-school textbook English.`,
-          content: `At its heart, subject-verb agreement means a very simple thing:
-The subject and the verb in a sentence must agree with each other in number and person.
+2. What is a Verb?
+A verb is an action word or a word that shows a state of being. It tells us what the subject does, feels, or is.
+• Example: In "The boy plays football", the action verb is 'plays'.
+• Example: In "The children laugh", the action verb is 'laugh'.
+• State of being verbs include words like 'is', 'are', 'was', 'were', and 'has'.
+
+3. How the Subject and Verb Work Together
+A sentence must have both a subject and a verb to express a complete thought. The subject tells us who or what, and the verb tells us what happens.
+Once you can clearly identify the subject and the verb in a sentence, learning how they match each other becomes simple and straightforward!`,
+      });
+    }
+
+    // Step 1: Opener with foundational observation (Simple to Complex)
+    middleSections.push({
+      title: "Let Us Begin",
+      sectionType: "opener",
+      rationale: `Engages Class ${classNum} students through simple, foundational sentences before introducing complex rules.`,
+      content: `Look carefully at these two simple sentences:
+
+Sentence 1: The boy plays cricket in the evening.
+Sentence 2: The boys play cricket in the evening.
+
+Notice what happens:
+• In Sentence 1, the subject is one person ('The boy'). The verb ends with -s ('plays').
+• In Sentence 2, the subject is more than one person ('The boys'). The verb stays in its base form ('play').
+
+Here is another pair of simple sentences:
+• A bird sings in the morning. (One bird -> sings)
+• Birds sing in the morning. (More than one bird -> sing)
+
+This harmony between the subject and the verb is called Subject–Verb Agreement, or Concord. In English, the subject and the verb in every sentence must agree in number (singular or plural). When they agree, our writing is smooth, balanced, and pleasant to read.
+
+In this chapter, we will build from simple sentences to more interesting cases, learning step by step how to choose the right verb every time.`,
+    });
+
+    // Step 2: Core Explanation (The Basic Rule)
+    middleSections.push({
+      title: "The Basic Rule of Agreement",
+      sectionType: "explanation",
+      rationale: `Presents core singular and plural rules in clean, structured middle-school textbook English.`,
+      content: `At its heart, subject-verb agreement means a very simple thing:
+The subject and the verb in a sentence must match each other in number.
 
 1. Singular and Plural Subjects
 • A singular subject takes a singular verb.
 • A plural subject takes a plural verb.
 
 In the simple present tense, singular verbs in the third person end in -s or -es:
-• The bell **rings**. (Singular subject -> Singular verb)
-• The bells **ring**. (Plural subject -> Plural verb)
+• The bell rings at the end of the period. (Singular subject -> Singular verb)
+• The bells ring across the campus. (Plural subject -> Plural verb)
 
-2. Finding the True Head Noun
-In many sentences, words appear between the subject and the verb. These are often prepositional phrases. Always remember:
-Rule: The verb agrees with the true subject (the head noun), never with the words in between.
-• *The quality of these mangoes **is** excellent.* (Head noun is 'quality', which is singular).
-• *The students in our science club **are** building a telescope.* (Head noun is 'students', which is plural).`,
-        },
-        {
-          title: "Rules to Master",
-          sectionType: "rules",
-          rationale: `Step-by-step rules covering compound subjects, parentheticals, and proximity.`,
-          content: `Master these four high-frequency rules:
+2. A Useful Fact to Remember
+Notice how English words behave:
+• Adding -s to a noun usually makes it plural: boy -> boys, train -> trains.
+• Adding -s to a present-tense verb makes it singular: play -> plays, arrive -> arrives.
 
-Rule 1: Compound Subjects Joined by 'And'
-When two or more singular subjects are joined by 'and', they usually take a plural verb:
-• Ravi and Maya **study** in the library.
-• Exception: When two words express a single collective idea or dish, they take a singular verb:
-  *Bread and butter **is** a classic breakfast.*
+So, a singular subject noun pairs with a singular verb ending in -s:
+• The student writes neatly.
+A plural subject noun pairs with a plural verb without -s:
+• The students write neatly.`,
+    });
 
-Rule 2: Phrases Like 'Along With' and 'As Well As'
-Phrases such as *along with*, *together with*, *as well as*, and *in addition to* do not change the number of the subject. The verb agrees only with the first subject:
-• *The teacher, as well as the students, **was** excited.* (First subject is singular).
-• *The players, along with the coach, **were** celebrating.* (First subject is plural).
+    // Step 3: Compound Subjects Joined by 'And'
+    middleSections.push({
+      title: "Compound Subjects Joined by 'And'",
+      sectionType: "rules",
+      rationale: `Teaches compound subjects clearly before advancing to intervening phrases.`,
+      content: `Once you have mastered simple singular and plural subjects, let us look at compound subjects:
 
-Rule 3: Either... Or and Neither... Nor (The Proximity Rule)
-When subjects are connected by *either... or* or *neither... nor*, the verb agrees with the subject closer to it:
-• Neither the teacher nor the students **were** inside. ('students' is closer -> plural)
-• Neither the students nor the teacher **was** inside. ('teacher' is closer -> singular)
+Rule 1: Two or More Subjects Joined by 'And'
+When two singular subjects are joined by 'and', they form a plural subject and take a plural verb:
+• Ravi and Maya study in the library. (Two people -> plural verb 'study')
+• The pencil and the ruler are inside the pencil box.
 
-Rule 4: Indefinite Pronouns
-Words like *each*, *every*, *everyone*, *someone*, *nobody*, and *either* take singular verbs:
-• *Each of the participants **receives** a certificate.*
-• *Everyone in the hall **is** listening attentively.*`,
-        },
-        {
-          title: "Examples and Correct Usage",
-          sectionType: "examples",
-          rationale: `Clear contrastive models showing correct usage alongside common errors.`,
-          content: `Model 1: Intervening Prepositional Phrases
-• Trap: A box of colourful markers are on the table.
-• Correct: A box of colourful markers **is** on the table.
-• Reason: The head noun is 'box' (singular). The prepositional phrase 'of colourful markers' merely describes the box.
+Exception to Rule 1: Single Unit or Combined Idea
+When two words joined by 'and' are thought of as a single dish, combination, or idea, they take a singular verb:
+• Bread and butter is a classic breakfast.
+• Slow and steady wins the race.`,
+    });
 
-Model 2: Disjunctive Coordination (Either/Or)
-• Example A: Either Rohan or his classmates **have** borrowed the binoculars.
-  (Classmates is plural and nearer to the verb).
-• Example B: Either his classmates or Rohan **has** borrowed the binoculars.
-  (Rohan is singular and nearer to the verb).
+    // Step 4: Words that come between subject and verb
+    middleSections.push({
+      title: "Words That Come Between Subject and Verb",
+      sectionType: "rules",
+      rationale: `Teaches intervening words and parenthetical phrases without intimidating linguistic jargon.`,
+      content: `Now let us take the next step. In longer sentences, other words often appear between the subject and the verb.
 
-Model 3: Quantities and Units of Measurement
-When amounts of money, periods of time, or distances are thought of as a single whole, use a singular verb:
-• *Five kilometres **is** a comfortable cycling distance for an evening.*
-• *Fifty rupees **is** the price of the gel pen.*`,
-        },
-        {
-          title: "Common Mistakes to Avoid",
-          sectionType: "common_errors",
-          rationale: `Highlights classic middle school exam traps with practical checks.`,
-          content: `Watch out for these three common exam traps:
+Rule 2: Finding the Real Subject
+Always identify the true subject (the head word) and ignore any descriptive words that come between the subject and the verb:
+• The box of colourful markers is on the desk.
+  (The real subject is 'box', which is singular. The words 'of colourful markers' merely describe what is inside the box.)
+• The students in our school choir are practicing for the concert.
+  (The real subject is 'students', which is plural.)
+
+Rule 3: Phrases Like 'Along With' and 'As Well As'
+Phrases such as 'along with', 'together with', 'as well as', and 'in addition to' add extra information, but they do not change the number of the subject. The verb matches the first subject:
+• The teacher, as well as the students, was delighted with the results.
+  (The first subject is 'teacher', which is singular. We use 'was'.)
+• The players, along with the coach, were celebrating on the field.
+  (The first subject is 'players', which is plural. We use 'were'.)`,
+    });
+
+    // Step 5: Closer subject rule
+    middleSections.push({
+      title: "Choosing the Nearer Subject: 'Either... Or' and 'Neither... Nor'",
+      sectionType: "rules",
+      rationale: `Explains the closer subject rule in clean, age-appropriate middle school language without jargon.`,
+      content: `When subjects are connected by 'either... or' or 'neither... nor', we have two different subjects. How do we decide which verb to use?
+
+Rule 4: Match the Subject Closer to the Verb
+When subjects are joined by 'either... or' or 'neither... nor', the verb agrees with the subject that is nearer to it:
+• Neither the teacher nor the students were in the classroom.
+  ('students' is plural and closer to the verb -> use 'were')
+• Neither the students nor the teacher was in the classroom.
+  ('teacher' is singular and closer to the verb -> use 'was')
+• Either Rohan or his brothers have the house keys.
+  ('brothers' is plural and closer to the verb -> use 'have')
+• Either his brothers or Rohan has the house keys.
+  ('Rohan' is singular and closer to the verb -> use 'has')
+
+Rule 5: Words Like 'Each' and 'Every'
+Words like 'each', 'every', 'everyone', 'someone', and 'nobody' refer to individuals one by one. Therefore, they take singular verbs:
+• Each of the athletes receives a certificate.
+• Everyone in the audience is listening quietly.`,
+    });
+
+    // Step 6: Common Mistakes & Traps
+    middleSections.push({
+      title: "Common Mistakes and How to Avoid Them",
+      sectionType: "common_errors",
+      rationale: `Highlights classic middle school exam traps with practical checks.`,
+      content: `Watch out for these three common traps:
 
 Trap 1: The 'One of the' Pattern
 • Incorrect: One of my cousins are an airline pilot.
-• Correct: One of my cousins **is** an airline pilot.
-• Quick Check: Cross out 'of my cousins'. The sentence reads: *One is an airline pilot.*
+• Correct: One of my cousins is an airline pilot.
+• Helpful Check: Cover the words 'of my cousins'. You are left with 'One is an airline pilot', which makes complete sense.
 
 Trap 2: Collective Nouns
-In Indian and British English curricula, collective nouns (team, committee, family, choir) are treated as singular when acting as one unit:
-• Correct: *The school committee **has** approved the annual budget.*
-• Correct: *Our cricket team **is** practicing on the main ground.*
+In Indian and British English curricula (${boardProfile.board}), collective nouns such as 'team', 'committee', 'family', and 'choir' are treated as singular when the group acts together as one single unit:
+• The school committee has approved the annual budget.
+• Our cricket team is practicing on the main ground.
 
-Trap 3: Expressions with 'As Well As'
-• Incorrect: The captain as well as the goalkeeper were injured.
-• Correct: The captain as well as the goalkeeper **was** injured.
-• Quick Check: The phrase 'as well as the goalkeeper' is an addition; the main subject is 'captain'.`,
-        },
-        {
-          title: "Practice Exercises",
-          sectionType: "exercises",
-          rationale: `Graded exercises testing identification, correction, and application.`,
-          content: `Exercise 1: Choose the Correct Verb Form
+Trap 3: Amounts, Periods of Time, and Distances
+When amounts of money, periods of time, or distances are considered as one single total, use a singular verb:
+• Ten kilometres is a long walk after school.
+• Fifty rupees is the price of the gel pen.`,
+    });
+
+    // Step 7: Practice Exercises
+    middleSections.push({
+      title: "Classroom Practice Exercises",
+      sectionType: "exercises",
+      rationale: `Graded exercises testing identification, correction, and application with clear solutions.`,
+      content: `Exercise 1: Choose the Correct Verb Form
 1. The bouquet of fresh orchids (was / were) presented to the chief guest.
-2. Neither the headmaster nor the assistant teachers (has / have) arrived yet.
+2. Neither the captain nor the players (has / have) arrived yet.
 3. Ten thousand rupees (is / are) a substantial amount to spend on books.
 4. Each of the laboratory microscopes (needs / need) careful cleaning.
 
 Exercise 2: Error Spotting and Correction
-Read each sentence, underline the mistake, and rewrite the sentence correctly:
+Read each sentence, identify the mistake, and rewrite the sentence correctly:
 5. The list of successful candidates were pinned to the notice board.
    Correction: ____________________________________________________
 6. The coach, together with all the athletes, are attending the seminar.
@@ -718,36 +857,43 @@ Exercise 3: Sentence Completion
 
 ---
 Complete Answer Key & Diagnostic Notes:
-1. was (Head noun is singular 'bouquet').
-2. have (Proximity concord: 'teachers' is plural and nearer to the verb).
+1. was (The real subject is singular 'bouquet').
+2. have (Closer subject rule: 'players' is plural and nearer to the verb).
 3. is (Sum of money regarded as a single total).
-4. needs ('Each' is an indefinite pronoun taking a singular verb).
+4. needs ('Each' takes a singular verb).
 5. Correction: "The list of successful candidates was pinned to the notice board." (Subject is 'list').
 6. Correction: "The coach, together with all the athletes, is attending the seminar." (First subject 'coach' governs the verb).
 7. is (Subject is 'variety', which is singular).
 8. have (Subject nearer the verb is plural 'passengers').`,
-        },
-        {
-          title: "Chapter Summary and Checklist",
-          sectionType: "summary",
-          rationale: `Crisp revision checklist for Class ${classNum} students.`,
-          content: `Summary Checklist for Quick Revision:
-1. Singular subject -> Singular verb (-s in present tense).
-2. Plural subject -> Plural verb.
-3. Always identify the true head noun—ignore prepositional phrases that sit in between.
-4. With 'along with' and 'as well as', the verb agrees only with the first subject.
-5. With 'either... or' and 'neither... nor', match the verb to the nearer subject.
-6. 'Each' and 'every' always take a singular verb.`,
-        },
-      ],
-    };
+    });
+
+    // Step 8: Chapter Summary
+    middleSections.push({
+      title: "Chapter Summary and Quick Checklist",
+      sectionType: "summary",
+      rationale: `Crisp revision checklist for Class ${classNum} students.`,
+      content: `Quick Revision Checklist:
+1. Singular subject -> Singular verb (verb ends with -s in simple present tense).
+2. Plural subject -> Plural verb (base form of verb).
+3. Words that come between: Always find the real subject and ignore the descriptive words in between.
+4. With 'along with' and 'as well as', match the first subject.
+5. With 'either... or' and 'neither... nor', match the subject closer to the verb.
+6. Words like 'each' and 'every' always take singular verbs.`,
+    });
+
+    return sanitizeChapterDraft({
+      chapterTitle: title,
+      subtitle: `Understanding Rules, Usage, and Common Traps for Class ${classNum} (${boardProfile.board})`,
+      pedagogicalOverview: `Develops systematic mastery of ${title} for Class ${classNum} through foundational observation, clear rules, worked examples, common trap warnings, and graded practice exercises aligned with ${boardProfile.board} expectations.`,
+      sections: middleSections,
+    }, classNum);
   }
 
   // --------------------------------------------------------------------------
   // TIER 4: CLASSES 9–10 (Secondary / Board Preparation)
   // --------------------------------------------------------------------------
   if (tier === 'secondary') {
-    return {
+    return sanitizeChapterDraft({
       chapterTitle: title,
       subtitle: `Syntactic Principles, Board Transformations & Exam Drills for Class ${classNum} (${boardProfile.board})`,
       pedagogicalOverview: `Rigorous, board-calibrated chapter for Class ${classNum} candidates, focusing on sentence synthesis, transformation formulas, complex concord, and ${boardProfile.board} examination question formats.`,
@@ -857,13 +1003,13 @@ Marking Scheme & Detailed Answers:
 4. Check correlative conjunctions: *Neither... nor* matches the nearest subject.`,
         },
       ],
-    };
+    }, classNum);
   }
 
   // --------------------------------------------------------------------------
   // TIER 5: CLASSES 11–12 (Senior Secondary / Pre-University)
   // --------------------------------------------------------------------------
-  return {
+  const rawDraft: PedagogicalChapterDraft = {
     chapterTitle: title,
     subtitle: `Theoretical Foundations, Syntactic Principles & Stylistic Mastery for Class ${classNum} (${boardProfile.board})`,
     pedagogicalOverview: `Comprehensive senior secondary treatise on ${title} for Class ${classNum}, exploring syntactic inversion, complex concord, stylistic nuances, and pre-university examination standards.`,
@@ -920,7 +1066,7 @@ In constructions with fractions, percentages, and indefinite quantifiers (*half 
 Model 2: Complex Clitic and Relative Clause Concord
 • Ambiguous: He is one of those authors who writes passionately about environmental justice.
 • Precise: *He is one of those authors who **write** passionately about environmental justice.*
-• Rationale: The antecedent of the relative pronoun 'who' is the plural noun 'authors', requiring the plural verb 'write'.`,
+• Explanation: The antecedent of the relative pronoun 'who' is the plural noun 'authors', requiring the plural verb 'write'.`,
       },
       {
         title: "Advanced Diagnostic Drills and Examination Series",
@@ -959,6 +1105,33 @@ Scholarly Solutions and Analytical Notes:
 4. Balance syntactic rigour with natural cadence—clarity remains the ultimate hallmark of style.`,
       },
     ],
+  };
+
+  return sanitizeChapterDraft(rawDraft, classNum);
+}
+
+/**
+ * Universal sanitizer for chapter drafts guaranteeing:
+ * 1. Clean heading titles without raw markdown hashes or asterisks
+ * 2. Editorial rationale stripped from student-facing content and preserved as metadata only
+ * 3. Leaked internal pedagogical terms filtered out for Classes 1–8
+ */
+function sanitizeChapterDraft(draft: PedagogicalChapterDraft, classNum: number): PedagogicalChapterDraft {
+  return {
+    chapterTitle: cleanHeadingTitle(draft.chapterTitle),
+    subtitle: cleanHeadingTitle(draft.subtitle),
+    pedagogicalOverview: cleanLeakedEditorialTerms(cleanMarkdownSyntax(draft.pedagogicalOverview), classNum),
+    sections: draft.sections.map((s) => {
+      const { cleanContent, extractedRationale } = sanitizeContentStrippingRationale(s.content);
+      const finalRationale = cleanMarkdownSyntax(s.rationale || extractedRationale || '');
+      const studentProse = cleanLeakedEditorialTerms(cleanContent, classNum);
+      return {
+        ...s,
+        title: cleanHeadingTitle(s.title),
+        content: studentProse,
+        rationale: finalRationale,
+      };
+    }),
   };
 }
 

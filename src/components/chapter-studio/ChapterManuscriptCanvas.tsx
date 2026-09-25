@@ -2220,7 +2220,7 @@ export const ChapterManuscriptCanvas: React.FC<ChapterManuscriptCanvasProps> = (
                             ✗ INCORRECT
                           </span>
                           <p className="text-rose-950 line-through font-serif">
-                            {block.examplePair?.incorrect}
+                            {cleanMarkdownSyntax(block.examplePair?.incorrect || '')}
                           </p>
                         </div>
                         <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs">
@@ -2228,13 +2228,13 @@ export const ChapterManuscriptCanvas: React.FC<ChapterManuscriptCanvasProps> = (
                             ✓ CORRECT
                           </span>
                           <p className="text-emerald-950 font-serif font-bold">
-                            {block.examplePair?.correct}
+                            {cleanMarkdownSyntax(block.examplePair?.correct || '')}
                           </p>
                         </div>
                       </div>
                       {block.examplePair?.why && (
                         <p className="text-[11px] text-[#71685E] font-medium pt-1">
-                          Rationale: {block.examplePair.why}
+                          Explanation: {cleanMarkdownSyntax(block.examplePair.why)}
                         </p>
                       )}
                     </div>
@@ -2245,9 +2245,9 @@ export const ChapterManuscriptCanvas: React.FC<ChapterManuscriptCanvasProps> = (
                       <span className="font-bold text-[10px] uppercase text-[#5A1832] block tracking-wider">
                         EXAMPLE
                       </span>
-                      <p className="font-serif text-[#292521] text-xs leading-relaxed">
-                        {block.calloutText || block.textContent}
-                      </p>
+                      <div className="font-serif text-[#292521] text-xs leading-relaxed">
+                        <TextbookMarkdown content={block.calloutText || block.textContent || ''} />
+                      </div>
                     </div>
                   )}
 

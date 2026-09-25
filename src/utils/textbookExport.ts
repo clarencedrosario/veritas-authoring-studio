@@ -18,6 +18,7 @@ import {
   GrammarClassLevel,
   SpiralCurriculumMatrix,
 } from '../types';
+import { cleanMarkdownSyntax } from './pedagogicalProfileSystem';
 
 export type TextbookExportFormat =
   | 'print_pdf'
@@ -439,7 +440,7 @@ export async function exportTextbookToDocx(
           children.push(
             new Paragraph({
               spacing: { after: 180 },
-              children: [new TextRun({ text: p.trim(), size: 20 })],
+              children: [new TextRun({ text: cleanMarkdownSyntax(p.trim()), size: 20 })],
             })
           );
         }

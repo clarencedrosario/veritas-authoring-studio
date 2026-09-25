@@ -14,6 +14,7 @@ import {
   Wand2,
 } from 'lucide-react';
 import { StudioChapter } from '../../types';
+import { TextbookMarkdown } from '../common/TextbookMarkdown';
 
 export type HumaniseStyle =
   | 'natural'
@@ -364,8 +365,12 @@ export const HumanisePolishModal: React.FC<HumanisePolishModalProps> = ({
                 </span>
                 <span className="text-[10px] text-[#71685E] italic">Current draft</span>
               </div>
-              <div className="max-h-56 overflow-y-auto text-xs font-serif text-[#292521] leading-relaxed whitespace-pre-line pr-2">
-                {sourceText || <span className="italic text-[#71685E]">No text found in selected scope.</span>}
+              <div className="max-h-56 overflow-y-auto text-xs font-serif text-[#292521] leading-relaxed pr-2">
+                {sourceText ? (
+                  <TextbookMarkdown content={sourceText} />
+                ) : (
+                  <span className="italic text-[#71685E]">No text found in selected scope.</span>
+                )}
               </div>
             </div>
 
@@ -391,8 +396,8 @@ export const HumanisePolishModal: React.FC<HumanisePolishModalProps> = ({
                 </div>
               ) : polishedResult ? (
                 <div className="space-y-3">
-                  <div className="max-h-48 overflow-y-auto text-xs font-serif text-[#292521] leading-relaxed whitespace-pre-line pr-2">
-                    {polishedResult}
+                  <div className="max-h-48 overflow-y-auto text-xs font-serif text-[#292521] leading-relaxed pr-2">
+                    <TextbookMarkdown content={polishedResult} />
                   </div>
                   {changesSummary && (
                     <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-[11px] flex items-center space-x-2">

@@ -17,7 +17,8 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { StudioChapter, ChapterSection, TextbookContentBlock } from '../../types';
-import { cleanHeadingTitle, cleanMarkdownSyntax } from '../../utils/pedagogicalProfileSystem';
+import { cleanHeadingTitle, cleanMarkdownSyntax, sanitizeContentStrippingRationale } from '../../utils/pedagogicalProfileSystem';
+import { TextbookMarkdown } from '../common/TextbookMarkdown';
 
 interface ProposedSection {
   id: string;
@@ -65,6 +66,7 @@ export const DraftChapterAiModal: React.FC<DraftChapterAiModalProps> = ({
   onClose,
   chapter,
   onAcceptSections,
+  isDarkMode = false,
 }) => {
   const [chapterTitle, setChapterTitle] = useState(chapter.title || '');
   const [classLevel, setClassLevel] = useState<string>(
@@ -226,7 +228,10 @@ export const DraftChapterAiModal: React.FC<DraftChapterAiModalProps> = ({
     const convertedSections: ChapterSection[] = selected.map((s, idx) => {
       // Split content by markdown headings if present (### or ####) to produce structured blocks
       const cleanTitle = cleanHeadingTitle(s.title);
-      const rawContent = s.content || '';
+      // RATIONALE PURITY: Strip any rationale text that may be inside s.content
+      const { cleanContent, extractedRationale } = sanitizeContentStrippingRationale(s.content || '');
+      const rawContent = cleanContent;
+      const finalRationale = s.rationale || extractedRationale || '';
 
       // Check if content has subheadings like "### 1. Understanding Concord"
       const parts = rawContent.split(/\n(?=#{1,4}\s+)/g);
@@ -296,7 +301,7 @@ export const DraftChapterAiModal: React.FC<DraftChapterAiModalProps> = ({
         blocks,
         metadata: {
           sectionType: s.sectionType,
-          rationale: s.rationale,
+          rationale: finalRationale,
         },
       };
     });
@@ -578,9 +583,9 @@ export const DraftChapterAiModal: React.FC<DraftChapterAiModalProps> = ({
                           className="w-full p-2.5 rounded-lg border border-[#CBBEAC] text-xs font-serif leading-relaxed text-[#292521] focus:ring-1 focus:ring-[#C29A52]"
                         />
                       ) : (
-                        <p className="text-xs font-serif text-[#292521] leading-relaxed whitespace-pre-line line-clamp-4">
-                          {sec.content}
-                        </p>
+                        <div className="text-xs font-serif text-[#292521] leading-relaxed max-h-40 overflow-y-auto pr-1">
+                          <TextbookMarkdown content={sec.content} isDarkMode={isDarkMode} />
+                        </div>
                       )}
 
                       {sec.rationale && (

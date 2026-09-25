@@ -428,8 +428,11 @@ export function cleanMarkdownSyntax(text: string): string {
   return text
     // Remove leading markdown heading hashes: "### 1. Title" -> "1. Title"
     .replace(/^#{1,6}\s+/gm, '')
-    // Remove bold/italic asterisks: "**word**" -> "word", "*word*" -> "word"
+    // Remove triple asterisks (bold italic): "***word***" -> "word"
+    .replace(/\*\*\*(.*?)\*\*\*/g, '$1')
+    // Remove bold asterisks: "**word**" -> "word"
     .replace(/\*\*(.*?)\*\*/g, '$1')
+    // Remove italic asterisks: "*word*" -> "word"
     .replace(/\*(.*?)\*/g, '$1')
     // Remove bold/italic underscores: "__word__" -> "word"
     .replace(/__(.*?)__/g, '$1')
@@ -438,7 +441,57 @@ export function cleanMarkdownSyntax(text: string): string {
     .replace(/`([^`]+)`/g, '$1')
     // Remove blockquote markers: "> quote" -> "quote"
     .replace(/^>\s+/gm, '')
+    // Remove any leftover stray double asterisks
+    .replace(/\*\*/g, '')
     .trim();
+}
+
+/**
+ * Strips editorial rationale blocks from student-facing content and returns both clean text and rationale.
+ * Guarantees that "Rationale: ..." is kept strictly as metadata and NEVER part of student text.
+ */
+export function sanitizeContentStrippingRationale(rawContent: string): {
+  cleanContent: string;
+  extractedRationale?: string;
+} {
+  if (!rawContent) return { cleanContent: '' };
+
+  let extractedRationale: string | undefined = undefined;
+  
+  // Match patterns like "Rationale: ...", "**Rationale:** ...", "Pedagogical Rationale: ..."
+  const rationaleRegex = /(?:^|\n)(?:\*\*|\*|#{1,6}\s*)?(?:Pedagogical\s+)?Rationale\s*:\s*([^\n]+(?:\n(?!\n|#{1,6}|\d+\.)[^\n]+)*)/i;
+  const match = rawContent.match(rationaleRegex);
+  if (match) {
+    extractedRationale = match[1].trim();
+  }
+
+  // Remove all occurrences of Rationale blocks from student content
+  const cleanContent = rawContent
+    .replace(/(?:^|\n)(?:\*\*|\*|#{1,6}\s*)?(?:Pedagogical\s+)?Rationale\s*:\s*[^\n]+(?:\n(?!\n|#{1,6}|\d+\.)[^\n]+)*/gi, '')
+    .trim();
+
+  return { cleanContent, extractedRationale };
+}
+
+/**
+ * Replaces internal pedagogical/editorial terminology with student-friendly phrasing for Classes 1–8.
+ */
+export function cleanLeakedEditorialTerms(text: string, classNum: number): string {
+  if (!text || classNum > 8) return text;
+
+  return text
+    .replace(/\binductive discovery\b/gi, 'guided discovery')
+    .replace(/\bcontrastive analysis\b/gi, 'comparing correct and incorrect sentences')
+    .replace(/\bsyntactic architecture\b/gi, 'sentence structure')
+    .replace(/\bproximity principle\b/gi, 'rule of the nearer subject')
+    .replace(/\bproximity concord\b/gi, 'matching the closer subject')
+    .replace(/\bhigh-frequency rules?\b/gi, 'key rules')
+    .replace(/\bintervening prepositional modifiers?\b/gi, 'words that come in between')
+    .replace(/\bintervening modifiers?\b/gi, 'words in between')
+    .replace(/\bdisjunctive coordination\b/gi, 'sentences with either or neither')
+    .replace(/\bgrammatical constituents?\b/gi, 'parts of a sentence')
+    .replace(/\bsubcategorization frames?\b/gi, 'sentence patterns')
+    .replace(/\bnominal agreement\b/gi, 'word agreement');
 }
 
 /**
@@ -449,12 +502,14 @@ export function cleanHeadingTitle(title: string): string {
   return cleanMarkdownSyntax(title)
     .replace(/^section\s+\d+[:\s-]*/i, '')
     .replace(/^chapter\s+\d+[:\s-]*/i, '')
+    .replace(/^#+\s*/, '')
     .trim();
 }
 
 /**
  * Assembles the full, authoritative System Prompt for any Academic AI generation task.
- * Guarantees strict adherence to Class Level (1–12) and Board/Curriculum.
+ * Guarantees strict adherence to Class Level (1–12), Board/Curriculum, Author Directives,
+ * Simple-to-Complex Pedagogical Sequencing, and Student Purity (no editorial jargon).
  */
 export function buildAcademicAiPromptContext(params: {
   classLevel: string;
@@ -465,6 +520,7 @@ export function buildAcademicAiPromptContext(params: {
   featureName?: string;
   customInstructions?: string;
 }): string {
+  const classNum = parseClassLevelNumber(params.classLevel);
   const classProfile = getPedagogicalClassProfile(params.classLevel);
   const boardProfile = getCurriculumBoardProfile(params.board);
 
@@ -494,26 +550,63 @@ CRITICAL CONTEXT: SEPARATE CLASS AND BOARD CONTROLS
    ${params.featureName ? `- Operation: ${params.featureName}` : ''}
 
 ================================================================================
-SUPREME PEDAGOGICAL CONSTITUTION: NEVER SOUND UNNECESSARILY ACADEMIC
+MANDATORY AUTHOR INSTRUCTIONS (SUPREME HIGH PRIORITY)
 ================================================================================
-- CORE PRINCIPLE: Never make educational writing complicated simply to make it sound intelligent or academic!
-- For Class 1–8:
-  • BAD: "Examine the syntactic architecture governing concord between grammatical constituents."
-  • GOOD: "The subject and the verb in a sentence must agree with each other."
-  • BAD HEADING: "Core Conceptual Explanations & Structural Foundations" -> GOOD: "Understanding ${params.chapterTitle}"
-  • BAD HEADING: "Exemplary Models & Contrastive Usage" -> GOOD: "Examples and Correct Usage"
-  • BAD HEADING: "Inquiry & Contextual Discovery" -> BETTER: "Let Us Begin"
-- HEADINGS, SUBHEADINGS, AND INSTRUCTIONS MUST MATCH THE CLASS LEVEL:
-  Do not generate sophisticated, university-level headings for younger students while only simplifying the text below.
-- NO RAW MARKDOWN CONTROL CHARACTERS IN VISIBLE TEXT:
-  Do NOT output raw Markdown symbols (such as ### or **) in titles or final prose. Deliver clean, beautifully formatted textbook text.
-- HUMANISATION & POLISHING DISCIPLINE:
-  Polishing must improve readability, natural rhythm, sentence variety, and voice WHILE PRESERVING the exact Class level.
-  Never elevate Class 3 or Class 6 vocabulary into college-level text!
+${params.customInstructions?.trim() ? `THE AUTHOR HAS PROVIDED EXPLICIT INSTRUCTIONS:
+"${params.customInstructions.trim()}"
+
+STRICT DIRECTIVES REGARDING AUTHOR INSTRUCTIONS:
+- Explicit instructions entered in "Optional Author Instructions" MUST materially determine the proposed chapter structure and drafted prose!
+- Treat explicit author instructions as having HIGHER PRIORITY than the default chapter outline template, provided they do not conflict with the selected curriculum or class level.
+- PREREQUISITE DEFINITIONS: If the author requests introducing, defining, or reviewing prerequisite concepts (for example: "Include a simple definition of a subject and a verb before introducing subject–verb agreement"), you MUST actually introduce, dedicate section space to, and explain those concepts (e.g. "What is a Subject?", "What is a Verb?") in clear, accessible language BEFORE introducing the main rules!
+- The author's directives must be clearly visible and fulfilled in the section titles and section content.` : 'No custom author instructions entered. Proceed with optimal age-appropriate pedagogical structure.'}
+
+================================================================================
+PEDAGOGICAL SEQUENCING: TEACH FROM SIMPLE TO COMPLEX
+================================================================================
+- Enforce strict pedagogical sequencing appropriate to ${classProfile.label}:
+- ALWAYS introduce the simplest, foundational form of the concept before introducing exceptions, traps, or difficult constructions.
+- For grammar chapters, begin with the most basic, familiar forms and high-frequency sentences:
+  • e.g. for Subject-Verb Agreement: Begin with simple singular vs plural subjects ("The boy plays." / "The boys play.") before introducing:
+    - intervening prepositional phrases ("The box of chocolates is on the table.")
+    - parenthetical additions ("along with", "together with", "as well as")
+    - disjunctive correlatives ("either... or", "neither... nor")
+    - collective nouns ("team", "committee", "crowd")
+    - proximity rules
+    - exceptional cases
+- Do NOT begin an opener or early section with advanced exceptions before the foundational rule has been established and understood.
+
+================================================================================
+SEPARATE INTERNAL EDITORIAL LANGUAGE FROM STUDENT-FACING LANGUAGE
+================================================================================
+- The system may use technical pedagogical terminology internally, but student-facing textbook prose must strictly follow the selected class-level profile.
+- Technical editorial terms such as:
+  • "inductive discovery"
+  • "contrastive analysis"
+  • "syntactic architecture"
+  • "proximity principle"
+  • "high-frequency rule"
+  • "intervening modifier"
+  • "disjunctive coordination"
+  • "grammatical constituents"
+  MUST NOT automatically appear in student-facing Class 1–8 content or headings merely because they are useful internally.
+- Where technical terminology is genuinely required by the curriculum (e.g. subject, predicate, verb, singular, plural), introduce it in clear, warm, age-appropriate language and explain it.
+- Board rigor must NEVER automatically increase reading difficulty or vocabulary intimidation!
+
+================================================================================
+EDITORIAL RATIONALE METADATA INTEGRITY
+================================================================================
+- The "rationale" property is purely for the author's reference in the drafting tool.
+- Rationale text must be stored as editorial metadata and must NEVER appear inside the student-facing "content", headings, or exercises.
+
+================================================================================
+FORMATTING: ZERO VISIBLE RAW MARKDOWN CONTROL CHARACTERS
+================================================================================
+- Users and students must NEVER see raw control syntax such as:
+  **, *, ###, ####, unformatted backticks, or Markdown list artefacts in titles or text.
+- Deliver beautifully styled, clean textbook reading material.
 
 ${classProfile.systemInstructionText}
 
-${boardProfile.guidanceText}
-
-${params.customInstructions ? `AUTHOR'S CUSTOM DIRECTIVE:\n${params.customInstructions}` : ''}`;
+${boardProfile.guidanceText}`;
 }
