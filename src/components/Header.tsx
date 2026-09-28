@@ -19,7 +19,7 @@ import {
   User,
   ExternalLink,
 } from 'lucide-react';
-import { NovelProject, GrammarSeriesProject } from '../types';
+import { NovelProject, GrammarSeriesProject, ContentWritingProject } from '../types';
 import { WorkspaceType } from './NavigationRail';
 import { exportToDocx, exportToMarkdown, exportToPlainText, exportProjectJson } from '../utils/export';
 import { resolveActiveBookContext, switchActiveBookProject } from '../utils/activeBookContext';
@@ -28,6 +28,7 @@ interface HeaderProps {
   activeWorkspace: WorkspaceType;
   project: NovelProject;
   grammarProject: GrammarSeriesProject;
+  contentProject?: ContentWritingProject;
   activeChapterId?: string;
   activeSceneId?: string;
   onUpdateProjectTitle: (title: string) => void;
@@ -56,6 +57,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeWorkspace,
   project,
   grammarProject,
+  contentProject,
   activeChapterId,
   activeSceneId,
   onUpdateProjectTitle,
@@ -288,6 +290,27 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                 </div>
               )}
+            </div>
+          ) : activeWorkspace === 'content' ? (
+            /* Content Writing Context */
+            <div className="flex items-center space-x-2 truncate">
+              <span className="font-serif font-semibold text-[#F6F0E7] truncate text-xs sm:text-[13px]">
+                {contentProject?.documents?.find((d) => d.id === contentProject?.activeDocumentId)?.title || contentProject?.title || 'Content Studio'}
+              </span>
+              {currentTab === 'research' ? (
+                <span className="inline-flex items-center text-[11px] text-[#C29A52] font-mono">
+                  <span className="mx-1 text-[#C29A52]">•</span>
+                  Research Archive
+                </span>
+              ) : (
+                <span className="hidden sm:inline-flex items-center text-[11px] text-[#D8CCBC] font-mono">
+                  <span className="mx-1 text-[#C29A52]">•</span>
+                  {contentProject?.documents?.find((d) => d.id === contentProject?.activeDocumentId)?.contentType?.replace(/_/g, ' ') || 'Manuscript'}
+                </span>
+              )}
+              <span className="hidden sm:inline-flex badge-status bg-[#5A1832] text-[#EDE4D6] border border-[#C29A52]/30 text-[11px] font-mono">
+                {(contentProject?.documents?.find((d) => d.id === contentProject?.activeDocumentId)?.wordCount || 0).toLocaleString()} words
+              </span>
             </div>
           ) : (
             /* Novel Context */

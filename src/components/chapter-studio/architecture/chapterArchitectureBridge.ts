@@ -16,6 +16,7 @@ import {
   ChapterComponentAnatomy,
 } from '../../book-planner/architecture/types';
 import { getDefaultBookArchitecture } from '../../book-planner/architecture/defaultArchitecture';
+import { calibrateManuscriptMetadataForClass } from '../../../utils/pedagogicalProfileSystem';
 
 // ---------------------------------------------------------------------------
 // 1. Architecture Resolution
@@ -94,7 +95,7 @@ export function resolveActiveBookArchitecture(
     id: isCisce ? 'proj-cisce-class6' : `proj-default-${effectiveBoard.toLowerCase()}-6`,
     bookTitle: isCisce ? 'Classical Grammar: ICSE Class 6' : 'Middle School Grammar & Syntax',
     seriesTitle: (seriesProject as any)?.seriesTitle || (seriesProject as any)?.title || 'Grammar in Action: Tri-Board English Series',
-    subtitle: isCisce ? 'Foundations of Grammatical Concord & Syntactic Synthesis' : 'Comprehensive Student Edition',
+    subtitle: isCisce ? calibrateManuscriptMetadataForClass('Making Subjects and Verbs Agree', (classLevel as any) || 'Class 6') : 'Comprehensive Student Edition',
     programme: 'Secondary',
     classOrStage: (classLevel as any) || 'Class 6',
     classLevel: (classLevel as any) || 'Class 6',

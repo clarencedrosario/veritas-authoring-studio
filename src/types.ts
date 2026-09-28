@@ -155,7 +155,224 @@ export interface NovelContinuityContext {
 // ==========================================
 // CONTENT WRITING STUDIO DOMAIN TYPES
 // ==========================================
-export type ContentType = 'article' | 'essay' | 'whitepaper' | 'blog_post' | 'thought_leadership' | 'case_study';
+export type ContentCategory =
+  | 'news'
+  | 'advertising'
+  | 'digital'
+  | 'corporate'
+  | 'education'
+  | 'other';
+
+export type ContentType =
+  // News & Journalism
+  | 'news_article'
+  | 'news_report'
+  | 'feature_article'
+  | 'editorial'
+  | 'opinion_oped'
+  | 'column'
+  | 'interview'
+  | 'profile'
+  | 'review'
+  | 'investigative_article'
+  // Advertising & Marketing
+  | 'newspaper_ad'
+  | 'display_ad'
+  | 'classified_ad'
+  | 'promotional_copy'
+  | 'brochure'
+  | 'flyer'
+  | 'poster_copy'
+  | 'product_ad'
+  | 'campaign_copy'
+  | 'sales_copy'
+  // Digital Content
+  | 'blog_article'
+  | 'seo_article'
+  | 'website_copy'
+  | 'landing_page'
+  | 'social_media_post'
+  | 'social_media_campaign'
+  | 'caption'
+  | 'product_description'
+  // Corporate & PR
+  | 'press_release'
+  | 'media_statement'
+  | 'newsletter'
+  | 'company_announcement'
+  | 'corporate_article'
+  | 'thought_leadership'
+  | 'email_campaign'
+  // Education & Institutional
+  | 'school_notice'
+  | 'circular'
+  | 'school_newsletter_article'
+  | 'admission_ad'
+  | 'event_promotion'
+  | 'institutional_profile'
+  | 'prospectus_copy'
+  // Other & General
+  | 'speech'
+  | 'script'
+  | 'research_essay'
+  | 'custom_content'
+  // Legacy aliases
+  | 'article'
+  | 'essay'
+  | 'whitepaper'
+  | 'blog_post'
+  | 'case_study';
+
+export type AdFormatPreset =
+  | 'full_page'
+  | 'half_page'
+  | 'quarter_page'
+  | 'column_ad'
+  | 'digital_banner'
+  | 'leaderboard'
+  | 'square'
+  | 'portrait'
+  | 'skyscraper'
+  | 'custom';
+
+export type AdDimensionUnit = 'mm' | 'cm' | 'inches' | 'pixels';
+
+export interface AdVariantItem {
+  id: string;
+  variantKey: 'A' | 'B' | 'C';
+  headline: string;
+  subheadline: string;
+  bodyCopy: string;
+  keyBenefits: string[];
+  callToAction: string;
+  tagline?: string;
+}
+
+export interface AdSpecification {
+  productOrOrg: string;
+  campaignObjective: string;
+  targetAudience: string;
+  mainBenefit: string;
+  keySellingPoints: string[];
+  offer: string;
+  callToAction: string;
+  contactDetails: string;
+  mandatoryText: string;
+  formatPreset: AdFormatPreset;
+  width: number;
+  height: number;
+  unit: AdDimensionUnit;
+  publication: string;
+  tone: string;
+  activeVariantKey: 'A' | 'B' | 'C';
+  variants: AdVariantItem[];
+}
+
+export interface NewsroomStoryComponents {
+  headline: string;
+  subheadline: string;
+  slug: string;
+  byline: string;
+  dateline: string;
+  location: string;
+  section: string;
+  desk: string;
+  wordTarget: number;
+  deadline: string;
+  status: 'Draft' | 'Sub-Edited' | 'Fact-Checked' | 'Ready for Press';
+  // 5W1H Analysis
+  who: string;
+  what: string;
+  when: string;
+  where: string;
+  why: string;
+  how: string;
+  // Narrative Story Blocks
+  lead: string;
+  nutGraph: string;
+  mainFacts: string[];
+  quotes: Array<{ speaker: string; title: string; quote: string; verified: boolean }>;
+  background: string;
+  context: string;
+  closing: string;
+  standfirst: string;
+  pullQuote: string;
+  missingInformationFlags: string[];
+}
+
+export interface PressReleaseComponents {
+  organisation: string;
+  announcement: string;
+  releaseDate: string;
+  releaseLocation: string;
+  keyFacts: string[];
+  spokespersonQuote: string;
+  boilerplate: string;
+  mediaContactName: string;
+  mediaContactEmail: string;
+  mediaContactPhone: string;
+}
+
+export interface SocialMediaComponents {
+  platform: 'LinkedIn' | 'Twitter/X' | 'Instagram' | 'Facebook' | 'Threads' | 'YouTube Community' | 'Multi-Platform';
+  objective: string;
+  audience: string;
+  captionLength: 'short' | 'medium' | 'long';
+  hashtags: string[];
+  callToAction: string;
+  campaignTheme: string;
+}
+
+export interface SchoolNoticeComponents {
+  institutionName: string;
+  noticeNumber: string;
+  noticeDate: string;
+  targetGroup: 'Parents' | 'Students' | 'Staff' | 'General Public' | 'All Stakeholders';
+  subjectLine: string;
+  actionRequired: string;
+  authorizedSignatory: string;
+  signatoryTitle: string;
+}
+
+export interface ContentToneConfig {
+  tone: string; // e.g. "Professional & Authoritative", "Conversational", "Journalistic Newsroom"
+  formalityLevel: number; // 1 to 5
+  readingLevel: 'Middle School' | 'High School' | 'Undergraduate' | 'Executive / Professional' | 'General Public';
+  perspective: 'First Person (I/We)' | 'Second Person (You)' | 'Third Person Objective (He/She/They)';
+  emotionalCadence: 'Restrained & Factual' | 'Warm & Engaging' | 'Urgent & Compelling' | 'Inspirational';
+}
+
+export interface ContentAuthorVoiceProfile {
+  preserveVoiceEnabled: boolean;
+  sampleWritingSnippet: string;
+  profileName: string;
+  sentenceRhythm: string;
+  vocabularyLevel: string;
+  preferredParagraphLength: string;
+  degreeOfFormality: number;
+  punctuationHabits: string;
+  narrativeDistance: string;
+  bannedFormulaicPhrases: string[];
+  learnedCharacteristics: string[];
+}
+
+export interface HeadlineAlternativeItem {
+  id: string;
+  headline: string;
+  category:
+    | 'Straight'
+    | 'Informative'
+    | 'Creative'
+    | 'Emotional'
+    | 'Professional'
+    | 'Curiosity'
+    | 'SEO'
+    | 'Newspaper'
+    | 'Magazine'
+    | 'Advertising';
+  saved: boolean;
+  score?: number;
+}
 
 export interface ContentOutlineSection {
   id: string;
@@ -169,14 +386,39 @@ export interface ContentDocument {
   title: string;
   subtitle: string;
   contentType: ContentType;
+  category: ContentCategory;
+  // Core Brief Fields
+  topic: string;
+  purpose: string;
   targetAudience: string;
+  publicationOrPlatform: string;
+  desiredLength: number;
+  tone: string;
+  language: string;
+  deadline: string;
   primaryKeyword: string;
   secondaryKeywords: string[];
+  importantFacts: string[];
+  keyMessage: string;
+  callToAction: string;
+  referenceMaterial: string;
+  authorNotes: string;
+  aiInstructions: string;
   searchIntent: 'Informational' | 'Commercial' | 'Educational' | 'Inspirational';
   thesisStatement: string;
+  // Specialized Domain Component Stores
+  newsroom?: NewsroomStoryComponents;
+  adSpec?: AdSpecification;
+  pressRelease?: PressReleaseComponents;
+  socialMedia?: SocialMediaComponents;
+  schoolNotice?: SchoolNoticeComponents;
+  toneConfig?: ContentToneConfig;
+  authorVoice?: ContentAuthorVoiceProfile;
+  savedHeadlines?: HeadlineAlternativeItem[];
+  attachedResearchNoteIds?: string[];
+  // Drafting Canvas
   outline: ContentOutlineSection[];
   bodyContent: string;
-  callToAction: string;
   targetWordCount: number;
   wordCount: number;
   readingTimeMinutes: number;
@@ -349,6 +591,7 @@ export interface ResearchNote {
   linkedChapterIds?: string[];
   linkedSceneIds?: string[];
   linkedPlotBeatIds?: string[];
+  linkedContentDocIds?: string[];
   createdAt: string;
   updatedAt: string;
 }

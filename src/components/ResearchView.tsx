@@ -20,15 +20,20 @@ import {
   Layers,
   ArrowRight,
 } from 'lucide-react';
-import { NovelProject, ResearchNote, Character, CodexEntry } from '../types';
+import { NovelProject, ResearchNote, Character, CodexEntry, ContentWritingProject } from '../types';
+import { WorkspaceType } from './NavigationRail';
 
 interface ResearchViewProps {
   project: NovelProject;
+  contentProject?: ContentWritingProject;
+  activeWorkspace?: WorkspaceType;
   onUpdateResearchNotes: (notes: ResearchNote[]) => void;
   isDarkMode: boolean;
   onNavigateToScene?: (chapterId: string, sceneId: string) => void;
   onNavigateToCharacter?: (characterId: string) => void;
   onNavigateToCodex?: (codexId: string) => void;
+  onNavigateToContentStudio?: () => void;
+  onNavigateToContentPiece?: (docId: string) => void;
 }
 
 const CATEGORY_MAP: Record<
@@ -44,11 +49,15 @@ const CATEGORY_MAP: Record<
 
 export const ResearchView: React.FC<ResearchViewProps> = ({
   project,
+  contentProject,
+  activeWorkspace,
   onUpdateResearchNotes,
   isDarkMode,
   onNavigateToScene,
   onNavigateToCharacter,
   onNavigateToCodex,
+  onNavigateToContentStudio,
+  onNavigateToContentPiece,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -136,12 +145,20 @@ export const ResearchView: React.FC<ResearchViewProps> = ({
       {/* Editorial Workspace Header */}
       <header className="shrink-0 h-14 border-b border-[#e8e8e6] dark:border-[#28292d] bg-white dark:bg-[#141517] px-6 flex items-center justify-between">
         <div className="flex items-center space-x-2">
+          {activeWorkspace === 'content' && onNavigateToContentStudio && (
+            <button
+              onClick={onNavigateToContentStudio}
+              className="mr-2 px-2.5 py-1 text-xs font-medium rounded-lg border border-[#e8e8e6] dark:border-[#28292d] text-[#191918] dark:text-[#f4f4f5] hover:bg-[#fbfbfa] dark:hover:bg-[#1a1b1e] flex items-center space-x-1 transition-colors"
+            >
+              <span>← Back to Content Studio</span>
+            </button>
+          )}
           <span className="text-xs font-mono uppercase tracking-wider text-[#9c9c98] dark:text-[#6b7280]">
-            Story Workspace
+            {activeWorkspace === 'content' ? 'Content Writing' : activeWorkspace === 'academic' ? 'Academic Books' : 'Novel Writing'}
           </span>
           <span className="text-[#9c9c98] dark:text-[#6b7280]">&bull;</span>
           <h1 className="text-sm font-serif font-semibold text-[#191918] dark:text-[#f4f4f5]">
-            Author Research Notebook
+            {activeWorkspace === 'content' ? 'Research Archive & Fact Repository' : 'Author Research Notebook'}
           </h1>
           <span className="text-xs font-mono text-[#9c9c98]">({notes.length} references)</span>
         </div>
@@ -422,59 +439,94 @@ export const ResearchView: React.FC<ResearchViewProps> = ({
                 </div>
               )}
 
-              {/* Linked Characters */}
-              <div className="space-y-3">
-                <h2 className="text-xs font-mono uppercase tracking-wider text-[#9c9c98]">
-                  Relevant Characters
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {activeNote.linkedCharacterIds && activeNote.linkedCharacterIds.length > 0 ? (
-                    activeNote.linkedCharacterIds.map((charId) => {
-                      const char = characters.find((c) => c.id === charId);
-                      if (!char) return null;
-                      return (
-                        <button
-                          key={char.id}
-                          onClick={() => onNavigateToCharacter && onNavigateToCharacter(char.id)}
-                          className="px-3 py-1.5 rounded-lg border border-[#e8e8e6] dark:border-[#28292d] bg-white dark:bg-[#141517] hover:border-[#4f46e5] text-xs font-medium text-[#191918] dark:text-[#f4f4f5] flex items-center space-x-2 transition-colors"
-                        >
-                          <Users className="w-3.5 h-3.5 text-[#9c9c98]" />
-                          <span>{char.name}</span>
-                        </button>
-                      );
-                    })
-                  ) : (
-                    <span className="text-xs text-[#9c9c98]">No characters specifically tagged</span>
-                  )}
+              {/* Linked Elements (Content Pieces for Content Studio, Characters/Codex for Novel) */}
+              {activeWorkspace === 'content' ? (
+                <div className="space-y-3">
+                  <h2 className="text-xs font-mono uppercase tracking-wider text-[#9c9c98]">
+                    Referenced in Content Writing Pieces
+                  </h2>
+                  <div className="flex flex-wrap gap-2">
+                    {contentProject?.documents && contentProject.documents.length > 0 ? (
+                      contentProject.documents.map((doc) => {
+                        const isLinked = activeNote.linkedContentDocIds?.includes(doc.id);
+                        return (
+                          <button
+                            key={doc.id}
+                            onClick={() => onNavigateToContentPiece && onNavigateToContentPiece(doc.id)}
+                            className={`px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center space-x-2 transition-colors ${
+                              isLinked
+                                ? 'border-[#5A1832] dark:border-[#C29A52] bg-[#EDE4D6] dark:bg-[#35101F] text-[#5A1832] dark:text-[#C29A52]'
+                                : 'border-[#e8e8e6] dark:border-[#28292d] bg-white dark:bg-[#141517] text-[#191918] dark:text-[#f4f4f5] hover:border-[#5A1832]'
+                            }`}
+                          >
+                            <FileText className="w-3.5 h-3.5 text-[#9A7438]" />
+                            <span className="truncate max-w-[200px]">{doc.title}</span>
+                            <span className="text-[10px] font-mono opacity-70">({doc.contentType.replace(/_/g, ' ')})</span>
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <span className="text-xs text-[#9c9c98]">No content pieces in workspace</span>
+                    )}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <>
+                  {/* Linked Characters */}
+                  <div className="space-y-3">
+                    <h2 className="text-xs font-mono uppercase tracking-wider text-[#9c9c98]">
+                      Relevant Characters
+                    </h2>
+                    <div className="flex flex-wrap gap-2">
+                      {activeNote.linkedCharacterIds && activeNote.linkedCharacterIds.length > 0 ? (
+                        activeNote.linkedCharacterIds.map((charId) => {
+                          const char = characters.find((c) => c.id === charId);
+                          if (!char) return null;
+                          return (
+                            <button
+                              key={char.id}
+                              onClick={() => onNavigateToCharacter && onNavigateToCharacter(char.id)}
+                              className="px-3 py-1.5 rounded-lg border border-[#e8e8e6] dark:border-[#28292d] bg-white dark:bg-[#141517] hover:border-[#4f46e5] text-xs font-medium text-[#191918] dark:text-[#f4f4f5] flex items-center space-x-2 transition-colors"
+                            >
+                              <Users className="w-3.5 h-3.5 text-[#9c9c98]" />
+                              <span>{char.name}</span>
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <span className="text-xs text-[#9c9c98]">No characters specifically tagged</span>
+                      )}
+                    </div>
+                  </div>
 
-              {/* Linked Codex Lore */}
-              <div className="space-y-3">
-                <h2 className="text-xs font-mono uppercase tracking-wider text-[#9c9c98]">
-                  Connected World Codex Lore
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {activeNote.linkedCodexIds && activeNote.linkedCodexIds.length > 0 ? (
-                    activeNote.linkedCodexIds.map((codexId) => {
-                      const codex = codexEntries.find((c) => c.id === codexId);
-                      if (!codex) return null;
-                      return (
-                        <button
-                          key={codex.id}
-                          onClick={() => onNavigateToCodex && onNavigateToCodex(codex.id)}
-                          className="px-3 py-1.5 rounded-lg border border-[#e8e8e6] dark:border-[#28292d] bg-white dark:bg-[#141517] hover:border-[#4f46e5] text-xs font-medium text-[#191918] dark:text-[#f4f4f5] flex items-center space-x-2 transition-colors"
-                        >
-                          <MapPin className="w-3.5 h-3.5 text-[#9c9c98]" />
-                          <span>{codex.title}</span>
-                        </button>
-                      );
-                    })
-                  ) : (
-                    <span className="text-xs text-[#9c9c98]">No codex entries tagged</span>
-                  )}
-                </div>
-              </div>
+                  {/* Linked Codex Lore */}
+                  <div className="space-y-3">
+                    <h2 className="text-xs font-mono uppercase tracking-wider text-[#9c9c98]">
+                      Connected World Codex Lore
+                    </h2>
+                    <div className="flex flex-wrap gap-2">
+                      {activeNote.linkedCodexIds && activeNote.linkedCodexIds.length > 0 ? (
+                        activeNote.linkedCodexIds.map((codexId) => {
+                          const codex = codexEntries.find((c) => c.id === codexId);
+                          if (!codex) return null;
+                          return (
+                            <button
+                              key={codex.id}
+                              onClick={() => onNavigateToCodex && onNavigateToCodex(codex.id)}
+                              className="px-3 py-1.5 rounded-lg border border-[#e8e8e6] dark:border-[#28292d] bg-white dark:bg-[#141517] hover:border-[#4f46e5] text-xs font-medium text-[#191918] dark:text-[#f4f4f5] flex items-center space-x-2 transition-colors"
+                            >
+                              <MapPin className="w-3.5 h-3.5 text-[#9c9c98]" />
+                              <span>{codex.title}</span>
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <span className="text-xs text-[#9c9c98]">No codex entries tagged</span>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </article>
           ) : (
             <div className="text-center p-12 text-xs text-[#9c9c98]">

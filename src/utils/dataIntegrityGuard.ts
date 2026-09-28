@@ -5,6 +5,10 @@
  */
 
 import { StudioChapter, ChapterSection, StudioExercise } from '../types';
+import {
+  calibrateManuscriptMetadataForClass,
+  sanitizeStudentTypography,
+} from './pedagogicalProfileSystem';
 
 /**
  * Normalizes exercise titles so they consistently render as "Exercise <Letter>: <Title>"
@@ -116,6 +120,8 @@ export function sanitizeChapterDataIntegrity(
   const nounLeakRegex =
     /\b(common|proper|collective|abstract)\s+nouns?\b|\bnaming words?\b|\bganga\b|\byamuna\b|\bidentify nouns\b|\bcapitalize proper nouns\b|\bwords used to name people\b/i;
 
+  let cleanEquivalentClass = rawChapter.equivalentClass;
+
   // Check 2: Sections sanitization
   const cleanSections: ChapterSection[] = [];
   for (const s of rawChapter.sections || []) {
@@ -140,10 +146,21 @@ export function sanitizeChapterDataIntegrity(
       }
     }
 
-    // Ensure section has canonical chapterId
+    // Ensure section has canonical chapterId and clean typography
+    const calibratedTitle = calibrateManuscriptMetadataForClass(s.title || '', cleanEquivalentClass || 'Class 6');
+    const sanitizedBlocks = (s.blocks || []).map((b) => ({
+      ...b,
+      textContent: b.textContent ? sanitizeStudentTypography(b.textContent) : b.textContent,
+      calloutText: b.calloutText ? sanitizeStudentTypography(b.calloutText) : b.calloutText,
+      title: b.title ? calibrateManuscriptMetadataForClass(b.title, cleanEquivalentClass || 'Class 6') : b.title,
+      calloutTitle: b.calloutTitle ? calibrateManuscriptMetadataForClass(b.calloutTitle, cleanEquivalentClass || 'Class 6') : b.calloutTitle,
+    }));
+
     cleanSections.push({
       ...s,
+      title: calibratedTitle,
       chapterId,
+      blocks: sanitizedBlocks,
     });
   }
 
@@ -210,7 +227,6 @@ export function sanitizeChapterDataIntegrity(
   let cleanCategory = rawChapter.category;
   let cleanUnitTitle = rawChapter.unitTitle;
   let cleanSubtitle = rawChapter.subtitle || '';
-  let cleanEquivalentClass = rawChapter.equivalentClass;
 
   if (isSvaChapter && !isNounsChapter) {
     // Sanitize category & unitTitle
@@ -342,18 +358,28 @@ export function sanitizeChapterDataIntegrity(
     );
   }
 
+  const calibratedChapterTitle = calibrateManuscriptMetadataForClass(rawChapter.title || '', cleanEquivalentClass || 'Class 6');
+  const calibratedChapterSubtitle = calibrateManuscriptMetadataForClass(cleanSubtitle || '', cleanEquivalentClass || 'Class 6');
+
   return {
     chapter: {
       ...rawChapter,
       id: chapterId,
+      title: calibratedChapterTitle,
+      shortTitle: rawChapter.shortTitle ? calibrateManuscriptMetadataForClass(rawChapter.shortTitle, cleanEquivalentClass || 'Class 6') : rawChapter.shortTitle,
       category: cleanCategory,
       unitTitle: cleanUnitTitle,
-      subtitle: cleanSubtitle,
+      subtitle: calibratedChapterSubtitle,
       equivalentClass: cleanEquivalentClass,
       sections: cleanSections,
       exercises: cleanExercises,
       rules: cleanRules,
-      opening: cleanOpening,
+      opening: {
+        ...cleanOpening,
+        title: calibratedChapterTitle,
+        subtitle: calibratedChapterSubtitle,
+        shortIntroduction: cleanOpening.shortIntroduction ? sanitizeStudentTypography(cleanOpening.shortIntroduction) : cleanOpening.shortIntroduction,
+      },
       ending: cleanEnding,
       revisionData: cleanRevision,
     },

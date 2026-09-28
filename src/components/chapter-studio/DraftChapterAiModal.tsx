@@ -15,9 +15,17 @@ import {
   Layers,
   ChevronDown,
   ArrowRight,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { StudioChapter, ChapterSection, TextbookContentBlock } from '../../types';
-import { cleanHeadingTitle, cleanMarkdownSyntax, sanitizeContentStrippingRationale } from '../../utils/pedagogicalProfileSystem';
+import {
+  cleanHeadingTitle,
+  cleanMarkdownSyntax,
+  sanitizeContentStrippingRationale,
+  calibrateManuscriptMetadataForClass,
+  sanitizeStudentTypography,
+} from '../../utils/pedagogicalProfileSystem';
 import { TextbookMarkdown } from '../common/TextbookMarkdown';
 
 interface ProposedSection {
@@ -182,6 +190,19 @@ export const DraftChapterAiModal: React.FC<DraftChapterAiModalProps> = ({
     setProposedSections((prev) => prev.filter((_, idx) => idx !== index));
   };
 
+  const handleMoveSection = (index: number, direction: 'up' | 'down') => {
+    if (direction === 'up' && index === 0) return;
+    if (direction === 'down' && index === proposedSections.length - 1) return;
+
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    setProposedSections((prev) => {
+      const copy = [...prev];
+      const [moved] = copy.splice(index, 1);
+      copy.splice(targetIndex, 0, moved);
+      return copy;
+    });
+  };
+
   const handleRegenerateSingle = async (index: number) => {
     const target = proposedSections[index];
     if (!target) return;
@@ -219,6 +240,7 @@ export const DraftChapterAiModal: React.FC<DraftChapterAiModalProps> = ({
   };
 
   const handleAccept = () => {
+    // Preserve the EXACT order of sections as selected by the author
     const selected = proposedSections.filter((s) => s.isSelected);
     if (selected.length === 0) {
       setErrorNotice('Please select at least one section to accept.');
@@ -226,15 +248,15 @@ export const DraftChapterAiModal: React.FC<DraftChapterAiModalProps> = ({
     }
 
     const convertedSections: ChapterSection[] = selected.map((s, idx) => {
-      // Split content by markdown headings if present (### or ####) to produce structured blocks
-      const cleanTitle = cleanHeadingTitle(s.title);
+      // Calibrate section title for target class level
+      const cleanTitle = calibrateManuscriptMetadataForClass(s.title, classLevel);
       // RATIONALE PURITY: Strip any rationale text that may be inside s.content
       const { cleanContent, extractedRationale } = sanitizeContentStrippingRationale(s.content || '');
-      const rawContent = cleanContent;
+      const rawContent = sanitizeStudentTypography(cleanContent);
       const finalRationale = s.rationale || extractedRationale || '';
 
-      // Check if content has subheadings like "### 1. Understanding Concord"
-      const parts = rawContent.split(/\n(?=#{1,4}\s+)/g);
+      // Check if content has subheadings (### / ####) or major divisions (e.g. 1. Title, Rule 1:, Exercise A:)
+      const parts = rawContent.split(/\n(?=#{1,4}\s+|Rule\s+\d+:|Exercise\s+[A-Za-z0-9]+:|\d+\.\s+[A-Z])/g);
       const blocks: TextbookContentBlock[] = [];
 
       if (parts.length > 1) {
@@ -242,10 +264,26 @@ export const DraftChapterAiModal: React.FC<DraftChapterAiModalProps> = ({
           const trimmedPart = part.trim();
           if (!trimmedPart) return;
 
-          const headingMatch = trimmedPart.match(/^#{1,4}\s+(.+)$/m);
-          if (headingMatch) {
-            const headingText = cleanHeadingTitle(headingMatch[1]);
-            const bodyText = trimmedPart.replace(/^#{1,4}\s+.+$/m, '').trim();
+          const headingMatch = trimmedPart.match(/^(?:#{1,4}\s+|\d+\.\s+)(.+)$/m);
+          const isRuleMatch = /^Rule\s+\d+[:\s-]/i.test(trimmedPart);
+
+          if (isRuleMatch) {
+            const ruleLines = trimmedPart.split('\n');
+            const ruleTitle = ruleLines[0].trim();
+            const ruleBody = ruleLines.slice(1).join('\n').trim();
+
+            blocks.push({
+              id: `blk-${Date.now()}-${idx}-${pIdx}-r`,
+              type: 'grammar_rule',
+              order: blocks.length + 1,
+              visibility: 'student',
+              calloutTitle: calibrateManuscriptMetadataForClass(ruleTitle, classLevel),
+              calloutText: sanitizeStudentTypography(ruleBody || ruleTitle),
+              authorNotes: `Drafted rule for ${classLevel}`,
+            });
+          } else if (headingMatch) {
+            const headingText = calibrateManuscriptMetadataForClass(headingMatch[1], classLevel);
+            const bodyText = trimmedPart.replace(/^(?:#{1,4}\s+|\d+\.\s+).+$/m, '').trim();
 
             blocks.push({
               id: `blk-${Date.now()}-${idx}-${pIdx}-h`,
@@ -263,7 +301,7 @@ export const DraftChapterAiModal: React.FC<DraftChapterAiModalProps> = ({
                 type: 'text',
                 order: blocks.length + 1,
                 visibility: 'student',
-                textContent: bodyText,
+                textContent: sanitizeStudentTypography(bodyText),
                 authorNotes: `Drafted via AI for ${classLevel} (${s.sectionType})`,
               });
             }
@@ -273,7 +311,7 @@ export const DraftChapterAiModal: React.FC<DraftChapterAiModalProps> = ({
               type: 'text',
               order: blocks.length + 1,
               visibility: 'student',
-              textContent: trimmedPart,
+              textContent: sanitizeStudentTypography(trimmedPart),
               authorNotes: `Drafted via AI for ${classLevel} (${s.sectionType})`,
             });
           }
@@ -287,7 +325,7 @@ export const DraftChapterAiModal: React.FC<DraftChapterAiModalProps> = ({
           type: 'text',
           order: 1,
           visibility: 'student',
-          textContent: rawContent,
+          textContent: sanitizeStudentTypography(rawContent),
           authorNotes: `Drafted via AI for ${classLevel} (${s.sectionType})`,
         });
       }
@@ -306,6 +344,7 @@ export const DraftChapterAiModal: React.FC<DraftChapterAiModalProps> = ({
       };
     });
 
+    // Authoritative insertion: passed in exact sequence (positions 1..N)
     onAcceptSections(convertedSections, replaceExisting);
     onClose();
   };
@@ -547,6 +586,24 @@ export const DraftChapterAiModal: React.FC<DraftChapterAiModalProps> = ({
                       </div>
 
                       <div className="flex items-center space-x-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleMoveSection(idx, 'up')}
+                          disabled={idx === 0}
+                          className="p-1 rounded hover:bg-black/5 text-[#71685E] hover:text-[#5A1832] disabled:opacity-30 cursor-pointer"
+                          title="Move section up"
+                        >
+                          <ArrowUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMoveSection(idx, 'down')}
+                          disabled={idx === proposedSections.length - 1}
+                          className="p-1 rounded hover:bg-black/5 text-[#71685E] hover:text-[#5A1832] disabled:opacity-30 cursor-pointer"
+                          title="Move section down"
+                        >
+                          <ArrowDown className="w-3.5 h-3.5" />
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleRegenerateSingle(idx)}

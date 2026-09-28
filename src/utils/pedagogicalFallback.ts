@@ -309,7 +309,7 @@ Exercise C: Contextual Sentence Writing
 Answer Key & Diagnostic Notes:
 1. has (The true subject is singular 'captain'; the phrase 'along with...' does not change the subject number).
 2. were (When subjects are joined by 'neither... nor', the verb agrees with the nearer subject 'prefects').
-3. brightens (The head noun is the singular 'bouquet', not 'roses').
+3. brightens (The main subject is the singular 'bouquet', not 'roses').
 4. is (Measurements of distance, time, and money expressing a single amount take a singular verb).
 5. Correction: "One of my closest friends plays the violin in the school orchestra." (The subject is 'one', which is singular).
 6. Correction: "The quality of these new paints is exceptional." (The subject is 'quality', which is singular).`,
@@ -593,8 +593,8 @@ When the subject talks about more than one, we use a plural verb without an -s:
       content: `Let us examine these clear sentence models:
 
 Model 1: Everyday Classroom Actions
-• Correct: Maya draws a map of the solar system. (One person -> draws)
-• Correct: Maya and Rohan draw a map together. (Two people -> draw)
+• Correct: Maya draws a map of the solar system. (With one person, we use "draws")
+• Correct: Maya and Rohan draw a map together. (With two people, we use "draw")
 
 Model 2: Watch Out for Extra Words
 Sometimes extra words come between the subject and the verb. Do not let them trick you!
@@ -649,13 +649,13 @@ Answer Key:
       content: `Quick Revision Points:
 1. One person or thing takes a singular verb (adds -s in present tense).
 2. More than one person or thing takes a plural verb.
-3. Always find the true head noun—ignore the words in between!
-4. Two subjects joined by 'and' make a plural verb.`,
+3. Always find the main subject—ignore the words in between!
+4. Two subjects joined by 'and' take a plural verb.`,
     });
 
     return sanitizeChapterDraft({
       chapterTitle: title,
-      subtitle: `Clear Rules and Guided Practice for Class ${classNum} (${boardProfile.board})`,
+      subtitle: `Clear Rules and Guided Practice for Class ${classNum}`,
       pedagogicalOverview: `Builds clear conceptual understanding of ${title} through engaging stories, practical rule boxes, and scaffolded exercises.`,
       sections: prepSections,
     }, classNum);
@@ -709,8 +709,8 @@ Notice what happens:
 • In Sentence 2, the subject is more than one person ('The boys'). The verb stays in its base form ('play').
 
 Here is another pair of simple sentences:
-• A bird sings in the morning. (One bird -> sings)
-• Birds sing in the morning. (More than one bird -> sing)
+• A bird sings in the morning. (One bird → sings)
+• Birds sing in the morning. (More than one bird → sing)
 
 This harmony between the subject and the verb is called Subject–Verb Agreement, or Concord. In English, the subject and the verb in every sentence must agree in number (singular or plural). When they agree, our writing is smooth, balanced, and pleasant to read.
 
@@ -730,13 +730,13 @@ The subject and the verb in a sentence must match each other in number.
 • A plural subject takes a plural verb.
 
 In the simple present tense, singular verbs in the third person end in -s or -es:
-• The bell rings at the end of the period. (Singular subject -> Singular verb)
-• The bells ring across the campus. (Plural subject -> Plural verb)
+• The bell rings at the end of the period. (Singular subject → Singular verb)
+• The bells ring across the campus. (Plural subject → Plural verb)
 
 2. A Useful Fact to Remember
 Notice how English words behave:
-• Adding -s to a noun usually makes it plural: boy -> boys, train -> trains.
-• Adding -s to a present-tense verb makes it singular: play -> plays, arrive -> arrives.
+• Adding -s to a noun usually makes it plural: boy → boys, train → trains.
+• Adding -s to a present-tense verb makes it singular: play → plays, arrive → arrives.
 
 So, a singular subject noun pairs with a singular verb ending in -s:
 • The student writes neatly.
@@ -753,7 +753,7 @@ A plural subject noun pairs with a plural verb without -s:
 
 Rule 1: Two or More Subjects Joined by 'And'
 When two singular subjects are joined by 'and', they form a plural subject and take a plural verb:
-• Ravi and Maya study in the library. (Two people -> plural verb 'study')
+• Ravi and Maya study in the library. (Two people → use plural verb 'study')
 • The pencil and the ruler are inside the pencil box.
 
 Exception to Rule 1: Single Unit or Combined Idea
@@ -770,7 +770,7 @@ When two words joined by 'and' are thought of as a single dish, combination, or 
       content: `Now let us take the next step. In longer sentences, other words often appear between the subject and the verb.
 
 Rule 2: Finding the Real Subject
-Always identify the true subject (the head word) and ignore any descriptive words that come between the subject and the verb:
+Always identify the main subject and ignore any descriptive words that come between the subject and the verb:
 • The box of colourful markers is on the desk.
   (The real subject is 'box', which is singular. The words 'of colourful markers' merely describe what is inside the box.)
 • The students in our school choir are practicing for the concert.
@@ -794,13 +794,13 @@ Phrases such as 'along with', 'together with', 'as well as', and 'in addition to
 Rule 4: Match the Subject Closer to the Verb
 When subjects are joined by 'either... or' or 'neither... nor', the verb agrees with the subject that is nearer to it:
 • Neither the teacher nor the students were in the classroom.
-  ('students' is plural and closer to the verb -> use 'were')
+  (Because 'students' is plural and nearer to the verb, we use 'were'.)
 • Neither the students nor the teacher was in the classroom.
-  ('teacher' is singular and closer to the verb -> use 'was')
+  (Because 'teacher' is singular and nearer to the verb, we use 'was'.)
 • Either Rohan or his brothers have the house keys.
-  ('brothers' is plural and closer to the verb -> use 'have')
+  (Because 'brothers' is plural and nearer to the verb, we use 'have'.)
 • Either his brothers or Rohan has the house keys.
-  ('Rohan' is singular and closer to the verb -> use 'has')
+  (Because 'Rohan' is singular and nearer to the verb, we use 'has'.)
 
 Rule 5: Words Like 'Each' and 'Every'
 Words like 'each', 'every', 'everyone', 'someone', and 'nobody' refer to individuals one by one. Therefore, they take singular verbs:
@@ -821,7 +821,7 @@ Trap 1: The 'One of the' Pattern
 • Helpful Check: Cover the words 'of my cousins'. You are left with 'One is an airline pilot', which makes complete sense.
 
 Trap 2: Collective Nouns
-In Indian and British English curricula (${boardProfile.board}), collective nouns such as 'team', 'committee', 'family', and 'choir' are treated as singular when the group acts together as one single unit:
+Collective nouns such as 'team', 'committee', 'family', and 'choir' are treated as singular when the group acts together as one single unit:
 • The school committee has approved the annual budget.
 • Our cricket team is practicing on the main ground.
 
@@ -873,8 +873,8 @@ Complete Answer Key & Diagnostic Notes:
       sectionType: "summary",
       rationale: `Crisp revision checklist for Class ${classNum} students.`,
       content: `Quick Revision Checklist:
-1. Singular subject -> Singular verb (verb ends with -s in simple present tense).
-2. Plural subject -> Plural verb (base form of verb).
+1. Singular subject → Singular verb: With one person or thing, the verb ends with -s in the simple present tense.
+2. Plural subject → Plural verb: With more than one person or thing, we use the base form of the verb.
 3. Words that come between: Always find the real subject and ignore the descriptive words in between.
 4. With 'along with' and 'as well as', match the first subject.
 5. With 'either... or' and 'neither... nor', match the subject closer to the verb.
@@ -914,7 +914,7 @@ This chapter examines the core principles of **${title}**, uncovers high-stakes 
 In mature academic writing, clauses often contain multiple modifiers, relative clauses, and participial phrases that separate the subject from its finite verb.
 • Prepositional and Participial Phrases:
   *The evidence presented by the defense witnesses, though extensive, **fails** to substantiate the alibi.*
-  (Subject: 'evidence' -> singular verb 'fails').
+  (The subject 'evidence' is singular, so we use the singular verb 'fails').
 
 2. Coordinate Subjects with Correlative Conjunctions
 When subjects are paired with correlative conjunctions (*either... or*, *neither... nor*, *not only... but also*), the verb agrees in number and person with the closer coordinate:
@@ -923,7 +923,7 @@ When subjects are paired with correlative conjunctions (*either... or*, *neither
 
 3. Plural Forms with Singular Meanings
 Certain nouns ending in *-s* represent singular academic disciplines, ailments, or civic entities:
-• *Physics, politics, economics, measles, news* -> Take singular verbs.
+• *Physics, politics, economics, measles, and news* take singular verbs.
 • *The news from the border **was** encouraging.*
 • Exception: When nouns like *politics* or *statistics* refer to specific personal beliefs or data sets rather than a discipline, they take plural verbs:
   *His politics **are** well known.* / *These statistics **reveal** an unexpected trend.*`,
@@ -954,7 +954,7 @@ Formula 3: Negative Conditionals (Unless)
           content: `Trap 1: Proximity Error with Intervening Complements
 • Board Error: *The collection of seventeenth-century gold coins were auctioned yesterday.*
 • Correction: *The collection of seventeenth-century gold coins **was** auctioned yesterday.*
-• Examiner Note: The head noun is 'collection' (singular). The intervening plural modifier 'coins' does not alter the head noun's number.
+• Examiner Note: The main subject is 'collection' (singular). The intervening plural modifier 'coins' does not alter the subject's number.
 
 Trap 2: 'A Number of' vs. 'The Number of'
 • Rule: *A number of* + plural noun = Plural verb (means 'many').
@@ -997,7 +997,7 @@ Marking Scheme & Detailed Answers:
           sectionType: "summary",
           rationale: `Summary designed for rapid revision before examinations.`,
           content: `Board Exam Quick Revision:
-1. Always isolate the head noun from descriptive prepositional modifiers.
+1. Always isolate the main subject from descriptive prepositional modifiers.
 2. In 'No sooner... than', ensure correct auxiliary inversion (*did + base verb* or *had + V3*).
 3. 'A number of' takes a plural verb; 'The number of' takes a singular verb.
 4. Check correlative conjunctions: *Neither... nor* matches the nearest subject.`,

@@ -447,6 +447,52 @@ export function cleanMarkdownSyntax(text: string): string {
 }
 
 /**
+ * Sanitizes student-facing textbook typography:
+ * - Converts raw programming arrows (->, =>, -->) into proper typographic arrows (→)
+ * - Converts reverse arrows (<-, <=, <--) into proper typographic arrows (←)
+ * - Converts raw programming shorthand into natural textbook prose
+ * - Strips unformatted code fences, stray backticks, and programming notation
+ */
+export function sanitizeStudentTypography(text: string): string {
+  if (!text) return '';
+
+  let res = text;
+
+  // 1. Natural prose conversion for programming-style shorthand
+  res = res
+    .replace(/\bcloser to the verb\s*(?:->|→|=>)\s*(?:use\s+)?(['"][a-zA-Z]+['"])/gi, 'Because it is nearer to the verb, we use $1')
+    .replace(/\bcloser to the verb\s*(?:->|→|=>)\s*(?:use\s+)?([a-zA-Z]+)\b/gi, 'Because it is nearer to the verb, we use "$1"')
+    .replace(/\bnearer to the verb\s*(?:->|→|=>)\s*(?:use\s+)?(['"][a-zA-Z]+['"])/gi, 'Because it is nearer to the verb, we use $1')
+    .replace(/\bnearer to the verb\s*(?:->|→|=>)\s*(?:use\s+)?([a-zA-Z]+)\b/gi, 'Because it is nearer to the verb, we use "$1"')
+    .replace(/\bOne bird\s*(?:->|→|=>)\s*sings\b/gi, 'One bird → sings (With one bird, we use "sings")')
+    .replace(/\bMore than one bird\s*(?:->|→|=>)\s*sing\b/gi, 'More than one bird → sing (With more than one bird, we use "sing")')
+    .replace(/\bTwo people\s*(?:->|→|=>)\s*(?:plural verb\s*)?(['"][a-zA-Z]+['"])/gi, 'Two people → use $1')
+    .replace(/\bSingular subject\s*(?:->|→|=>)\s*Singular verb\b/gi, 'Singular subject → Singular verb')
+    .replace(/\bPlural subject\s*(?:->|→|=>)\s*Plural verb\b/gi, 'Plural subject → Plural verb')
+    .replace(/\bSubject:\s*['"]?([a-zA-Z]+)['"]?\s*(?:->|→|=>)\s*(?:singular|plural)?\s*verb\s*['"]?([a-zA-Z]+)['"]?/gi, 'The subject "$1" is singular, so we use the verb "$2"')
+    .replace(/\b([a-zA-Z]+)\s*(?:->|=>)\s*Take singular verbs\b/gi, '$1 takes a singular verb')
+    .replace(/\b([a-zA-Z]+)\s*(?:->|=>)\s*Take plural verbs\b/gi, '$1 takes a plural verb');
+
+  // 2. Convert remaining raw arrows to proper typographic arrows
+  res = res
+    .replace(/\s*-->\s*/g, ' → ')
+    .replace(/\s*==>\s*/g, ' → ')
+    .replace(/\s*=>\s*/g, ' → ')
+    .replace(/\s*->\s*/g, ' → ')
+    .replace(/\s*<--\s*/g, ' ← ')
+    .replace(/\s*<==\s*/g, ' ← ')
+    .replace(/\s*<-\s*/g, ' ← ');
+
+  // 3. Remove stray code-block notation and backticks
+  res = res
+    .replace(/```[a-z]*\n?/gi, '')
+    .replace(/```/g, '')
+    .replace(/`([^`]+)`/g, '$1');
+
+  return res.trim();
+}
+
+/**
  * Strips editorial rationale blocks from student-facing content and returns both clean text and rationale.
  * Guarantees that "Rationale: ..." is kept strictly as metadata and NEVER part of student text.
  */
@@ -466,32 +512,88 @@ export function sanitizeContentStrippingRationale(rawContent: string): {
   }
 
   // Remove all occurrences of Rationale blocks from student content
-  const cleanContent = rawContent
+  let cleanContent = rawContent
     .replace(/(?:^|\n)(?:\*\*|\*|#{1,6}\s*)?(?:Pedagogical\s+)?Rationale\s*:\s*[^\n]+(?:\n(?!\n|#{1,6}|\d+\.)[^\n]+)*/gi, '')
     .trim();
+
+  // Apply student typography sanitization to remove raw ->, =>, etc.
+  cleanContent = sanitizeStudentTypography(cleanContent);
 
   return { cleanContent, extractedRationale };
 }
 
 /**
  * Replaces internal pedagogical/editorial terminology with student-friendly phrasing for Classes 1–8.
+ * Also removes internal curriculum/board generation language like "In Indian and British English curricula (CISCE)...".
  */
 export function cleanLeakedEditorialTerms(text: string, classNum: number): string {
-  if (!text || classNum > 8) return text;
+  if (!text) return '';
 
-  return text
+  let sanitized = text;
+
+  // Rule 5: DO NOT EXPOSE INTERNAL CURRICULUM / GENERATION LANGUAGE TO STUDENTS
+  // Remove self-referential statements mentioning curricula, boards, or internal generation labels
+  sanitized = sanitized
+    .replace(/In (?:Indian and British English|Indian, British, and International|Indian|British|CBSE|CISCE|ICSE|ISC|State Board|IB|Cambridge|NCERT)[^,.:\n]*(?:curricula|syllabi|frameworks?|classrooms?|examinations?|standards?)[^,.:\n]*,\s*/gi, '')
+    .replace(/\(In (?:Indian and British English|Indian|British|CBSE|CISCE|ICSE|ISC|NCERT)[^)]*\)/gi, '')
+    .replace(/\(in accordance with (?:CBSE|CISCE|ICSE|ISC|NCERT|Cambridge)[^)]*\)/gi, '')
+    .replace(/\(as prescribed by (?:CBSE|CISCE|ICSE|ISC|NCERT|Cambridge)[^)]*\)/gi, '')
+    .replace(/\bpreferred by (?:CBSE|CISCE|ICSE|ISC) examiners\b/gi, 'preferred in standard English')
+    .replace(/\bCISCE Class 6 foundational chapter covering\b/gi, 'Foundational chapter covering')
+    .replace(/\baligned with (?:CBSE|CISCE|ICSE|ISC) expectations\b/gi, 'aligned with curriculum expectations');
+
+  if (classNum > 8) {
+    return sanitizeStudentTypography(sanitized);
+  }
+
+  // Rule 4: REMOVE UNNECESSARY HIGH-LEVEL LINGUISTIC JARGON for Classes 1–8
+  sanitized = sanitized
+    // Main subject terminology
+    .replace(/\bthe head word\b/gi, 'the main subject')
+    .replace(/\bthe head noun\b/gi, 'the main subject')
+    .replace(/\bhead word\b/gi, 'main subject')
+    .replace(/\bhead noun\b/gi, 'main subject')
+    .replace(/\bhead words\b/gi, 'main subjects')
+    .replace(/\bhead nouns\b/gi, 'main subjects')
+    .replace(/\btrue structural head noun\b/gi, 'true main subject')
+    .replace(/\bgoverning head noun\b/gi, 'governing main subject')
+    // Syntactic jargon
+    .replace(/\bConcord & Syntactic Synthesis\b/gi, 'Making Subjects and Verbs Agree')
+    .replace(/\bconcord & syntactic synthesis\b/gi, 'making subjects and verbs agree')
+    .replace(/\bSyntactic Synthesis\b/gi, 'Sentence Building')
+    .replace(/\bsyntactic synthesis\b/gi, 'sentence building')
+    .replace(/\bSyntactic Concord\b/gi, 'Subject–Verb Agreement')
+    .replace(/\bsyntactic concord\b/gi, 'subject–verb agreement')
+    .replace(/\bSyntactic Structure\b/gi, 'Sentence Structure')
+    .replace(/\bsyntactic structure\b/gi, 'sentence structure')
+    .replace(/\bPerson–Number Harmony\b/gi, 'Matching Number and Person')
+    .replace(/\bperson–number harmony\b/gi, 'matching number and person')
+    .replace(/\bPerson-Number Harmony\b/gi, 'Matching Number and Person')
+    .replace(/\bperson-number harmony\b/gi, 'matching number and person')
+    .replace(/\bIntervening Modifiers?\b/gi, 'Words Between Subject and Verb')
+    .replace(/\bintervening modifiers?\b/gi, 'words between subject and verb')
+    .replace(/\bintervening prepositional modifiers?\b/gi, 'words that come between subject and verb')
+    .replace(/\bintervening prepositional phrases?\b/gi, 'words that come between subject and verb')
+    .replace(/\bintervening phrase\b/gi, 'words that come in between')
+    .replace(/\bintervening phrases\b/gi, 'words that come in between')
+    .replace(/\bProximity Principle\b/gi, 'Choosing the Nearer Subject')
+    .replace(/\bproximity principle\b/gi, 'choosing the nearer subject')
+    .replace(/\bProximity Concord\b/gi, 'Choosing the Nearer Subject')
+    .replace(/\bproximity concord\b/gi, 'choosing the nearer subject')
+    .replace(/\bAttraction to Proximity\b/gi, 'Matching the Nearer Noun')
+    .replace(/\battraction to proximity\b/gi, 'matching the nearer noun')
+    .replace(/\bproximity with correlatives\b/gi, 'choosing the nearer subject with either or neither')
+    // Pedagogy jargon
     .replace(/\binductive discovery\b/gi, 'guided discovery')
-    .replace(/\bcontrastive analysis\b/gi, 'comparing correct and incorrect sentences')
+    .replace(/\bcontrastive analysis\b/gi, 'sentence comparison')
     .replace(/\bsyntactic architecture\b/gi, 'sentence structure')
-    .replace(/\bproximity principle\b/gi, 'rule of the nearer subject')
-    .replace(/\bproximity concord\b/gi, 'matching the closer subject')
     .replace(/\bhigh-frequency rules?\b/gi, 'key rules')
-    .replace(/\bintervening prepositional modifiers?\b/gi, 'words that come in between')
-    .replace(/\bintervening modifiers?\b/gi, 'words in between')
     .replace(/\bdisjunctive coordination\b/gi, 'sentences with either or neither')
     .replace(/\bgrammatical constituents?\b/gi, 'parts of a sentence')
     .replace(/\bsubcategorization frames?\b/gi, 'sentence patterns')
     .replace(/\bnominal agreement\b/gi, 'word agreement');
+
+  return sanitizeStudentTypography(sanitized);
 }
 
 /**
@@ -503,7 +605,24 @@ export function cleanHeadingTitle(title: string): string {
     .replace(/^section\s+\d+[:\s-]*/i, '')
     .replace(/^chapter\s+\d+[:\s-]*/i, '')
     .replace(/^#+\s*/, '')
+    // Typography sanitization
+    .replace(/\s*->\s*/g, ' → ')
+    .replace(/\s*=>\s*/g, ' → ')
     .trim();
+}
+
+/**
+ * Dynamically calibrates manuscript metadata (titles, subtitles, headings, callouts, notes)
+ * according to the target class level so younger grades (Classes 1–8) never display university-level jargon.
+ */
+export function calibrateManuscriptMetadataForClass(
+  text: string,
+  classLevelOrNum: number | string
+): string {
+  if (!text) return '';
+  const classNum = typeof classLevelOrNum === 'number' ? classLevelOrNum : parseClassLevelNumber(classLevelOrNum);
+  const cleaned = cleanHeadingTitle(text);
+  return cleanLeakedEditorialTerms(cleaned, classNum);
 }
 
 /**
@@ -577,21 +696,33 @@ PEDAGOGICAL SEQUENCING: TEACH FROM SIMPLE TO COMPLEX
 - Do NOT begin an opener or early section with advanced exceptions before the foundational rule has been established and understood.
 
 ================================================================================
-SEPARATE INTERNAL EDITORIAL LANGUAGE FROM STUDENT-FACING LANGUAGE
+STUDENT-FACING LANGUAGE PURITY & JARGON RULES
 ================================================================================
-- The system may use technical pedagogical terminology internally, but student-facing textbook prose must strictly follow the selected class-level profile.
-- Technical editorial terms such as:
-  • "inductive discovery"
-  • "contrastive analysis"
-  • "syntactic architecture"
-  • "proximity principle"
-  • "high-frequency rule"
-  • "intervening modifier"
-  • "disjunctive coordination"
-  • "grammatical constituents"
-  MUST NOT automatically appear in student-facing Class 1–8 content or headings merely because they are useful internally.
-- Where technical terminology is genuinely required by the curriculum (e.g. subject, predicate, verb, singular, plural), introduce it in clear, warm, age-appropriate language and explain it.
+- Direct, age-calibrated textbook prose must be presented to students.
+- NEVER expose internal curriculum or board references in student-facing prose, such as:
+  "In Indian and British English curricula (CISCE (ICSE / ISC)), collective nouns..."
+  Instead, teach the grammar rule directly and naturally:
+  "Collective nouns such as 'team', 'committee', and 'choir' take a singular verb when the group acts together as one single unit."
+- For Classes 1–5: Use very simple grammatical explanations.
+- For Classes 6–8: Standard school grammar terminology is allowed (subject, verb, singular, plural, phrase, tense, agreement, pronoun, adjective), but avoid unnecessary linguistic terminology:
+  • Avoid: "the head word" / "the head noun" — Prefer: "the main subject"
+  • Avoid: "syntactic synthesis" — Prefer: "sentence building" or "making subjects and verbs agree"
+  • Avoid: "intervening modifier" — Prefer: "words that come between subject and verb"
+  • Avoid: "proximity principle" — Prefer: "choosing the nearer subject"
+  • Avoid: "inductive discovery", "contrastive analysis", "syntactic architecture".
 - Board rigor must NEVER automatically increase reading difficulty or vocabulary intimidation!
+
+===============================================================================
+TYPOGRAPHY & NO PROGRAMMING / ASCII NOTATION
+===============================================================================
+- Student-facing textbook content must NEVER display raw symbols such as:
+  ->, <-, =>, backticks, or programming-style notation.
+- Convert "->" to a proper typographic arrow "→" only where an arrow is pedagogically appropriate (e.g. boy → boys).
+- Prefer natural prose when possible:
+  BAD: "One bird -> sings"
+  BETTER: "One bird → sings" or "With one bird, we use 'sings'."
+  BAD: "closer to the verb -> use 'were'"
+  BETTER: "Because 'students' is nearer to the verb, we use 'were'."
 
 ================================================================================
 EDITORIAL RATIONALE METADATA INTEGRITY
@@ -604,7 +735,7 @@ FORMATTING: ZERO VISIBLE RAW MARKDOWN CONTROL CHARACTERS
 ================================================================================
 - Users and students must NEVER see raw control syntax such as:
   **, *, ###, ####, unformatted backticks, or Markdown list artefacts in titles or text.
-- Deliver beautifully styled, clean textbook reading material.
+- Deliver beautifully styled, clean textbook reading material with structured paragraphs, examples, and lists.
 
 ${classProfile.systemInstructionText}
 

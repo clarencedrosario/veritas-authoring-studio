@@ -3,6 +3,7 @@ import {
   GrammarSeriesProject,
   ClassCurriculumBook,
   GrammarClassLevel,
+  GrammarTopic,
 } from '../../../types';
 import {
   BookProductionSettings,
@@ -26,6 +27,7 @@ import { BookPageStructureNav } from './BookPageStructureNav';
 import { PublicationPageCanvas } from './PublicationPageCanvas';
 import { LayoutInspector } from './LayoutInspector';
 import { PublisherHandoffModal } from './PublisherHandoffModal';
+import { ReorderChaptersModal } from './ReorderChaptersModal';
 import {
   BookMarked,
   Printer,
@@ -44,6 +46,7 @@ import {
   ArrowRight,
   BookOpen,
   FileCheck,
+  ArrowUpDown,
 } from 'lucide-react';
 import {
   TextbookExportOptions,
@@ -93,6 +96,7 @@ export const BookProductionDesk: React.FC<BookProductionDeskProps> = ({
   // Mode: Proof Mode vs Clean Reader
   const [isProofMode, setIsProofMode] = useState<boolean>(true);
   const [showHandoffModal, setShowHandoffModal] = useState<boolean>(false);
+  const [isReorderModalOpen, setIsReorderModalOpen] = useState<boolean>(false);
 
   // Toast message
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -101,6 +105,81 @@ export const BookProductionDesk: React.FC<BookProductionDeskProps> = ({
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // Chapter Reordering & Book Updates
+  const handleUpdateBook = (updatedBook: ClassCurriculumBook) => {
+    if (!onUpdateSeriesProject) return;
+
+    const currentClassLevel = updatedBook.classLevel || activeBook.classLevel || selectedClass;
+    const activeBookId = activeBook.id || `proj-${currentClassLevel.toLowerCase().replace(/\s+/g, '-')}`;
+
+    const stampedBook: ClassCurriculumBook = {
+      ...updatedBook,
+      bookProjectId: activeBookId,
+      editionId: activeBook.editionId || `ed-${activeBookId}`,
+      curriculumSystemId: activeBook.board || seriesProject.targetBoard,
+      programmeId: activeBook.programmeId || activeBook.programme,
+      classOrStageId: activeBook.classLevel || activeBook.classOrStage || currentClassLevel,
+    };
+
+    const isCbse = (activeBook.board || seriesProject.targetBoard || '').toUpperCase().includes('CBSE');
+
+    onUpdateSeriesProject({
+      ...seriesProject,
+      editionBooks: {
+        ...(seriesProject.editionBooks || {}),
+        [activeBookId]: stampedBook,
+      },
+      books: isCbse
+        ? {
+            ...seriesProject.books,
+            [currentClassLevel]: stampedBook,
+          }
+        : seriesProject.books,
+      lastUpdated: new Date().toISOString(),
+    });
+  };
+
+  const handleReorderChapters = (newTopics: GrammarTopic[]) => {
+    // Re-index topic orders
+    const reorderedTopics = newTopics.map((topic, idx) => ({
+      ...topic,
+      order: idx + 1,
+      chapterNumber: idx + 1,
+      studioChapter: topic.studioChapter
+        ? {
+            ...topic.studioChapter,
+            order: idx + 1,
+            chapterNumber: idx + 1,
+          }
+        : undefined,
+    }));
+
+    // If currentBook has units, keep chapterIds in unit aligned
+    let updatedUnits = currentBook.units;
+    if (updatedUnits && updatedUnits.length > 0) {
+      const topicIdOrderMap = new Map<string, number>();
+      reorderedTopics.forEach((t, i) => topicIdOrderMap.set(t.id, i));
+
+      updatedUnits = updatedUnits.map((unit) => ({
+        ...unit,
+        chapterIds: [...unit.chapterIds].sort((a, b) => {
+          const orderA = topicIdOrderMap.get(a) ?? 999;
+          const orderB = topicIdOrderMap.get(b) ?? 999;
+          return orderA - orderB;
+        }),
+      }));
+    }
+
+    const updatedBook: ClassCurriculumBook = {
+      ...currentBook,
+      topics: reorderedTopics,
+      units: updatedUnits,
+    };
+
+    handleUpdateBook(updatedBook);
+    showToast(`Chapters reordered for ${currentBook.title || selectedClass}. Textbook repaginated successfully.`);
   };
 
   // Save settings when changed
@@ -503,13 +582,26 @@ export const BookProductionDesk: React.FC<BookProductionDeskProps> = ({
           {/* Proof Mode vs Clean Reader */}
           <button
             onClick={() => setIsProofMode(!isProofMode)}
-            className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-all ${
+            className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
               isProofMode
                 ? 'bg-[#9A7438]/20 border-[#9A7438] text-[#5A1832] dark:text-[#C29A52]'
                 : 'bg-white dark:bg-slate-800 border-[#CBBEAC] text-[#71685E]'
             }`}
           >
             {isProofMode ? 'Proof Guides Active' : 'Clean Reader View'}
+          </button>
+
+          {/* Quick Reorder Chapters Button */}
+          <button
+            onClick={() => setIsReorderModalOpen(true)}
+            className="px-3 py-1 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 border border-[#CBBEAC] dark:border-slate-700 text-[#5A1832] dark:text-[#C29A52] hover:bg-[#EDE4D6] transition-colors flex items-center space-x-1.5 cursor-pointer shadow-2xs"
+            title="Open Drag-and-Drop Chapter Reorder Studio"
+          >
+            <ArrowUpDown className="w-3.5 h-3.5" />
+            <span>Reorder Chapters</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-[#5A1832]/10 dark:bg-slate-700 font-mono font-bold">
+              {currentBook.topics?.length || 0}
+            </span>
           </button>
         </div>
 
@@ -559,6 +651,9 @@ export const BookProductionDesk: React.FC<BookProductionDeskProps> = ({
           isCollapsed={isLeftCollapsed}
           onToggleCollapse={() => setIsLeftCollapsed(!isLeftCollapsed)}
           isDarkMode={isDarkMode}
+          topics={currentBook.topics || []}
+          onReorderChapters={handleReorderChapters}
+          onOpenReorderModal={() => setIsReorderModalOpen(true)}
         />
 
         {/* CENTRE AREA: Publication Page Canvas */}
@@ -604,6 +699,17 @@ export const BookProductionDesk: React.FC<BookProductionDeskProps> = ({
           onClose={() => setShowHandoffModal(false)}
           onExportPrintPdf={handleDirectPrint}
           onExportDocx={handleExportDocx}
+          isDarkMode={isDarkMode}
+        />
+      )}
+
+      {/* Chapter Drag-and-Drop Reorder Studio Modal */}
+      {isReorderModalOpen && (
+        <ReorderChaptersModal
+          currentBook={currentBook}
+          topics={currentBook.topics || []}
+          onApplyReorder={handleReorderChapters}
+          onClose={() => setIsReorderModalOpen(false)}
           isDarkMode={isDarkMode}
         />
       )}

@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import Markdown from 'react-markdown';
+import { sanitizeStudentTypography } from '../../utils/pedagogicalProfileSystem';
 
 interface TextbookMarkdownProps {
   content: string;
@@ -13,6 +14,47 @@ export const TextbookMarkdown: React.FC<TextbookMarkdownProps> = ({
   isDarkMode = false,
 }) => {
   if (!content) return null;
+
+  // Preprocess content so raw Markdown list artefacts, bullets, and typography render cleanly
+  const normalizedContent = useMemo(() => {
+    if (!content) return '';
+
+    // 1. Sanitize typography (convert programming arrows to typographic arrows, etc.)
+    let text = sanitizeStudentTypography(content);
+
+    // 2. Prevent accidental indented code blocks in Markdown (e.g. 4 spaces before lists or answer keys)
+    // CommonMark treats lines starting with 4+ spaces as <pre><code>. Strip leading 4 spaces unless inside a ``` fence.
+    const lines = text.split('\n');
+    let insideFence = false;
+    const processedLines = lines.map((line) => {
+      if (/^```/.test(line.trim())) {
+        insideFence = !insideFence;
+        return line;
+      }
+      if (insideFence) return line;
+
+      // If line starts with 4+ spaces followed by a list marker, bullet, or bold word, unindent it
+      if (/^\s{2,8}(?:[0-9]+\.|\*|-|•|\*\*|Rule|\(?[a-zA-Z]\))/i.test(line)) {
+        return line.trimStart();
+      }
+
+      // Convert unicode bullets at the beginning of a line to standard markdown list item
+      if (/^[ \t]*[•·∙○●]\s*/.test(line)) {
+        return line.replace(/^[ \t]*[•·∙○●]\s*/, '- ');
+      }
+
+      return line;
+    });
+    text = processedLines.join('\n');
+
+    // 3. Ensure bold syntax with parentheses like (**word**) or (**word** / **word**) parses cleanly
+    text = text
+      .replace(/\(\*\*(.+?)\*\*\)/g, '(**$1**)')
+      .replace(/\s*->\s*/g, ' → ')
+      .replace(/\s*=>\s*/g, ' → ');
+
+    return text;
+  }, [content]);
 
   return (
     <div className={`textbook-markdown leading-relaxed ${className}`}>
@@ -91,7 +133,7 @@ export const TextbookMarkdown: React.FC<TextbookMarkdownProps> = ({
           ),
         }}
       >
-        {content}
+        {normalizedContent}
       </Markdown>
     </div>
   );

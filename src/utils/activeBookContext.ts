@@ -668,7 +668,7 @@ function createDefaultCisceBook(project: BookProject): ClassCurriculumBook {
     topics: [
       {
         id: 'icse-6-concord',
-        title: 'Chapter 1: Subject–Verb Agreement: Concord & Syntactic Synthesis',
+        title: 'Chapter 1: Subject–Verb Agreement: Making Subjects and Verbs Agree',
         classLevel,
         category: 'Syntax & Concord',
         order: 1,

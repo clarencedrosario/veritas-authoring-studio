@@ -143,7 +143,7 @@ export const Component06RulesAuthoring: React.FC<Component06RulesAuthoringProps>
         classLevel: chapter.equivalentClass || 'Class 6',
         bookTitle: chapter.bookTitle || 'Classical Grammar: ICSE Class 6',
         seriesTitle: 'Grammar in Action: Tri-Board English Series',
-        chapterTitle: chapter.title || 'Subject–Verb Agreement: Concord & Syntactic Synthesis',
+        chapterTitle: chapter.title || 'Subject–Verb Agreement: Making Subjects and Verbs Agree',
         grammarTopic: chapter.shortTitle || chapter.title?.split(':')[0]?.trim() || 'Subject–Verb Agreement',
         grammarStrand: chapter.category || 'Verbal Syntax & Concord',
         discoveryVignette: chapter.opening?.discoveryVignette || '',

@@ -1868,7 +1868,7 @@ export function generateCrossBoardAdaptationPlan(
       targetBoard: 'CISCE',
       sourceChapterTitle: sourceTitle,
       targetChapterTitle: isSvaTopic
-        ? 'Subject–Verb Agreement: Concord & Syntactic Synthesis'
+        ? 'Subject–Verb Agreement: Making Subjects and Verbs Agree'
         : `${sourceTitle}`,
       targetProgramme: `CISCE Curriculum (${chapterClass})`,
       targetClassOrStage: chapterClass,

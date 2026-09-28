@@ -238,6 +238,26 @@ export default function App() {
     localStorage.setItem('veritas_script_project_v1', JSON.stringify(scriptProject));
   }, [scriptProject]);
 
+  const [activeStudioWorkspace, setActiveStudioWorkspace] = useState<WorkspaceType>(() => {
+    try {
+      const saved = localStorage.getItem('veritas_active_studio_workspace');
+      if (saved && ['academic', 'novel', 'content', 'film', 'publishing', 'analytics', 'home', 'library'].includes(saved)) {
+        return saved as WorkspaceType;
+      }
+    } catch (e) {
+      // ignore
+    }
+    return 'content';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('veritas_active_studio_workspace', activeStudioWorkspace);
+    } catch (e) {
+      // ignore
+    }
+  }, [activeStudioWorkspace]);
+
   // Workspace detection
   const getActiveWorkspace = useCallback((tab: MainTab): WorkspaceType => {
     if (tab === 'home') return 'home';
@@ -253,8 +273,39 @@ export default function App() {
     if (['analytics', 'pacing'].includes(tab)) {
       return 'analytics';
     }
-    return 'novel';
-  }, []);
+    if (tab === 'research') {
+      // Shared research archive: preserve current active studio
+      if (activeStudioWorkspace === 'content' || activeStudioWorkspace === 'academic' || activeStudioWorkspace === 'film') {
+        return activeStudioWorkspace;
+      }
+      return 'novel';
+    }
+    if (['manuscript', 'characters', 'world', 'codex', 'dialogue', 'thesaurus', 'timeline', 'scenes'].includes(tab)) {
+      return 'novel';
+    }
+    return activeStudioWorkspace || 'novel';
+  }, [activeStudioWorkspace]);
+
+  // Sync active studio workspace on tab navigation (while preserving activeStudioWorkspace when in shared tabs like research)
+  useEffect(() => {
+    if (currentTab === 'content_studio') {
+      setActiveStudioWorkspace('content');
+    } else if (currentTab === 'script_studio') {
+      setActiveStudioWorkspace('film');
+    } else if (isGrammarTab(currentTab)) {
+      setActiveStudioWorkspace('academic');
+    } else if (['manuscript', 'characters', 'world', 'codex', 'dialogue', 'thesaurus', 'timeline', 'scenes'].includes(currentTab)) {
+      setActiveStudioWorkspace('novel');
+    } else if (['design', 'querykit', 'publishing_studio', 'textbook_exporter', 'publisher_submission'].includes(currentTab)) {
+      setActiveStudioWorkspace('publishing');
+    } else if (['analytics', 'pacing'].includes(currentTab)) {
+      setActiveStudioWorkspace('analytics');
+    } else if (currentTab === 'home') {
+      setActiveStudioWorkspace('home');
+    } else if (currentTab === 'library') {
+      setActiveStudioWorkspace('library');
+    }
+  }, [currentTab]);
 
   // Track the last active authoring workspace before navigating to Publishing
   const [lastAuthoringWorkspace, setLastAuthoringWorkspace] = useState<'academic' | 'novel' | 'content' | 'film'>(() => {
@@ -282,6 +333,7 @@ export default function App() {
   }, [currentTab, getActiveWorkspace]);
 
   const handleSelectWorkspace = useCallback((ws: WorkspaceType) => {
+    setActiveStudioWorkspace(ws);
     if (ws === 'home') {
       setCurrentTab('home');
     } else if (ws === 'library') {
@@ -724,6 +776,7 @@ const handleRestoreSnapshot = (snapshotId: string) => {
         activeWorkspace={getActiveWorkspace(currentTab)}
         project={project}
         grammarProject={grammarProject}
+        contentProject={contentProject}
         onUpdateProjectTitle={(title) =>
           setProject((p) => ({ ...p, title, updatedAt: new Date().toISOString() }))
         }
@@ -961,6 +1014,8 @@ const handleRestoreSnapshot = (snapshotId: string) => {
           {currentTab === 'research' && (
             <ResearchView
               project={project}
+              contentProject={contentProject}
+              activeWorkspace={getActiveWorkspace(currentTab)}
               onUpdateResearchNotes={(notes: ResearchNote[]) => {
                 setProject((prev) => ({ ...prev, researchNotes: notes }));
                 addAuditLog('RESEARCH_UPDATED', `Updated research notebook (${notes.length} notes)`);
@@ -973,6 +1028,11 @@ const handleRestoreSnapshot = (snapshotId: string) => {
               }}
               onNavigateToCharacter={() => setCurrentTab('characters')}
               onNavigateToCodex={() => setCurrentTab('codex')}
+              onNavigateToContentStudio={() => setCurrentTab('content_studio')}
+              onNavigateToContentPiece={(docId) => {
+                setContentProject((prev) => ({ ...prev, activeDocumentId: docId }));
+                setCurrentTab('content_studio');
+              }}
             />
           )}
 

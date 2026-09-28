@@ -15,6 +15,10 @@ import {
   convertTopicToStudioChapter,
   syncStudioChapterToTopic,
 } from '../../utils/chapterStudioData';
+import {
+  calibrateManuscriptMetadataForClass,
+  sanitizeStudentTypography,
+} from '../../utils/pedagogicalProfileSystem';
 import { ChapterStructureNavigator } from './ChapterStructureNavigator';
 import { ChapterManuscriptCanvas } from './ChapterManuscriptCanvas';
 import { AuthorCopilotDrawer } from './AuthorCopilotDrawer';
@@ -840,14 +844,26 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
 
   // AI Sections Integration
   const handleAcceptAiSections = (newSections: any[], replaceExisting: boolean) => {
+    // Preserve the authoritative sequence of AI-approved sections in exact order (positions 1..N)
+    const targetClass = chapter.equivalentClass || seriesProject.selectedClass || 'Class 6';
     const mergedSections = replaceExisting ? newSections : [...chapter.sections, ...newSections];
     const reordered = mergedSections.map((s, idx) => ({
       ...s,
       order: idx + 1,
       numberLabel: `${chapter.chapterNumber}.${idx + 1}`,
+      title: calibrateManuscriptMetadataForClass(s.title || '', targetClass),
+      blocks: (s.blocks || []).map((b: any) => ({
+        ...b,
+        textContent: b.textContent ? sanitizeStudentTypography(b.textContent) : b.textContent,
+        calloutText: b.calloutText ? sanitizeStudentTypography(b.calloutText) : b.calloutText,
+        title: b.title ? calibrateManuscriptMetadataForClass(b.title, targetClass) : b.title,
+        calloutTitle: b.calloutTitle ? calibrateManuscriptMetadataForClass(b.calloutTitle, targetClass) : b.calloutTitle,
+      })),
     }));
     const updated = {
       ...chapter,
+      title: calibrateManuscriptMetadataForClass(chapter.title || '', targetClass),
+      subtitle: calibrateManuscriptMetadataForClass(chapter.subtitle || '', targetClass),
       sections: reordered,
       lastSaved: new Date().toISOString(),
       saveStatus: 'saved' as const,
@@ -855,10 +871,11 @@ export const ChapterAuthoringStudio: React.FC<ChapterAuthoringStudioProps> = ({
     handleUpdateChapter(updated);
     if (reordered[0]) {
       setActiveSectionId(reordered[0].id);
+      setActiveView('section');
     }
     setAuthoringNotification({
       type: 'success',
-      message: `Successfully drafted and integrated ${newSections.length} chapter section${newSections.length === 1 ? '' : 's'} into the manuscript!`,
+      message: `Successfully drafted and integrated ${newSections.length} chapter section${newSections.length === 1 ? '' : 's'} into the manuscript in exact order!`,
     });
   };
 

@@ -23,6 +23,7 @@ import {
   sanitizeChapterDataIntegrity,
   normalizeExerciseTitle,
 } from './dataIntegrityGuard';
+import { calibrateManuscriptMetadataForClass } from './pedagogicalProfileSystem';
 
 /**
  * Creates the master demonstration chapter for CBSE Class 6:
@@ -1643,8 +1644,8 @@ export const CANONICAL_SVA_TEACHER_NOTES: TeacherAuthorNoteRecord[] = [
 export function createDefaultCisceClass6SubjectVerbAgreementChapter(): StudioChapter {
   const cisceOpening: ChapterOpeningData = {
     chapterNumber: 1,
-    title: 'Subject–Verb Agreement: Concord & Syntactic Synthesis',
-    subtitle: 'Foundations of Grammatical Concord, Person–Number Harmony & Syntactic Structure',
+    title: 'Subject–Verb Agreement: Making Subjects and Verbs Agree',
+    subtitle: 'Foundations of Grammatical Concord and Sentence Balance',
     openingHook:
       'Consider these two sentences: "The choir sings in perfect unison" versus "The members of the choir sing in different keys." Why does a single group take a singular verb in one sentence, but a plural verb in the next? How do we determine who or what is truly performing the action in a sentence?',
     shortIntroduction:
@@ -1664,7 +1665,7 @@ export function createDefaultCisceClass6SubjectVerbAgreementChapter(): StudioCha
       'Subject Identification',
       'Verb Inflection',
       'Number and Person Harmony',
-      'Syntactic Concord',
+      'Subject-Verb Agreement',
     ],
     priorKnowledge:
       'Prerequisites for CISCE Class 6:\n1. Subject & Predicate Division: Distinguishing the naming part from the action part in declarative sentences.\n2. Noun Number: Recognizing regular (-s, -es) and irregular plural nouns (children, mice, geese).\n3. Primary Helping Verbs: Familiarity with basic auxiliary forms (is/are, was/were, has/have, does/do).',
@@ -1681,9 +1682,9 @@ export function createDefaultCisceClass6SubjectVerbAgreementChapter(): StudioCha
     discoveryVignette:
       'It was Thursday afternoon in the St. Jude\'s Middle School media room. Ananya and Kabir, the student editors of The Junior Chronicle, were proofreading the front-page draft before sending it to print.\n\nKabir frowned at the opening headline. "Listen to this line, Ananya: \'The captain of the school cricket team have scored three centuries this season.\' Does that sound right to your ear?"\n\nAnanya read the sentence aloud twice. "No, Kabir. Something sounds discordant. Read it again, but pause after each part."\n\n"Well," said Kabir, "we are talking about \'centuries\', which is plural, and \'team\', which has eleven players!"\n\n"Wait," Ananya pointed her pencil at the first three words. "Ask yourself: Who scored the centuries? Was it the entire team, or was it the captain?"\n\n"The captain!" Kabir exclaimed. "Just one person! So if we say \'The captain has scored\', it sounds natural and balanced."\n\n"Exactly," agreed Ananya. "The words \'of the school cricket team\' are just describing which captain we mean. If you take them away, the real sentence is \'The captain has scored\'. But look at line four in our sports report: \'The enthusiastic spectators cheers loudly from the grandstand.\' What happened there?"\n\nKabir grinned. "Now the writer did the opposite! \'Spectators\' is more than one person, but the verb has an \'s\' on the end like a singular noun!"',
     discoveryQuestions:
-      'Work with a partner to examine the clues Ananya and Kabir discovered in the newsroom:\n\n1. Subject Hunt: In Kabir\'s first sentence, what is the single key noun (the head subject) performing the action? What words are simply describing that person?\n2. Verb Spotting: What is the verb in "The captain has scored" versus "The players have scored"? What happens to the verb when we change the subject from one person (singular) to several people (plural)?\n3. The \'S\' Mystery: Examine the words \'spectators\' and \'cheers\'. In English, when a noun takes an \'-s\' (like spectators), does its present-tense verb also take an \'-s\'? What rule does your ear discover?\n4. Ear Check: Read these two sentences out loud:\n   (a) The bird sings sweetly in the rain.\n   (b) The birds sing sweetly in the rain.\n   Which word carries the \'-s\' in each sentence? What pattern do you observe about nouns versus verbs?',
+      'Work with a partner to examine the clues Ananya and Kabir discovered in the newsroom:\n\n1. Subject Hunt: In Kabir\'s first sentence, what is the single key noun (the main subject) performing the action? What words are simply describing that person?\n2. Verb Spotting: What is the verb in "The captain has scored" versus "The players have scored"? What happens to the verb when we change the subject from one person (singular) to several people (plural)?\n3. The \'S\' Mystery: Examine the words \'spectators\' and \'cheers\'. In English, when a noun takes an \'-s\' (like spectators), does its present-tense verb also take an \'-s\'? What rule does your ear discover?\n4. Ear Check: Read these two sentences out loud:\n   (a) The bird sings sweetly in the rain.\n   (b) The birds sing sweetly in the rain.\n   Which word carries the \'-s\' in each sentence? What pattern do you observe about nouns versus verbs?',
     discoveryQuestion:
-      'Work with a partner to examine the clues Ananya and Kabir discovered in the newsroom:\n\n1. Subject Hunt: In Kabir\'s first sentence, what is the single key noun (the head subject) performing the action? What words are simply describing that person?\n2. Verb Spotting: What is the verb in "The captain has scored" versus "The players have scored"? What happens to the verb when we change the subject from one person (singular) to several people (plural)?\n3. The \'S\' Mystery: Examine the words \'spectators\' and \'cheers\'. In English, when a noun takes an \'-s\' (like spectators), does its present-tense verb also take an \'-s\'? What rule does your ear discover?\n4. Ear Check: Read these two sentences out loud:\n   (a) The bird sings sweetly in the rain.\n   (b) The birds sing sweetly in the rain.\n   Which word carries the \'-s\' in each sentence? What pattern do you observe about nouns versus verbs?',
+      'Work with a partner to examine the clues Ananya and Kabir discovered in the newsroom:\n\n1. Subject Hunt: In Kabir\'s first sentence, what is the single key noun (the main subject) performing the action? What words are simply describing that person?\n2. Verb Spotting: What is the verb in "The captain has scored" versus "The players have scored"? What happens to the verb when we change the subject from one person (singular) to several people (plural)?\n3. The \'S\' Mystery: Examine the words \'spectators\' and \'cheers\'. In English, when a noun takes an \'-s\' (like spectators), does its present-tense verb also take an \'-s\'? What rule does your ear discover?\n4. Ear Check: Read these two sentences out loud:\n   (a) The bird sings sweetly in the rain.\n   (b) The birds sing sweetly in the rain.\n   Which word carries the \'-s\' in each sentence? What pattern do you observe about nouns versus verbs?',
   };
 
   // Component 4: Concept Introduction & Discovery Vignette
@@ -1718,7 +1719,7 @@ export function createDefaultCisceClass6SubjectVerbAgreementChapter(): StudioCha
         },
         visibility: 'student',
         textContent:
-          'Work with a partner to examine the clues Ananya and Kabir discovered in the newsroom:\n\n1. Subject Hunt: In Kabir\'s first sentence, what is the single key noun (the head subject) performing the action? What words are simply describing that person?\n2. Verb Spotting: What is the verb in "The captain has scored" versus "The players have scored"? What happens to the verb when we change the subject from one person (singular) to several people (plural)?\n3. The \'S\' Mystery: Examine the words \'spectators\' and \'cheers\'. In English, when a noun takes an \'-s\' (like spectators), does its present-tense verb also take an \'-s\'? What rule does your ear discover?\n4. Ear Check: Read these two sentences out loud:\n   (a) The bird sings sweetly in the rain.\n   (b) The birds sing sweetly in the rain.\n   Which word carries the \'-s\' in each sentence? What pattern do you observe about nouns versus verbs?',
+          'Work with a partner to examine the clues Ananya and Kabir discovered in the newsroom:\n\n1. Subject Hunt: In Kabir\'s first sentence, what is the single key noun (the main subject) performing the action? What words are simply describing that person?\n2. Verb Spotting: What is the verb in "The captain has scored" versus "The players have scored"? What happens to the verb when we change the subject from one person (singular) to several people (plural)?\n3. The \'S\' Mystery: Examine the words \'spectators\' and \'cheers\'. In English, when a noun takes an \'-s\' (like spectators), does its present-tense verb also take an \'-s\'? What rule does your ear discover?\n4. Ear Check: Read these two sentences out loud:\n   (a) The bird sings sweetly in the rain.\n   (b) The birds sing sweetly in the rain.\n   Which word carries the \'-s\' in each sentence? What pattern do you observe about nouns versus verbs?',
       },
     ],
   };
@@ -1729,19 +1730,19 @@ export function createDefaultCisceClass6SubjectVerbAgreementChapter(): StudioCha
     systemId: 'CISCE',
     equivalentClass: 'Class 6',
     chapterNumber: 1,
-    title: 'Subject–Verb Agreement: Concord & Syntactic Synthesis',
+    title: 'Subject–Verb Agreement: Making Subjects and Verbs Agree',
     shortTitle: 'Subject–Verb Agreement',
-    subtitle: 'Foundations of Grammatical Concord, Person–Number Harmony & Syntactic Structure',
+    subtitle: 'Foundations of Grammatical Concord and Sentence Balance',
     bookTitle: 'Classical Grammar: ICSE Class 6',
     seriesTitle: 'Grammar in Action: Tri-Board English Series',
     category: 'Syntax & Concord',
-    curriculumTopic: 'Subject-Verb Concord (Foundations, Person-Number Harmony & Intervening Modifiers)',
+    curriculumTopic: 'Subject-Verb Concord (Foundations and Matching Rules)',
     grammarStrand: 'Verbal Syntax & Concord',
     targetPageRange: 'pp. 14–25 (12 pages)',
     targetPageCount: 12,
     estimatedPageCount: 3.5,
     description:
-      'CISCE Class 6 foundational chapter covering subject-verb concord, head noun identification, and syntactic harmony.',
+      'CISCE Class 6 foundational chapter covering subject-verb concord, main subject identification, and sentence harmony.',
     prerequisiteKnowledge:
       'Subject & predicate division, noun number, and primary auxiliary verbs.',
     keyVocabulary: [
@@ -1873,9 +1874,9 @@ export function convertTopicToStudioChapter(
   const rawSubtitle = (topic as any).subtitle || (topic as any).subTitle;
   const defaultSubtitle =
     rawSubtitle && !/parts\s*of\s*speech|class\s*3/i.test(rawSubtitle)
-      ? rawSubtitle
+      ? calibrateManuscriptMetadataForClass(rawSubtitle, classLevel)
       : isSvaChapter
-      ? 'Concord & Syntactic Synthesis'
+      ? calibrateManuscriptMetadataForClass('Making Subjects and Verbs Agree', classLevel)
       : '';
 
   const defaultOpening: ChapterOpeningData = {
