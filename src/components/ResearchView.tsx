@@ -19,6 +19,14 @@ import {
   Link as LinkIcon,
   Layers,
   ArrowRight,
+  BarChart3,
+  ShieldCheck,
+  CalendarDays,
+  UsersRound,
+  BookmarkCheck,
+  ClipboardList,
+  Filter,
+  ExternalLink as ExternalLinkIcon,
 } from 'lucide-react';
 import { NovelProject, ResearchNote, Character, CodexEntry, ContentWritingProject } from '../types';
 import { WorkspaceType } from './NavigationRail';
@@ -67,6 +75,8 @@ export const ResearchView: React.FC<ResearchViewProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editFormData, setEditFormData] = useState<Partial<ResearchNote>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [activeTool, setActiveTool] = useState<'overview' | 'sources' | 'claims' | 'timeline' | 'entities' | 'saved' | 'brief'>('overview');
+  const [savedNoteIds, setSavedNoteIds] = useState<string[]>([]);
 
   const notes = project.researchNotes || [];
   const characters = project.characters || [];
@@ -84,6 +94,16 @@ export const ResearchView: React.FC<ResearchViewProps> = ({
   });
 
   const activeNote = notes.find((n) => n.id === activeNoteId) || filteredNotes[0];
+  const sourcedNotes = notes.filter((n) => Boolean(n.sourceUrl?.trim()));
+  const recentNotes = [...notes].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 8);
+  const allTags = Array.from(new Set(notes.flatMap((n) => n.tags || []))).sort();
+  const claimCandidates = notes.flatMap((n) => n.content.split(/(?<=[.!?])\s+/).filter((s) => s.trim().length > 45).slice(0, 5).map((claim) => ({ noteId: n.id, title: n.title, claim: claim.trim() }))).slice(0, 20);
+  const toggleSaved = (id: string) => setSavedNoteIds((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id]);
+  const buildResearchBrief = () => {
+    navigator.clipboard.writeText(notes.map((n) => '• ' + n.title + '\\n  ' + n.content + '\\n  Source: ' + (n.sourceUrl || 'Source not recorded')).join('\\n\\n'));
+    setCopiedId('research-brief');
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   const handleStartCreate = () => {
     const newNote: ResearchNote = {
@@ -222,6 +242,36 @@ export const ResearchView: React.FC<ResearchViewProps> = ({
             })}
           </div>
 
+
+          <div className="px-3 py-3 border-b border-[#ecece9] dark:border-[#242528]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-[#9c9c98]">Research Tools</span>
+              <span className="text-[10px] text-[#9c9c98]">{notes.length} notes</span>
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              {[
+                ['overview', 'Overview', BarChart3],
+                ['sources', 'Sources', ExternalLinkIcon],
+                ['claims', 'Claims', ShieldCheck],
+                ['timeline', 'Timeline', CalendarDays],
+                ['entities', 'Entities', UsersRound],
+                ['saved', 'Saved', BookmarkCheck],
+                ['brief', 'Build Brief', ClipboardList],
+              ].map(([key, label, Icon]) => (
+                <button key={key as string} onClick={() => setActiveTool(key as typeof activeTool)}
+                  className={activeTool === key ? 'px-2 py-1.5 rounded-md text-[10px] font-medium flex items-center gap-1.5 bg-[#191918] text-white dark:bg-[#f4f4f5] dark:text-[#191918]' : 'px-2 py-1.5 rounded-md text-[10px] font-medium flex items-center gap-1.5 text-[#6e6e6b] dark:text-[#9ca3af] hover:bg-[#f5f5f3] dark:hover:bg-[#1f2023]'}>
+                  <Icon className="w-3 h-3" />
+                  <span>{label as string}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="px-3 py-2 border-b border-[#ecece9] dark:border-[#242528] flex flex-wrap gap-1">
+            <button onClick={() => setSearchQuery('')} className="px-2 py-0.5 rounded text-[10px] text-[#6e6e6b] hover:bg-[#f5f5f3] flex items-center gap-1"><Filter className="w-3 h-3" />Clear</button>
+            <button onClick={() => setSearchQuery('http')} className="px-2 py-0.5 rounded text-[10px] text-[#6e6e6b] hover:bg-[#f5f5f3]">With source</button>
+            <button onClick={() => setActiveTool('saved')} className="px-2 py-0.5 rounded text-[10px] text-[#6e6e6b] hover:bg-[#f5f5f3]">Saved ({savedNoteIds.length})</button>
+          </div>
+
           {/* List of Research Notes */}
           <div className="flex-1 overflow-y-auto divide-y divide-[#ecece9] dark:divide-[#242528]">
             {filteredNotes.length === 0 ? (
@@ -269,6 +319,73 @@ export const ResearchView: React.FC<ResearchViewProps> = ({
             )}
           </div>
         </div>
+
+
+        {activeTool !== 'overview' && (
+          <div className="absolute left-80 right-0 top-14 z-10 max-h-[42vh] overflow-y-auto border-b border-[#e8e8e6] dark:border-[#28292d] bg-[#fbfbfa]/95 dark:bg-[#0f1011]/95 backdrop-blur-md px-6 py-5 shadow-sm">
+            <div className="max-w-5xl mx-auto">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-[#9c9c98]">Research Intelligence</div>
+                  <h2 className="text-lg font-serif font-bold text-[#191918] dark:text-[#f4f4f5]">
+                    {activeTool === 'sources' ? 'Sources & citations' : activeTool === 'claims' ? 'Claims to verify' : activeTool === 'timeline' ? 'Research timeline' : activeTool === 'entities' ? 'Entities & tags' : activeTool === 'saved' ? 'Saved research' : 'Research brief builder'}
+                  </h2>
+                </div>
+                <button onClick={() => setActiveTool('overview')} className="text-xs text-[#6e6e6b] hover:text-[#191918]">Close</button>
+              </div>
+              {activeTool === 'sources' && (
+                <div className="grid md:grid-cols-2 gap-2">
+                  {sourcedNotes.length ? sourcedNotes.map(note => (
+                    <button key={note.id} onClick={() => { setActiveNoteId(note.id); setActiveTool('overview'); }} className="text-left p-3 rounded-lg border border-[#e8e8e6] dark:border-[#28292d] bg-white dark:bg-[#141517] hover:border-[#5A1832]">
+                      <div className="text-xs font-semibold text-[#191918] dark:text-[#f4f4f5]">{note.title}</div>
+                      <div className="text-[10px] text-[#6e6e6b] mt-1 truncate">{note.sourceUrl}</div>
+                    </button>
+                  )) : <p className="text-xs text-[#9c9c98]">No sources recorded yet. Add a bibliography or URL while editing a research note.</p>}
+                </div>
+              )}
+              {activeTool === 'claims' && (
+                <div className="space-y-2">
+                  {claimCandidates.length ? claimCandidates.map((item, i) => (
+                    <div key={i} className="p-3 rounded-lg border border-[#e8e8e6] dark:border-[#28292d] bg-white dark:bg-[#141517]">
+                      <div className="text-[10px] font-mono uppercase text-[#9c9c98] mb-1">{item.title}</div>
+                      <p className="text-xs text-[#191918] dark:text-[#f4f4f5]">{item.claim}</p>
+                      <button onClick={() => { setActiveNoteId(item.noteId); setActiveTool('overview'); }} className="mt-2 text-[10px] text-[#5A1832] dark:text-[#C29A52]">Open source note →</button>
+                    </div>
+                  )) : <p className="text-xs text-[#9c9c98]">Add fuller research notes to surface verification candidates.</p>}
+                </div>
+              )}
+              {activeTool === 'timeline' && (
+                <div className="space-y-1">{recentNotes.map(note => (
+                  <button key={note.id} onClick={() => { setActiveNoteId(note.id); setActiveTool('overview'); }} className="w-full text-left flex items-center gap-3 p-2 rounded-lg hover:bg-white dark:hover:bg-[#141517]">
+                    <span className="text-[10px] font-mono text-[#9c9c98] w-20">{new Date(note.updatedAt).toLocaleDateString()}</span>
+                    <span className="text-xs font-medium text-[#191918] dark:text-[#f4f4f5]">{note.title}</span>
+                  </button>
+                ))}</div>
+              )}
+              {activeTool === 'entities' && (
+                <div className="flex flex-wrap gap-2">{allTags.length ? allTags.map(tag => (
+                  <button key={tag} onClick={() => setSearchQuery(tag)} className="px-3 py-1.5 rounded-full border border-[#e8e8e6] dark:border-[#28292d] bg-white dark:bg-[#141517] text-xs text-[#191918] dark:text-[#f4f4f5]">#{tag}</button>
+                )) : <p className="text-xs text-[#9c9c98]">Tags become searchable research entities.</p>}</div>
+              )}
+              {activeTool === 'saved' && (
+                <div className="grid md:grid-cols-2 gap-2">
+                  {notes.filter(note => savedNoteIds.includes(note.id)).map(note => (
+                    <button key={note.id} onClick={() => { setActiveNoteId(note.id); setActiveTool('overview'); }} className="text-left p-3 rounded-lg border border-[#e8e8e6] dark:border-[#28292d] bg-white dark:bg-[#141517]">
+                      <div className="text-xs font-semibold">{note.title}</div><div className="text-[10px] text-[#9c9c98] mt-1">{note.category}</div>
+                    </button>
+                  ))}
+                  {savedNoteIds.length === 0 && <p className="text-xs text-[#9c9c98]">Save important notes from the dossier using the bookmark action.</p>}
+                </div>
+              )}
+              {activeTool === 'brief' && (
+                <div className="p-4 rounded-xl border border-[#e8e8e6] dark:border-[#28292d] bg-white dark:bg-[#141517]">
+                  <p className="text-xs text-[#6e6e6b] dark:text-[#9ca3af] mb-3">Create a compact research pack from every note, including source references, ready to paste into a content brief.</p>
+                  <button onClick={buildResearchBrief} className="px-3 py-2 rounded-lg bg-[#191918] text-white text-xs font-medium">{copiedId === 'research-brief' ? 'Brief copied' : 'Copy research brief'}</button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Right Column: Research Note Dossier */}
         <div className="flex-1 overflow-y-auto p-6 md:p-10">
@@ -376,6 +493,14 @@ export const ResearchView: React.FC<ResearchViewProps> = ({
                     >
                       {copiedId === activeNote.id ? <Check className="w-3.5 h-3.5 text-[#10b981]" /> : <Copy className="w-3.5 h-3.5" />}
                       <span>{copiedId === activeNote.id ? 'Copied' : 'Copy Excerpt'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => toggleSaved(activeNote.id)}
+                      className={savedNoteIds.includes(activeNote.id) ? 'px-2.5 py-1.5 rounded-md text-xs font-medium border border-[#dcdcd9] dark:border-[#38393d] bg-white dark:bg-[#1f2023] text-[#5A1832] dark:text-[#C29A52] flex items-center space-x-1.5' : 'px-2.5 py-1.5 rounded-md text-xs font-medium border border-[#dcdcd9] dark:border-[#38393d] bg-white dark:bg-[#1f2023] text-[#191918] dark:text-[#f4f4f5] flex items-center space-x-1.5'}
+                    >
+                      <BookmarkCheck className="w-3.5 h-3.5" />
+                      <span>{savedNoteIds.includes(activeNote.id) ? 'Saved' : 'Save'}</span>
                     </button>
                     <button
                       onClick={() => handleStartEdit(activeNote)}
