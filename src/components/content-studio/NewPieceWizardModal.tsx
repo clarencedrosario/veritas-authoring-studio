@@ -72,10 +72,10 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
 
   // Specialized News Fields
   const [newsHeadline, setNewsHeadline] = useState('');
-  const [newsDateline, setNewsDateline] = useState('LONDON, 28 SEP —');
+  const [newsDateline, setNewsDateline] = useState('');
   const [newsLocation, setNewsLocation] = useState('');
-  const [newsDesk, setNewsDesk] = useState('Metro Affairs');
-  const [newsSection, setNewsSection] = useState('Page 1 / Lead');
+  const [newsDesk, setNewsDesk] = useState('');
+  const [newsSection, setNewsSection] = useState('');
   const [newsWho, setNewsWho] = useState('');
   const [newsWhat, setNewsWhat] = useState('');
   const [newsWhen, setNewsWhen] = useState('');
@@ -105,13 +105,16 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
   // Specialized Press Release Fields
   const [prOrganisation, setPrOrganisation] = useState('');
   const [prAnnouncement, setPrAnnouncement] = useState('');
-  const [prReleaseDate, setPrReleaseDate] = useState('FOR IMMEDIATE RELEASE');
+  const [prReleaseDate, setPrReleaseDate] = useState('');
   const [prLocation, setPrLocation] = useState('');
   const [prMediaContact, setPrMediaContact] = useState('');
+  const [prMediaEmail, setPrMediaEmail] = useState('');
+  const [prMediaPhone, setPrMediaPhone] = useState('');
+  const [prBoilerplate, setPrBoilerplate] = useState('');
 
   // Specialized Social Media Fields
   const [socialPlatform, setSocialPlatform] = useState<'LinkedIn' | 'Twitter/X' | 'Instagram' | 'Facebook' | 'Threads' | 'YouTube Community' | 'Multi-Platform'>('LinkedIn');
-  const [socialObjective, setSocialObjective] = useState('Thought Leadership & Engagement');
+  const [socialObjective, setSocialObjective] = useState('');
   const [socialCaptionLength, setSocialCaptionLength] = useState<'short' | 'medium' | 'long'>('medium');
   const [socialHashtags, setSocialHashtags] = useState('');
   const [socialCampaignTheme, setSocialCampaignTheme] = useState('');
@@ -119,9 +122,12 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
   // Specialized Institutional Notice Fields
   const [noticeOrgName, setNoticeOrgName] = useState('');
   const [noticeRefNumber, setNoticeRefNumber] = useState('');
+  const [noticeDate, setNoticeDate] = useState('');
   const [noticeTargetGroup, setNoticeTargetGroup] = useState<'Parents' | 'Students' | 'Staff' | 'General Public' | 'All Stakeholders'>('Parents');
   const [noticeActionRequired, setNoticeActionRequired] = useState('');
   const [noticeSignatory, setNoticeSignatory] = useState('');
+  const [noticeSignatoryTitle, setNoticeSignatoryTitle] = useState('');
+  const [customContentTypeName, setCustomContentTypeName] = useState('');
 
   if (!isOpen) return null;
 
@@ -186,13 +192,13 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
             headline: newsHeadline || docTitle,
             subheadline: docSubtitle,
             slug: docTitle.toUpperCase().replace(/[^A-Z0-9]+/g, '-').slice(0, 32),
-            byline: 'By Editorial Staff',
-            dateline: newsDateline || 'WESTMINSTER —',
-            location: newsLocation || 'City Pressroom',
-            section: newsSection || 'Metro & Civic',
-            desk: newsDesk || 'General Desk',
+            byline: '',
+            dateline: newsDateline,
+            location: newsLocation,
+            section: newsSection,
+            desk: newsDesk,
             wordTarget: desiredLength || 650,
-            deadline: deadline || 'Today',
+            deadline,
             status: 'Draft' as const,
             who: newsWho || '',
             what: newsWhat || topic || docTitle,
@@ -200,16 +206,16 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
             where: newsWhere || newsLocation || '',
             why: newsWhy || purpose || '',
             how: newsHow || '',
-            lead: newsWhat ? `The ${newsWho || 'authorities'} announced ${newsWhat} during recent proceedings.` : '',
+            lead: '',
             nutGraph: keyMessage || purpose || '',
             mainFacts: factsList,
             quotes: newsQuotes
               ? [
                   {
-                    speaker: 'Official Spokesperson',
-                    title: 'Authority Representative',
+                    speaker: '',
+                    title: '',
                     quote: newsQuotes,
-                    verified: true,
+                    verified: false,
                   },
                 ]
               : [],
@@ -226,51 +232,40 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
       desc.category === 'advertising'
         ? {
             productOrOrg: adProductOrOrg || docTitle,
-            campaignObjective: adCampaignObjective || purpose || 'Lead Generation',
-            targetAudience: targetAudience || 'Target Consumers',
+            campaignObjective: adCampaignObjective || purpose,
+            targetAudience,
             mainBenefit: adMainBenefit || keyMessage || '',
             keySellingPoints: adKeySellingPoints
               ? adKeySellingPoints.split('\n').map((s) => s.trim()).filter(Boolean)
               : factsList,
-            offer: adOffer || 'Admissions & Inquiries Now Open',
-            callToAction: callToAction || 'Visit our website or call our office today.',
-            contactDetails: adContactDetails || 'Telephone & Website contact info',
-            mandatoryText: adMandatoryText || 'Terms and conditions apply. Registered entity.',
+            offer: adOffer,
+            callToAction,
+            contactDetails: adContactDetails,
+            mandatoryText: adMandatoryText,
             formatPreset: adFormatPreset,
             width: adWidth,
             height: adHeight,
             unit: adUnit,
-            publication: publicationOrPlatform || 'Broadsheet Daily',
-            tone: tone || 'Prestigious & Persuasive',
+            publication: publicationOrPlatform,
+            tone,
             activeVariantKey: 'A' as const,
-            variants: [
-              {
-                id: 'var-a',
-                variantKey: 'A' as const,
-                headline: docTitle,
-                subheadline: docSubtitle,
-                tagline: adMainBenefit ? `${adMainBenefit}.` : 'Excellence in Action.',
-                bodyCopy: `Discover how our dedicated team delivers unmatched results. Grounded in tradition, forward-looking in vision.`,
-                keyBenefits: ['Distinguished track record', 'Bespoke individual attention', 'Recognized excellence'],
-                callToAction: callToAction || 'Reserve your place today.',
-              },
-            ],
+            variants: [],
           }
         : undefined;
 
     const pressReleaseBlock =
       selectedType === 'press_release' || selectedType === 'media_statement'
         ? {
-            organisation: prOrganisation || adProductOrOrg || 'Organisation',
+            organisation: prOrganisation || adProductOrOrg,
             announcement: prAnnouncement || docTitle,
-            releaseDate: prReleaseDate || 'FOR IMMEDIATE RELEASE',
-            releaseLocation: prLocation || newsLocation || 'Westminster',
+            releaseDate: prReleaseDate,
+            releaseLocation: prLocation || newsLocation,
             keyFacts: factsList,
             spokespersonQuote: newsQuotes || '',
-            boilerplate: authorNotes || 'About the Organisation: Founded with a commitment to excellence.',
-            mediaContactName: prMediaContact || 'Media Relations Officer',
-            mediaContactEmail: 'press@organization.org',
-            mediaContactPhone: '+44 (0) 20 7946 0000',
+            boilerplate: prBoilerplate || '',
+            mediaContactName: prMediaContact,
+            mediaContactEmail: prMediaEmail,
+            mediaContactPhone: prMediaPhone,
           }
         : undefined;
 
@@ -279,25 +274,25 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
         ? {
             platform: socialPlatform,
             objective: socialObjective,
-            audience: targetAudience || 'Followers & Industry Network',
+            audience: targetAudience,
             captionLength: socialCaptionLength,
-            hashtags: socialHashtags ? socialHashtags.split(/\s+/).map((h) => h.startsWith('#') ? h : `#${h}`) : ['#Veritas', '#Insights'],
-            callToAction: callToAction || 'Share your thoughts in the comments.',
-            campaignTheme: socialCampaignTheme || topic || 'Thought Leadership',
+            hashtags: socialHashtags ? socialHashtags.split(/\s+/).map((h) => h.startsWith('#') ? h : `#${h}`) : [],
+            callToAction,
+            campaignTheme: socialCampaignTheme || topic,
           }
         : undefined;
 
     const schoolNoticeBlock =
       desc.category === 'education'
         ? {
-            institutionName: noticeOrgName || 'ST. JUDE’S COLLEGIATE ACADEMY',
-            noticeNumber: noticeRefNumber || `REF: SJCA/ADMIN/CIR-${new Date().getFullYear()}/049`,
-            noticeDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+            institutionName: noticeOrgName,
+            noticeNumber: noticeRefNumber,
+            noticeDate,
             targetGroup: noticeTargetGroup,
             subjectLine: docTitle.toUpperCase(),
-            actionRequired: noticeActionRequired || 'Review instructions and acknowledge receipt.',
-            authorizedSignatory: noticeSignatory || 'Head of Administration',
-            signatoryTitle: 'Dean of Institutional Affairs',
+            actionRequired: noticeActionRequired,
+            authorizedSignatory: noticeSignatory,
+            signatoryTitle: noticeSignatoryTitle,
           }
         : undefined;
 
@@ -308,9 +303,9 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
       contentType: selectedType,
       category: desc.category,
       topic: topic || docTitle,
-      purpose: purpose || 'Communicate key information effectively.',
-      targetAudience: targetAudience || 'General Audience',
-      publicationOrPlatform: publicationOrPlatform || 'Editorial Publication',
+      purpose,
+      targetAudience,
+      publicationOrPlatform,
       desiredLength: Number(desiredLength) || 500,
       tone: tone || 'Professional',
       language: language || 'English',
@@ -324,12 +319,19 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
       authorNotes: authorNotes || '',
       aiInstructions: aiInstructions || '',
       searchIntent: 'Informational',
-      thesisStatement: keyMessage || purpose || 'Provide structured, verifiable information with clarity.',
+      thesisStatement: keyMessage || purpose,
       newsroom: newsroomBlock,
       adSpec: adSpecBlock,
       pressRelease: pressReleaseBlock,
       socialMedia: socialMediaBlock,
       schoolNotice: schoolNoticeBlock,
+      contentTypeInstructions: {
+        format: selectedDescriptor.title,
+        featureCentralAngle,
+        featureOpeningHook,
+        featureClosingDirection,
+        customFormat: selectedType === 'custom_content' ? customContentTypeName : '',
+      },
       toneConfig: {
         tone: tone || 'Professional & Objective',
         formalityLevel: desc.category === 'education' || desc.category === 'corporate' ? 4 : 3,
@@ -581,7 +583,7 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
                   value={aiInstructions}
                   onChange={(e) => setAiInstructions(e.target.value)}
                   rows={3}
-                  placeholder={`e.g. "Write a 500-word newspaper report about the school's annual sports day. Keep it factual and professional without exaggeration." or "Create newspaper advertisement copy for school admissions. Highlight 156 years of excellence and admissions for 2027–28."`}
+                  placeholder="Describe the format, structure, audience, and constraints for this piece."
                   className="w-full p-3 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] text-xs leading-relaxed outline-none text-[#292521] dark:text-[#F6F0E7] placeholder-[#71685E] resize-none"
                 />
               </div>
@@ -596,7 +598,7 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    placeholder="e.g. Civic Council Approves Riverfront Light Rail Corridor..."
+                    placeholder="Enter a working title"
                     className="w-full p-2.5 rounded-xl bg-[#EDE4D6] dark:bg-[#200b14] border border-[#CBBEAC] dark:border-[#4d1e2e] text-xs outline-none text-[#292521] dark:text-[#F6F0E7]"
                   />
                 </div>
@@ -609,7 +611,7 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
                     type="text"
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
-                    placeholder="e.g. Urban Light Rail Transit & Historic Wall Preservation"
+                    placeholder="Enter the topic or subject focus"
                     className="w-full p-2.5 rounded-xl bg-[#EDE4D6] dark:bg-[#200b14] border border-[#CBBEAC] dark:border-[#4d1e2e] text-xs outline-none text-[#292521] dark:text-[#F6F0E7]"
                   />
                 </div>
@@ -622,7 +624,7 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
                     type="text"
                     value={targetAudience}
                     onChange={(e) => setTargetAudience(e.target.value)}
-                    placeholder="e.g. Commuters, local residents, traders, municipal taxpayers..."
+                    placeholder="Who should read this?"
                     className="w-full p-2.5 rounded-xl bg-[#EDE4D6] dark:bg-[#200b14] border border-[#CBBEAC] dark:border-[#4d1e2e] text-xs outline-none text-[#292521] dark:text-[#F6F0E7]"
                   />
                 </div>
@@ -635,7 +637,7 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
                     type="text"
                     value={publicationOrPlatform}
                     onChange={(e) => setPublicationOrPlatform(e.target.value)}
-                    placeholder="e.g. The Morning Herald / Saturday Broadsheet / School Portal"
+                    placeholder="Publication, channel, or platform"
                     className="w-full p-2.5 rounded-xl bg-[#EDE4D6] dark:bg-[#200b14] border border-[#CBBEAC] dark:border-[#4d1e2e] text-xs outline-none text-[#292521] dark:text-[#F6F0E7]"
                   />
                 </div>
@@ -687,7 +689,7 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
                         type="text"
                         value={newsDateline}
                         onChange={(e) => setNewsDateline(e.target.value)}
-                        placeholder="e.g. WESTMINSTER, 28 SEP —"
+                        placeholder="Enter a verified dateline, if applicable"
                         className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] text-xs outline-none"
                       />
                     </div>
@@ -727,7 +729,7 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
                         type="text"
                         value={newsWho}
                         onChange={(e) => setNewsWho(e.target.value)}
-                        placeholder="e.g. Metropolitan Council & Transport Board"
+                        placeholder="Names of verified people or organisations"
                         className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] text-xs outline-none"
                       />
                     </div>
@@ -739,7 +741,7 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
                         type="text"
                         value={newsWhat}
                         onChange={(e) => setNewsWhat(e.target.value)}
-                        placeholder="e.g. Voted 11-0 to approve £48.5M tram extension"
+                        placeholder="Describe the verified action or development"
                         className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] text-xs outline-none"
                       />
                     </div>
@@ -751,7 +753,7 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
                         type="text"
                         value={newsWhen}
                         onChange={(e) => setNewsWhen(e.target.value)}
-                        placeholder="e.g. Monday evening; works begin March"
+                        placeholder="Enter the verified date or time"
                         className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] text-xs outline-none"
                       />
                     </div>
@@ -763,7 +765,7 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
                         type="text"
                         value={newsWhere}
                         onChange={(e) => setNewsWhere(e.target.value)}
-                        placeholder="e.g. 4.2km riverfront line from Old Town to Campus"
+                        placeholder="Enter the verified location"
                         className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] text-xs outline-none"
                       />
                     </div>
@@ -775,7 +777,7 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
                         type="text"
                         value={newsWhy}
                         onChange={(e) => setNewsWhy(e.target.value)}
-                        placeholder="e.g. Relieve peak vehicle congestion, hit 2030 net-zero"
+                        placeholder="Enter the verified rationale"
                         className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] text-xs outline-none"
                       />
                     </div>
@@ -787,7 +789,7 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
                         type="text"
                         value={newsHow}
                         onChange={(e) => setNewsHow(e.target.value)}
-                        placeholder="e.g. Green bonds + vibration-absorbing elastomer trays"
+                        placeholder="Enter the verified method or funding details"
                         className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] text-xs outline-none"
                       />
                     </div>
@@ -801,7 +803,7 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
                       value={newsQuotes}
                       onChange={(e) => setNewsQuotes(e.target.value)}
                       rows={2}
-                      placeholder={`e.g. "Tonight’s vote proves that a city does not need to pave over its irreplaceable historic texture..." — Marcus Thorne, Transport Chair`}
+                      placeholder="Paste an exact verified quotation and its attribution, if available"
                       className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] text-xs outline-none"
                     />
                   </div>
@@ -827,7 +829,7 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
                         type="text"
                         value={adProductOrOrg}
                         onChange={(e) => setAdProductOrOrg(e.target.value)}
-                        placeholder="e.g. St. Jude’s Collegiate Academy"
+                        placeholder="Enter the organisation or product name"
                         className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] text-xs outline-none"
                       />
                     </div>
@@ -840,7 +842,7 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
                         type="text"
                         value={adCampaignObjective}
                         onChange={(e) => setAdCampaignObjective(e.target.value)}
-                        placeholder="e.g. Admissions 2027–28 & Open Day Bookings"
+                        placeholder="Enter the campaign objective"
                         className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] text-xs outline-none"
                       />
                     </div>
@@ -853,7 +855,7 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
                         type="text"
                         value={adOffer}
                         onChange={(e) => setAdOffer(e.target.value)}
-                        placeholder="e.g. Admissions Open / Scholarships Available up to 100%"
+                        placeholder="Enter only a verified offer or incentive"
                         className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] text-xs outline-none"
                       />
                     </div>
@@ -928,7 +930,7 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
                         value={adKeySellingPoints}
                         onChange={(e) => setAdKeySellingPoints(e.target.value)}
                         rows={2}
-                        placeholder={`156 years of continuous scholarship\n1:9 faculty-student ratio\n98% university acceptance`}
+                        placeholder="Enter substantiated benefits or proof points, one per line"
                         className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] text-xs outline-none font-sans"
                       />
                     </div>
@@ -938,14 +940,77 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
                         Contact Details & Mandatory Legal Copy
                       </label>
                       <textarea
+                        value={adContactDetails}
+                        onChange={(e) => setAdContactDetails(e.target.value)}
+                        rows={2}
+                        placeholder="Verified contact details"
+                        className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] text-xs outline-none font-sans"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10.5px] font-mono font-bold uppercase text-[#71685E] dark:text-[#c9b9a6] mb-1">
+                        Mandatory Legal Copy
+                      </label>
+                      <textarea
                         value={adMandatoryText}
                         onChange={(e) => setAdMandatoryText(e.target.value)}
                         rows={2}
-                        placeholder="Registered Charity No. 312849 | Admissions: +44 (0) 20 7946 0192 | stjudesacademy.org"
+                        placeholder="Enter required legal or compliance text"
                         className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] text-xs outline-none font-sans"
                       />
                     </div>
                   </div>
+                  <div>
+                    <label className="block text-[10.5px] font-mono font-bold uppercase text-[#71685E] dark:text-[#c9b9a6] mb-1">Main Benefit</label>
+                    <input value={adMainBenefit} onChange={(e) => setAdMainBenefit(e.target.value)} placeholder="State the verified primary benefit" className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] text-xs outline-none" />
+                  </div>
+                </div>
+              )}
+
+              {(selectedType === 'feature_article' || selectedType === 'profile' || selectedType === 'editorial') && (
+                <div className="p-4 rounded-2xl bg-[#EDE4D6]/70 dark:bg-[#200b14]/70 border border-[#CBBEAC] dark:border-[#4d1e2e] space-y-3">
+                  <h4 className="font-serif font-bold text-sm text-[#35101F] dark:text-[#F6F0E7]">Feature and editorial direction</h4>
+                  <input value={featureCentralAngle} onChange={(e) => setFeatureCentralAngle(e.target.value)} placeholder="Central angle" className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] text-xs" />
+                  <input value={featureOpeningHook} onChange={(e) => setFeatureOpeningHook(e.target.value)} placeholder="Opening hook or approach" className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] text-xs" />
+                  <input value={featureClosingDirection} onChange={(e) => setFeatureClosingDirection(e.target.value)} placeholder="Closing direction" className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] text-xs" />
+                </div>
+              )}
+
+              {(selectedType === 'press_release' || selectedType === 'media_statement') && (
+                <div className="p-4 rounded-2xl bg-[#EDE4D6]/70 dark:bg-[#200b14]/70 border border-[#CBBEAC] dark:border-[#4d1e2e] space-y-3">
+                  <h4 className="font-serif font-bold text-sm text-[#35101F] dark:text-[#F6F0E7]">Corporate and PR details</h4>
+                  <input value={prOrganisation} onChange={(e) => setPrOrganisation(e.target.value)} placeholder="Organisation" className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] text-xs" />
+                  <textarea value={prAnnouncement} onChange={(e) => setPrAnnouncement(e.target.value)} placeholder="Announcement" rows={2} className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] text-xs" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input value={prReleaseDate} onChange={(e) => setPrReleaseDate(e.target.value)} placeholder="Release date or release status" className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] text-xs" />
+                    <input value={prLocation} onChange={(e) => setPrLocation(e.target.value)} placeholder="Release location" className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] text-xs" />
+                    <input value={prMediaContact} onChange={(e) => setPrMediaContact(e.target.value)} placeholder="Media contact name" className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] text-xs" />
+                    <input value={prMediaEmail} onChange={(e) => setPrMediaEmail(e.target.value)} placeholder="Media contact email" className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] text-xs" />
+                    <input value={prMediaPhone} onChange={(e) => setPrMediaPhone(e.target.value)} placeholder="Media contact phone" className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] text-xs" />
+                  </div>
+                  <textarea value={prBoilerplate} onChange={(e) => setPrBoilerplate(e.target.value)} placeholder="Approved organisation boilerplate" rows={2} className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] text-xs" />
+                </div>
+              )}
+
+              {(selectedType === 'social_media_post' || selectedType === 'social_media_campaign' || selectedType === 'caption') && (
+                <div className="p-4 rounded-2xl bg-[#EDE4D6]/70 dark:bg-[#200b14]/70 border border-[#CBBEAC] dark:border-[#4d1e2e] space-y-3">
+                  <h4 className="font-serif font-bold text-sm text-[#35101F] dark:text-[#F6F0E7]">Digital and social specifications</h4>
+                  <select value={socialPlatform} onChange={(e) => setSocialPlatform(e.target.value as typeof socialPlatform)} className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] text-xs">
+                    {['LinkedIn', 'Twitter/X', 'Instagram', 'Facebook', 'Threads', 'YouTube Community', 'Multi-Platform'].map((platform) => <option key={platform}>{platform}</option>)}
+                  </select>
+                  <input value={socialObjective} onChange={(e) => setSocialObjective(e.target.value)} placeholder="Campaign objective" className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] text-xs" />
+                  <select value={socialCaptionLength} onChange={(e) => setSocialCaptionLength(e.target.value as typeof socialCaptionLength)} className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] text-xs">
+                    <option value="short">Short</option><option value="medium">Medium</option><option value="long">Long</option>
+                  </select>
+                  <input value={socialHashtags} onChange={(e) => setSocialHashtags(e.target.value)} placeholder="Hashtags supplied by the author" className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] text-xs" />
+                  <input value={socialCampaignTheme} onChange={(e) => setSocialCampaignTheme(e.target.value)} placeholder="Campaign theme" className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] text-xs" />
+                </div>
+              )}
+
+              {selectedType === 'custom_content' && (
+                <div className="p-4 rounded-2xl bg-[#EDE4D6]/70 dark:bg-[#200b14]/70 border border-[#CBBEAC] dark:border-[#4d1e2e]">
+                  <label className="block text-[11px] font-mono font-bold uppercase text-[#9A7438] mb-1">Custom Format Name</label>
+                  <input value={customContentTypeName} onChange={(e) => setCustomContentTypeName(e.target.value)} placeholder="Name your custom format" className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] text-xs" />
                 </div>
               )}
 
@@ -984,6 +1049,11 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
                         placeholder="REF: SJCA/ADMIN/CIR-2026/049"
                         className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] text-xs outline-none font-mono"
                       />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10.5px] font-mono font-bold uppercase text-[#71685E] dark:text-[#c9b9a6] mb-1">Notice Date</label>
+                      <input value={noticeDate} onChange={(e) => setNoticeDate(e.target.value)} placeholder="Enter issue date" className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] text-xs outline-none" />
                     </div>
 
                     <div>
@@ -1029,6 +1099,10 @@ export const NewPieceWizardModal: React.FC<NewPieceWizardModalProps> = ({
                         placeholder="e.g. Dr. Alistair Montgomery, Vice-Principal"
                         className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] text-xs outline-none"
                       />
+                    </div>
+                    <div>
+                      <label className="block text-[10.5px] font-mono font-bold uppercase text-[#71685E] dark:text-[#c9b9a6] mb-1">Signatory Title</label>
+                      <input value={noticeSignatoryTitle} onChange={(e) => setNoticeSignatoryTitle(e.target.value)} placeholder="Enter official title" className="w-full p-2 rounded-xl bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] text-xs outline-none" />
                     </div>
                   </div>
                 </div>

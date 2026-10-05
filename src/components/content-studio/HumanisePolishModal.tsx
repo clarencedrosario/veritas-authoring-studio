@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { HUMANISE_STYLE_PRESETS } from './constants';
 import { resolveAITarget, ResolvedAITarget, AiActionScope } from './aiTargetResolver';
+import { ContentDocument } from '../../types';
 
 export type HumaniseScope = AiActionScope;
 
@@ -20,6 +21,7 @@ interface HumanisePolishModalProps {
   isOpen: boolean;
   onClose: () => void;
   fullDocumentText: string;
+  document: ContentDocument;
   selectionStart: number;
   selectionEnd: number;
   outline?: any[];
@@ -32,6 +34,7 @@ export const HumanisePolishModal: React.FC<HumanisePolishModalProps> = ({
   isOpen,
   onClose,
   fullDocumentText,
+  document,
   selectionStart,
   selectionEnd,
   outline,
@@ -43,7 +46,15 @@ export const HumanisePolishModal: React.FC<HumanisePolishModalProps> = ({
   const [scope, setScope] = useState<HumaniseScope>(hasSelection ? 'selection' : 'document');
   const [isProcessing, setIsProcessing] = useState(false);
   const [candidateText, setCandidateText] = useState<string | null>(null);
+  const [requestError, setRequestError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'side_by_side' | 'candidate_only'>('side_by_side');
+  const [naturalness, setNaturalness] = useState(4);
+  const [sentenceVariation, setSentenceVariation] = useState(4);
+  const [repetitionReduction, setRepetitionReduction] = useState(4);
+  const [transitionStrength, setTransitionStrength] = useState(3);
+  const [toneStrength, setToneStrength] = useState(3);
+  const [vocabularyLevel, setVocabularyLevel] = useState(3);
+  const [preserveMeaning, setPreserveMeaning] = useState(true);
 
   if (!isOpen) return null;
 
@@ -55,6 +66,7 @@ export const HumanisePolishModal: React.FC<HumanisePolishModalProps> = ({
 
     setIsProcessing(true);
     setCandidateText(null);
+    setRequestError(null);
 
     try {
       const res = await fetch('/api/gemini/content-studio', {
@@ -62,27 +74,64 @@ export const HumanisePolishModal: React.FC<HumanisePolishModalProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'humanise',
+          contentType: document.contentType,
+          category: document.category,
+          title: document.title,
+          brief: {
+            topic: document.topic,
+            purpose: document.purpose,
+            targetAudience: document.targetAudience,
+            publicationOrPlatform: document.publicationOrPlatform,
+            desiredLength: document.desiredLength,
+            targetWordCount: document.targetWordCount,
+            tone: document.tone,
+            language: document.language,
+            deadline: document.deadline,
+            primaryKeyword: document.primaryKeyword,
+            secondaryKeywords: document.secondaryKeywords,
+            importantFacts: document.importantFacts,
+            keyMessage: document.keyMessage,
+            callToAction: document.callToAction,
+            referenceMaterial: document.referenceMaterial,
+            authorNotes: document.authorNotes,
+            aiInstructions: document.aiInstructions,
+            thesisStatement: document.thesisStatement,
+          },
           humaniseStyle: selectedStyle,
           humaniseScope: resolvedTarget.scope,
           targetText: resolvedTarget.targetText,
           selectedText: resolvedTarget.scope === 'selection' ? resolvedTarget.targetText : undefined,
           currentText: resolvedTarget.targetText,
           sectionTitle: resolvedTarget.sectionTitle,
-          precedingContext: resolvedTarget.precedingContext,
-          followingContext: resolvedTarget.followingContext,
+          newsroomData: document.newsroom,
+          adSpecData: document.adSpec,
+          pressReleaseData: document.pressRelease,
+          socialMediaData: document.socialMedia,
+          schoolNoticeData: document.schoolNotice,
+          contentTypeInstructions: document.contentTypeInstructions,
+          attachedResearch: document.referenceMaterial,
+          toneConfig: document.toneConfig,
+          humaniseControls: {
+            naturalness,
+            sentenceVariation,
+            repetitionReduction,
+            transitionStrength,
+            toneStrength,
+            vocabularyLevel,
+            preserveMeaning,
+          },
         }),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.result) {
-          setCandidateText(data.result);
-        }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || `Provider request failed with HTTP ${res.status}.`);
       }
+      if (!data.result) throw new Error('The provider returned no polished text.');
+      setCandidateText(data.result);
     } catch (err) {
       console.error('Humanise error:', err);
-      // Heuristic fallback
-      setCandidateText(resolvedTarget.targetText);
+      setRequestError(err instanceof Error ? err.message : 'Humanise request failed.');
     } finally {
       setIsProcessing(false);
     }
@@ -202,8 +251,47 @@ export const HumanisePolishModal: React.FC<HumanisePolishModalProps> = ({
             </div>
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+            {[
+              { label: 'Naturalness', value: naturalness, setValue: setNaturalness },
+              { label: 'Sentence variation', value: sentenceVariation, setValue: setSentenceVariation },
+              { label: 'Repetition reduction', value: repetitionReduction, setValue: setRepetitionReduction },
+              { label: 'Transitions', value: transitionStrength, setValue: setTransitionStrength },
+              { label: 'Tone adjustment', value: toneStrength, setValue: setToneStrength },
+              { label: 'Vocabulary level', value: vocabularyLevel, setValue: setVocabularyLevel },
+            ].map((control) => (
+              <label key={control.label} className="grid grid-cols-[1fr_auto] items-center gap-x-3 text-xs">
+                <span className="font-medium text-[#35101F] dark:text-[#F6F0E7]">{control.label}</span>
+                <span className="font-mono text-[10px] text-[#71685E]">{control.value}/5</span>
+                <input
+                  type="range"
+                  min={1}
+                  max={5}
+                  value={control.value}
+                  onChange={(event) => control.setValue(Number(event.target.value))}
+                  className="col-span-2 w-full accent-[#5A1832] dark:accent-[#C29A52]"
+                  aria-label={control.label}
+                />
+              </label>
+            ))}
+            <label className="sm:col-span-2 flex items-center gap-2 text-xs font-medium text-[#35101F] dark:text-[#F6F0E7]">
+              <input
+                type="checkbox"
+                checked={preserveMeaning}
+                onChange={(event) => setPreserveMeaning(event.target.checked)}
+                className="accent-[#5A1832] dark:accent-[#C29A52]"
+              />
+              Preserve meaning, facts, names, figures, and quotations
+            </label>
+          </div>
+
           {/* Side by side preview comparison */}
           <div className="space-y-2">
+            {requestError && (
+              <div role="alert" className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-300 text-xs">
+                Humanise request failed: {requestError}
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#9A7438] dark:text-[#C29A52]">
                 {candidateText ? 'Before & After Calibration' : 'Original Text Snippet'}

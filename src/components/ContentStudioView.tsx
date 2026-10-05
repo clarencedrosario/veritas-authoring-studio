@@ -71,44 +71,56 @@ export const ContentStudioView: React.FC<ContentStudioViewProps> = ({
       project.documents.find((d) => d.id === project.activeDocumentId) ||
       project.documents[0] || {
         id: 'doc-fallback',
-        title: 'Untitled Editorial Piece',
-        subtitle: 'Professional content draft',
+        title: 'Untitled Piece',
+        subtitle: '',
         contentType: 'article' as ContentType,
         category: 'other' as ContentCategory,
-        topic: 'General Analysis',
-        purpose: 'Professional Communication',
-        targetAudience: 'General Audience',
-        publicationOrPlatform: 'Veritas Chronicle',
-        desiredLength: 600,
-        tone: 'Professional & Authoritative',
+        topic: '',
+        purpose: '',
+        targetAudience: '',
+        publicationOrPlatform: '',
+        desiredLength: 0,
+        tone: '',
         language: 'English',
-        deadline: 'Today',
-        primaryKeyword: 'editorial craft',
+        deadline: '',
+        primaryKeyword: '',
         secondaryKeywords: [],
         importantFacts: [],
-        keyMessage: 'Clear factual communication with rhythmic precision.',
+        keyMessage: '',
         callToAction: '',
         referenceMaterial: '',
         authorNotes: '',
         aiInstructions: '',
         searchIntent: 'Informational',
-        thesisStatement: 'Draft with rigor, verified facts, and natural cadence.',
+        thesisStatement: '',
         outline: [],
         bodyContent: '',
-        targetWordCount: 600,
+        targetWordCount: 0,
         wordCount: 0,
         readingTimeMinutes: 1,
         status: 'Draft',
-        tags: ['General'],
+        tags: [],
         updatedAt: new Date().toISOString(),
       }
     );
   }, [project]);
 
+  useEffect(() => {
+    if (project.documents.length === 0) {
+      onUpdateProject({
+        ...project,
+        documents: [activeDoc],
+        activeDocumentId: activeDoc.id,
+      });
+    }
+  }, [project, activeDoc, onUpdateProject]);
+
   // Tab Navigation
   const [activeTab, setActiveTab] = useState<'editor' | 'outline' | 'strategy' | 'tone' | 'newsroom' | 'ad_desk'>('editor');
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiMessage, setAiMessage] = useState<string | null>(null);
+  const [aiRequestError, setAiRequestError] = useState<string | null>(null);
+  const [alternativeReview, setAlternativeReview] = useState<{ target: ResolvedAITarget; choices: string[] } | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [autosaveStatus, setAutosaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
 
@@ -138,6 +150,13 @@ export const ContentStudioView: React.FC<ContentStudioViewProps> = ({
   // Undo/Redo history stack
   const [history, setHistory] = useState<string[]>([activeDoc.bodyContent || '']);
   const [historyIndex, setHistoryIndex] = useState(0);
+
+  useEffect(() => {
+    setHistory([activeDoc.bodyContent || '']);
+    setHistoryIndex(0);
+    setSelectionRange({ start: 0, end: 0 });
+    setSelectedText('');
+  }, [activeDoc.id]);
 
   // Update active document helper
   const handleUpdateActiveDoc = useCallback(
@@ -307,6 +326,7 @@ export const ContentStudioView: React.FC<ContentStudioViewProps> = ({
     }
 
     setIsGenerating(true);
+    setAiRequestError(null);
     setAiMessage(`AI Writing Engine: Processing "${actionKey.replace(/_/g, ' ')}" on ${resolvedTarget.scope}...`);
 
     try {
@@ -324,21 +344,32 @@ export const ContentStudioView: React.FC<ContentStudioViewProps> = ({
             targetAudience: activeDoc.targetAudience,
             publicationOrPlatform: activeDoc.publicationOrPlatform,
             desiredLength: activeDoc.desiredLength,
+            targetWordCount: activeDoc.targetWordCount,
+            tone: activeDoc.tone,
+            language: activeDoc.language,
+            deadline: activeDoc.deadline,
+            primaryKeyword: activeDoc.primaryKeyword,
+            secondaryKeywords: activeDoc.secondaryKeywords,
             importantFacts: activeDoc.importantFacts,
             keyMessage: activeDoc.keyMessage,
             callToAction: activeDoc.callToAction,
+            referenceMaterial: activeDoc.referenceMaterial,
+            authorNotes: activeDoc.authorNotes,
             aiInstructions: activeDoc.aiInstructions,
+            thesisStatement: activeDoc.thesisStatement,
           },
           targetText: resolvedTarget.targetText,
           selectedText: resolvedTarget.scope === 'selection' ? resolvedTarget.targetText : undefined,
           currentText: resolvedTarget.targetText,
-          fullText: fullText,
           scope: resolvedTarget.scope,
           sectionTitle: resolvedTarget.sectionTitle,
-          precedingContext: resolvedTarget.precedingContext,
-          followingContext: resolvedTarget.followingContext,
+          contentTypeInstructions: activeDoc.contentTypeInstructions,
           newsroomData: activeDoc.newsroom,
           adSpecData: activeDoc.adSpec,
+          pressReleaseData: activeDoc.pressRelease,
+          socialMediaData: activeDoc.socialMedia,
+          schoolNoticeData: activeDoc.schoolNotice,
+          attachedResearch: activeDoc.referenceMaterial,
           voiceProfile: activeDoc.authorVoice,
           preserveVoice: activeDoc.authorVoice?.preserveVoiceEnabled ?? true,
           toneConfig: activeDoc.toneConfig,
@@ -374,11 +405,21 @@ export const ContentStudioView: React.FC<ContentStudioViewProps> = ({
           const generated = data.result.trim();
 
           // Apply based on action and target scope
-          if (actionKey === 'generate_full_draft' || actionKey === 'generate_alternative_draft') {
+          if (actionKey === 'generate_alternatives') {
+            const choices = generated
+              .split(/(?=^\s*(?:\d+[.)]|Option\s+[A-Z][:.)])\s*)/m)
+              .map((choice: string) => choice.replace(/^\s*(?:\d+[.)]|Option\s+[A-Z][:.)])\s*/, '').trim())
+              .filter(Boolean);
+            setAlternativeReview({ target: resolvedTarget, choices: choices.length ? choices : [generated] });
+          } else if (actionKey === 'generate_full_draft' || actionKey === 'generate_alternative_draft') {
             handleBodyChange(generated);
           } else if (actionKey === 'continue' || actionKey === 'write_next_paragraph') {
-            const separator = fullText.trim() ? '\n\n' : '';
-            handleBodyChange(`${fullText.trim()}${separator}${generated}`);
+            const insertionPoint = resolvedTarget.end;
+            const before = fullText.slice(0, insertionPoint);
+            const after = fullText.slice(insertionPoint);
+            const prefix = before && !before.endsWith('\n\n') ? '\n\n' : '';
+            const suffix = after && !after.startsWith('\n\n') ? '\n\n' : '';
+            handleBodyChange(`${before}${prefix}${generated}${suffix}${after}`);
           } else if (actionKey.startsWith('newsroom_lead')) {
             handleUpdateActiveDoc({
               newsroom: {
@@ -419,15 +460,21 @@ export const ContentStudioView: React.FC<ContentStudioViewProps> = ({
             // Document scope replacement
             handleBodyChange(generated);
           }
+        } else {
+          const errorMsg = data.error || 'The provider returned no usable result.';
+          setAiRequestError(errorMsg);
+          showToast(`AI generation failed: ${errorMsg}`);
         }
       } else {
         const errData = await res.json().catch(() => ({}));
         const errorMsg = errData.error || `Server responded with HTTP ${res.status}`;
+        setAiRequestError(errorMsg);
         console.error("[ContentAI] Gemini generation failed:", errorMsg);
         showToast(`AI generation failed: ${errorMsg}`);
       }
     } catch (err: any) {
       const errorMsg = err?.message || 'Network error communicating with AI server';
+      setAiRequestError(errorMsg);
       console.error("[ContentAI] Gemini generation failed:", errorMsg);
       showToast(`AI generation failed: ${errorMsg}`);
     } finally {
@@ -468,13 +515,27 @@ export const ContentStudioView: React.FC<ContentStudioViewProps> = ({
               targetAudience: newDoc.targetAudience,
               publicationOrPlatform: newDoc.publicationOrPlatform,
               desiredLength: newDoc.desiredLength,
+              targetWordCount: newDoc.targetWordCount,
+              tone: newDoc.tone,
+              language: newDoc.language,
+              deadline: newDoc.deadline,
+              primaryKeyword: newDoc.primaryKeyword,
+              secondaryKeywords: newDoc.secondaryKeywords,
               importantFacts: newDoc.importantFacts,
               keyMessage: newDoc.keyMessage,
               callToAction: newDoc.callToAction,
+              referenceMaterial: newDoc.referenceMaterial,
+              authorNotes: newDoc.authorNotes,
               aiInstructions: newDoc.aiInstructions,
+              thesisStatement: newDoc.thesisStatement,
             },
             newsroomData: newDoc.newsroom,
             adSpecData: newDoc.adSpec,
+            pressReleaseData: newDoc.pressRelease,
+            socialMediaData: newDoc.socialMedia,
+            schoolNoticeData: newDoc.schoolNotice,
+            contentTypeInstructions: newDoc.contentTypeInstructions,
+            attachedResearch: newDoc.referenceMaterial,
             voiceProfile: newDoc.authorVoice,
             preserveVoice: newDoc.authorVoice?.preserveVoiceEnabled ?? true,
             toneConfig: newDoc.toneConfig,
@@ -816,6 +877,12 @@ export const ContentStudioView: React.FC<ContentStudioViewProps> = ({
           {/* TAB 1: DRAFT CANVAS */}
           {activeTab === 'editor' && (
             <div className="flex-1 flex flex-col overflow-hidden">
+              {aiRequestError && (
+                <div role="alert" className="mx-4 mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-800 dark:text-red-200 text-xs flex items-start justify-between gap-3">
+                  <span><strong>Gemini request failed:</strong> {aiRequestError}</span>
+                  <button type="button" onClick={() => setAiRequestError(null)} aria-label="Dismiss provider error" className="shrink-0 font-bold">×</button>
+                </div>
+              )}
               {/* Professional Writing Toolbar */}
               <WritingToolbar
                 wordCount={activeDoc.wordCount}
@@ -1156,9 +1223,9 @@ export const ContentStudioView: React.FC<ContentStudioViewProps> = ({
                     onClick={() => {
                       const newSec: ContentOutlineSection = {
                         id: `sec-${Date.now()}`,
-                        title: `Section ${activeDoc.outline.length + 1}: Key Dimension`,
-                        keyPoints: ['Supporting evidence and analysis'],
-                        estimatedWords: 350,
+                        title: `Section ${activeDoc.outline.length + 1}`,
+                        keyPoints: [],
+                        estimatedWords: 0,
                       };
                       handleUpdateActiveDoc({ outline: [...activeDoc.outline, newSec] });
                     }}
@@ -1187,6 +1254,20 @@ export const ContentStudioView: React.FC<ContentStudioViewProps> = ({
                           }}
                           className="font-serif font-bold text-sm text-[#35101F] dark:text-[#F6F0E7] bg-transparent outline-none flex-1"
                         />
+                        <label className="flex items-center gap-1 text-[10px] text-[#71685E]">
+                          <span>Words</span>
+                          <input
+                            type="number"
+                            min={0}
+                            value={sec.estimatedWords}
+                            onChange={(e) => handleUpdateActiveDoc({
+                              outline: activeDoc.outline.map((section) => section.id === sec.id
+                                ? { ...section, estimatedWords: Number(e.target.value) || 0 }
+                                : section),
+                            })}
+                            className="w-16 p-1 rounded bg-[#EDE4D6] dark:bg-[#1a0812] border border-[#CBBEAC] text-xs"
+                          />
+                        </label>
                         <button
                           onClick={() => {
                             handleUpdateActiveDoc({
@@ -1216,8 +1297,29 @@ export const ContentStudioView: React.FC<ContentStudioViewProps> = ({
                               }}
                               className="flex-1 bg-transparent border-b border-transparent hover:border-[#CBBEAC] focus:border-[#5A1832] outline-none text-[#292521] dark:text-[#F6F0E7]"
                             />
+                            <button
+                              type="button"
+                              aria-label="Remove key point"
+                              onClick={() => handleUpdateActiveDoc({
+                                outline: activeDoc.outline.map((section) => section.id === sec.id
+                                  ? { ...section, keyPoints: section.keyPoints.filter((_, index) => index !== pIdx) }
+                                  : section),
+                              })}
+                              className="text-[#71685E] hover:text-rose-600"
+                            >×</button>
                           </div>
                         ))}
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateActiveDoc({
+                            outline: activeDoc.outline.map((section) => section.id === sec.id
+                              ? { ...section, keyPoints: [...section.keyPoints, ''] }
+                              : section),
+                          })}
+                          className="text-[11px] font-medium text-[#5A1832] dark:text-[#C29A52] hover:underline"
+                        >
+                          Add key point
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -1259,6 +1361,53 @@ export const ContentStudioView: React.FC<ContentStudioViewProps> = ({
                       className="w-full p-2.5 rounded-xl bg-[#EDE4D6] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] outline-none"
                     />
                   </div>
+
+                  <div>
+                    <label className="block text-[11px] font-mono font-bold uppercase tracking-wider text-[#9A7438] dark:text-[#C29A52] mb-1">
+                      Secondary Keywords
+                    </label>
+                    <textarea
+                      value={activeDoc.secondaryKeywords.join(', ')}
+                      onChange={(e) => handleUpdateActiveDoc({
+                        secondaryKeywords: e.target.value.split(',').map((keyword) => keyword.trim()).filter(Boolean),
+                      })}
+                      rows={2}
+                      placeholder="Separate keywords with commas"
+                      className="w-full p-2.5 rounded-xl bg-[#EDE4D6] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] outline-none resize-y"
+                    />
+                  </div>
+
+                  <label className="block">
+                    <span className="block text-[11px] font-mono font-bold uppercase tracking-wider text-[#9A7438] dark:text-[#C29A52] mb-1">Search Intent</span>
+                    <select
+                      value={activeDoc.searchIntent}
+                      onChange={(e) => handleUpdateActiveDoc({ searchIntent: e.target.value as ContentDocument['searchIntent'] })}
+                      className="w-full p-2.5 rounded-xl bg-[#EDE4D6] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] outline-none"
+                    >
+                      <option>Informational</option>
+                      <option>Commercial</option>
+                      <option>Educational</option>
+                      <option>Inspirational</option>
+                    </select>
+                  </label>
+
+                  <label className="block">
+                    <span className="block text-[11px] font-mono font-bold uppercase tracking-wider text-[#9A7438] dark:text-[#C29A52] mb-1">Target Audience</span>
+                    <input
+                      value={activeDoc.targetAudience}
+                      onChange={(e) => handleUpdateActiveDoc({ targetAudience: e.target.value })}
+                      className="w-full p-2.5 rounded-xl bg-[#EDE4D6] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] outline-none"
+                    />
+                  </label>
+
+                  <label className="block md:col-span-2">
+                    <span className="block text-[11px] font-mono font-bold uppercase tracking-wider text-[#9A7438] dark:text-[#C29A52] mb-1">Editorial Tone</span>
+                    <input
+                      value={activeDoc.tone}
+                      onChange={(e) => handleUpdateActiveDoc({ tone: e.target.value })}
+                      className="w-full p-2.5 rounded-xl bg-[#EDE4D6] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] outline-none"
+                    />
+                  </label>
 
                   <div>
                     <label className="block text-[11px] font-mono font-bold uppercase tracking-wider text-[#9A7438] dark:text-[#C29A52] mb-1">
@@ -1340,6 +1489,7 @@ export const ContentStudioView: React.FC<ContentStudioViewProps> = ({
           isOpen={showHumaniseModal}
           onClose={() => setShowHumaniseModal(false)}
           fullDocumentText={activeDoc.bodyContent || ''}
+          document={activeDoc}
           selectionStart={textareaRef.current ? textareaRef.current.selectionStart : selectionRange.start}
           selectionEnd={textareaRef.current ? textareaRef.current.selectionEnd : selectionRange.end}
           outline={activeDoc.outline}
@@ -1378,6 +1528,7 @@ export const ContentStudioView: React.FC<ContentStudioViewProps> = ({
           currentHeadline={activeDoc.title}
           contentType={activeDoc.contentType}
           topic={activeDoc.topic || activeDoc.title}
+          document={activeDoc}
           savedHeadlines={activeDoc.savedHeadlines || []}
           onApplyHeadline={(newHeadline) => handleUpdateActiveDoc({ title: newHeadline })}
           onSaveHeadlines={(saved) => handleUpdateActiveDoc({ savedHeadlines: saved })}
@@ -1393,6 +1544,37 @@ export const ContentStudioView: React.FC<ContentStudioViewProps> = ({
           document={activeDoc}
           isDarkMode={isDarkMode}
         />
+      )}
+
+      {alternativeReview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" role="dialog" aria-modal="true" aria-labelledby="alternative-review-title">
+          <div className="w-full max-w-3xl max-h-[85vh] overflow-y-auto bg-[#F6F0E7] dark:bg-[#1a0812] border border-[#CBBEAC] dark:border-[#4d1e2e] rounded-xl p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 id="alternative-review-title" className="font-serif text-lg font-bold text-[#35101F] dark:text-[#F6F0E7]">Generated Alternatives</h2>
+              <button type="button" onClick={() => setAlternativeReview(null)} aria-label="Close alternatives" className="p-2 hover:bg-[#EDE4D6] dark:hover:bg-[#2b101c] rounded-lg">×</button>
+            </div>
+            {alternativeReview.choices.map((choice, index) => (
+              <article key={`${index}-${choice.slice(0, 24)}`} className="p-4 border border-[#CBBEAC] dark:border-[#4d1e2e] rounded-lg space-y-3">
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-[#292521] dark:text-[#F6F0E7]">{choice}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const fullText = activeDoc.bodyContent || '';
+                    const target = alternativeReview.target;
+                    const updated = target.scope === 'document'
+                      ? choice
+                      : fullText.slice(0, target.start) + choice + fullText.slice(target.end);
+                    handleBodyChange(updated);
+                    setAlternativeReview(null);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-[#5A1832] text-[#F6F0E7] text-xs font-semibold"
+                >
+                  Apply alternative {index + 1}
+                </button>
+              </article>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Floating Notification Toast */}

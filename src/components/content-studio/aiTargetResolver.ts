@@ -30,9 +30,9 @@ export function resolveAITarget(
   if (scope === 'selection') {
     const start = Math.min(selectionStart, selectionEnd);
     const end = Math.max(selectionStart, selectionEnd);
-    const targetText = text.slice(start, end).trim();
+    const targetText = text.slice(start, end);
 
-    if (!targetText || start === end) {
+    if (!targetText.trim() || start === end) {
       return {
         scope: 'selection',
         targetText: '',
@@ -71,40 +71,40 @@ export function resolveAITarget(
     }
 
     const caret = Math.min(selectionStart, text.length);
-
-    // Look backward for \n\n (or beginning of string)
+    const separators = [...text.matchAll(/\n[ \t]*\n+/g)];
     let paraStart = 0;
-    const lastDoubleNewlineBefore = text.lastIndexOf('\n\n', caret - 1);
-    if (lastDoubleNewlineBefore !== -1) {
-      paraStart = lastDoubleNewlineBefore + 2;
-    } else {
-      paraStart = 0;
-    }
-
-    // Look forward for \n\n (or end of string)
     let paraEnd = text.length;
-    const nextDoubleNewlineAfter = text.indexOf('\n\n', caret);
-    if (nextDoubleNewlineAfter !== -1) {
-      paraEnd = nextDoubleNewlineAfter;
-    } else {
-      paraEnd = text.length;
+    let previousSeparatorEnd = 0;
+    let foundParagraph = false;
+    let insideSeparator = false;
+
+    for (const separator of separators) {
+      const separatorStart = separator.index ?? 0;
+      const separatorEnd = separatorStart + separator[0].length;
+      if (caret <= separatorStart) {
+        paraStart = previousSeparatorEnd;
+        paraEnd = separatorStart;
+        foundParagraph = true;
+        break;
+      }
+      if (caret < separatorEnd) {
+        insideSeparator = true;
+        break;
+      }
+      previousSeparatorEnd = separatorEnd;
     }
 
-    // If caret was on a single newline, adjust
-    let targetText = text.slice(paraStart, paraEnd).trim();
-    if (!targetText) {
-      const lineStart = text.lastIndexOf('\n', caret - 1);
-      const lineEnd = text.indexOf('\n', caret);
-      const s = lineStart === -1 ? 0 : lineStart + 1;
-      const e = lineEnd === -1 ? text.length : lineEnd;
-      targetText = text.slice(s, e).trim();
-      if (targetText) {
-        paraStart = s;
-        paraEnd = e;
+    if (!foundParagraph && !insideSeparator && previousSeparatorEnd <= caret) {
+      const nextSeparator = separators.find((separator) => (separator.index ?? 0) >= caret);
+      if (!nextSeparator || caret >= (nextSeparator.index ?? 0) + nextSeparator[0].length) {
+        paraStart = previousSeparatorEnd;
+        paraEnd = nextSeparator?.index ?? text.length;
+        foundParagraph = true;
       }
     }
 
-    if (!targetText) {
+    const targetText = foundParagraph ? text.slice(paraStart, paraEnd) : '';
+    if (!targetText.trim()) {
       return {
         scope: 'paragraph',
         targetText: '',
@@ -142,13 +142,13 @@ export function resolveAITarget(
       };
     }
 
-    // Find all markdown section headers in the text: lines starting with #, ##, or ###
-    const headerRegex = /^(#{1,3}\s+.+)$/gm;
-    const matches: Array<{ title: string; index: number; length: number }> = [];
+    const headerRegex = /^(#{1,6})\s+(.+)$/gm;
+    const matches: Array<{ title: string; level: number; index: number; length: number }> = [];
     let match;
     while ((match = headerRegex.exec(text)) !== null) {
       matches.push({
-        title: match[1].replace(/^#{1,3}\s+/, '').trim(),
+        title: match[2].trim(),
+        level: match[1].length,
         index: match.index,
         length: match[0].length,
       });
@@ -163,7 +163,7 @@ export function resolveAITarget(
         precedingContext: '',
         followingContext: '',
         isValid: false,
-        validationMessage: 'No section header (# or ##) found in this document. Add a heading to define sections.',
+        validationMessage: 'No section heading found in this document. Add a heading to define sections.',
       };
     }
 
@@ -180,22 +180,45 @@ export function resolveAITarget(
     }
 
     if (activeHeaderIndex === -1) {
-      activeHeaderIndex = 0;
+      return {
+        scope: 'section',
+        targetText: '',
+        start: 0,
+        end: 0,
+        precedingContext: '',
+        followingContext: '',
+        isValid: false,
+        validationMessage: 'Place the cursor inside a headed section before using section scope.',
+      };
     }
 
     const currentHeader = matches[activeHeaderIndex];
-    const nextHeader = matches[activeHeaderIndex + 1];
+    const nextHeader = matches.slice(activeHeaderIndex + 1).find((heading) => heading.level <= currentHeader.level);
 
     // Section body starts right after the header line
     const headerEndIndex = currentHeader.index + currentHeader.length;
     const bodyStart = text[headerEndIndex] === '\n' ? headerEndIndex + 1 : headerEndIndex;
     const bodyEnd = nextHeader ? nextHeader.index : text.length;
 
-    const targetText = text.slice(bodyStart, bodyEnd).trim();
+    const targetText = text.slice(bodyStart, bodyEnd);
+
+    if (!targetText.trim()) {
+      return {
+        scope: 'section',
+        targetText: '',
+        start: bodyStart,
+        end: bodyEnd,
+        sectionTitle: currentHeader.title,
+        precedingContext: text.slice(Math.max(0, currentHeader.index - 500), currentHeader.index),
+        followingContext: text.slice(bodyEnd, Math.min(text.length, bodyEnd + 500)),
+        isValid: false,
+        validationMessage: `The section "${currentHeader.title}" is empty. Add text before using this scope.`,
+      };
+    }
 
     return {
       scope: 'section',
-      targetText: targetText || `[Empty section under "${currentHeader.title}"]`,
+      targetText,
       start: bodyStart,
       end: bodyEnd,
       sectionTitle: currentHeader.title,
@@ -208,7 +231,7 @@ export function resolveAITarget(
   // Document scope
   return {
     scope: 'document',
-    targetText: text.trim(),
+    targetText: text,
     start: 0,
     end: text.length,
     precedingContext: '',

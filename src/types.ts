@@ -412,6 +412,7 @@ export interface ContentDocument {
   pressRelease?: PressReleaseComponents;
   socialMedia?: SocialMediaComponents;
   schoolNotice?: SchoolNoticeComponents;
+  contentTypeInstructions?: Record<string, string>;
   toneConfig?: ContentToneConfig;
   authorVoice?: ContentAuthorVoiceProfile;
   savedHeadlines?: HeadlineAlternativeItem[];
@@ -435,6 +436,12 @@ export interface ContentWritingProject {
   editorialGuidelines: string;
   documents: ContentDocument[];
   activeDocumentId: string;
+  researchNotes?: ResearchNote[];
+  // Research Workbench extended entities
+  researchSources?: ResearchSource[];
+  researchClaims?: ResearchClaim[];
+  researchPeople?: ResearchPerson[];
+  researchQuotes?: ResearchQuote[];
 }
 
 // ==========================================
@@ -577,6 +584,116 @@ export interface NovelProject {
   characterRelationships?: CharacterRelationship[];
   queryPitch?: QueryLetterData;
   researchNotes?: ResearchNote[];
+  // Research Workbench extended entities
+  researchSources?: ResearchSource[];
+  researchClaims?: ResearchClaim[];
+  researchPeople?: ResearchPerson[];
+  researchQuotes?: ResearchQuote[];
+}
+
+// ==========================================
+// RESEARCH WORKBENCH — Extended Research Entities
+// ==========================================
+
+export type ResearchSourceType =
+  | 'Government'
+  | 'Official document'
+  | 'Newspaper'
+  | 'Magazine'
+  | 'Journal'
+  | 'Academic paper'
+  | 'Book'
+  | 'Website'
+  | 'Interview'
+  | 'Press release'
+  | 'Company source'
+  | 'Social media'
+  | 'Database'
+  | 'Other';
+
+export type ResearchReliability = 'High' | 'Medium' | 'Low' | 'Unrated';
+
+export interface ResearchSource {
+  id: string;
+  title: string;
+  author?: string;
+  organisation?: string;
+  publication?: string;
+  publicationDate?: string;
+  url?: string;
+  sourceType: ResearchSourceType;
+  primaryOrSecondary?: 'Primary' | 'Secondary' | 'Unclassified';
+  reliability: ResearchReliability;
+  accessDate?: string;
+  description?: string;
+  notes?: string;
+  tags: string[];
+  isBookmarked?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ResearchClaimStatus =
+  | 'Unverified'
+  | 'Needs verification'
+  | 'Verified'
+  | 'Contradicted'
+  | 'Outdated';
+
+export type ResearchClaimConfidence = 'High' | 'Medium' | 'Low';
+
+export interface ResearchClaim {
+  id: string;
+  text: string;
+  status: ResearchClaimStatus;
+  confidence: ResearchClaimConfidence;
+  sourceIds: string[];
+  notes?: string;
+  lastChecked?: string;
+  reviewer?: string;
+  linkedContentDocIds?: string[];
+  tags: string[];
+  isBookmarked?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ResearchPerson {
+  id: string;
+  name: string;
+  role?: string;
+  organisation?: string;
+  location?: string;
+  bio?: string;
+  sourceIds: string[];
+  quoteIds: string[];
+  relatedClaimIds: string[];
+  linkedContentDocIds?: string[];
+  tags: string[];
+  isBookmarked?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ResearchQuoteVerification = 'Unverified' | 'Verified' | 'Disputed';
+
+export interface ResearchQuote {
+  id: string;
+  text: string;
+  speaker: string;
+  speakerRole?: string;
+  organisation?: string;
+  date?: string;
+  sourceId?: string;
+  url?: string;
+  context?: string;
+  notes?: string;
+  verificationStatus: ResearchQuoteVerification;
+  linkedContentDocIds?: string[];
+  tags: string[];
+  isBookmarked?: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ResearchNote {

@@ -18,7 +18,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { LiveVoiceModal } from './components/LiveVoiceModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
-import { NovelProject, Chapter, Scene, Character, PlotBeat, BookCoverDesign, TeamMember, StylePersona, CodexEntry, TimelineEvent, CharacterRelationship, QueryLetterData, ResearchNote, VersionSnapshot } from './types';
+import { NovelProject, Chapter, Scene, Character, PlotBeat, BookCoverDesign, TeamMember, StylePersona, CodexEntry, TimelineEvent, CharacterRelationship, QueryLetterData, ResearchNote, ResearchSource, ResearchClaim, ResearchPerson, ResearchQuote, VersionSnapshot } from './types';
 import { loadProjectFromLocalStorage, saveProjectToLocalStorage, syncProjectToCloud } from './utils/storage';
 import { getInitialNovelProject } from './utils/initialData';
 import { CodexView } from './components/CodexView';
@@ -210,7 +210,13 @@ export default function App() {
     const saved = localStorage.getItem('veritas_content_project_v1');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved) as ContentWritingProject;
+        const starterDocumentIds = new Set(['doc-news-1', 'doc-ad-1', 'doc-notice-1', 'doc-essay-1']);
+        const documents = (parsed.documents || []).filter((document) => !starterDocumentIds.has(document.id));
+        const activeDocumentId = documents.some((document) => document.id === parsed.activeDocumentId)
+          ? parsed.activeDocumentId
+          : documents[0]?.id || '';
+        return { ...parsed, documents, activeDocumentId, researchNotes: parsed.researchNotes || [] };
       } catch (e) {
         console.error('Failed to parse saved content project', e);
       }
@@ -274,11 +280,7 @@ export default function App() {
       return 'analytics';
     }
     if (tab === 'research') {
-      // Shared research archive: preserve current active studio
-      if (activeStudioWorkspace === 'content' || activeStudioWorkspace === 'academic' || activeStudioWorkspace === 'film') {
-        return activeStudioWorkspace;
-      }
-      return 'novel';
+      return 'content';
     }
     if (['manuscript', 'characters', 'world', 'codex', 'dialogue', 'thesaurus', 'timeline', 'scenes'].includes(tab)) {
       return 'novel';
@@ -304,6 +306,8 @@ export default function App() {
       setActiveStudioWorkspace('home');
     } else if (currentTab === 'library') {
       setActiveStudioWorkspace('library');
+    } else if (currentTab === 'research') {
+      setActiveStudioWorkspace('content');
     }
   }, [currentTab]);
 
@@ -1017,8 +1021,41 @@ const handleRestoreSnapshot = (snapshotId: string) => {
               contentProject={contentProject}
               activeWorkspace={getActiveWorkspace(currentTab)}
               onUpdateResearchNotes={(notes: ResearchNote[]) => {
-                setProject((prev) => ({ ...prev, researchNotes: notes }));
-                addAuditLog('RESEARCH_UPDATED', `Updated research notebook (${notes.length} notes)`);
+                if (getActiveWorkspace(currentTab) === 'content') {
+                  setContentProject((prev) => ({ ...prev, researchNotes: notes }));
+                  addAuditLog('RESEARCH_UPDATED', `Updated Content Research Archive (${notes.length} notes)`);
+                } else {
+                  setProject((prev) => ({ ...prev, researchNotes: notes }));
+                  addAuditLog('RESEARCH_UPDATED', `Updated Novel Research Archive (${notes.length} notes)`);
+                }
+              }}
+              onUpdateResearchSources={(sources: ResearchSource[]) => {
+                if (getActiveWorkspace(currentTab) === 'content') {
+                  setContentProject((prev) => ({ ...prev, researchSources: sources }));
+                } else {
+                  setProject((prev) => ({ ...prev, researchSources: sources }));
+                }
+              }}
+              onUpdateResearchClaims={(claims: ResearchClaim[]) => {
+                if (getActiveWorkspace(currentTab) === 'content') {
+                  setContentProject((prev) => ({ ...prev, researchClaims: claims }));
+                } else {
+                  setProject((prev) => ({ ...prev, researchClaims: claims }));
+                }
+              }}
+              onUpdateResearchPeople={(people: ResearchPerson[]) => {
+                if (getActiveWorkspace(currentTab) === 'content') {
+                  setContentProject((prev) => ({ ...prev, researchPeople: people }));
+                } else {
+                  setProject((prev) => ({ ...prev, researchPeople: people }));
+                }
+              }}
+              onUpdateResearchQuotes={(quotes: ResearchQuote[]) => {
+                if (getActiveWorkspace(currentTab) === 'content') {
+                  setContentProject((prev) => ({ ...prev, researchQuotes: quotes }));
+                } else {
+                  setProject((prev) => ({ ...prev, researchQuotes: quotes }));
+                }
               }}
               isDarkMode={isDarkMode}
               onNavigateToScene={(chapId, scId) => {

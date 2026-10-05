@@ -32,6 +32,13 @@ export const ContentExportModal: React.FC<ContentExportModalProps> = ({
   if (!isOpen) return null;
 
   const generateExportText = () => {
+    const escapeHtml = (value: string) => value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
     switch (format) {
       case 'markdown':
         return `# ${document.title}
@@ -62,7 +69,7 @@ ${document.callToAction ? `CALL TO ACTION: ${document.callToAction}` : ''}`;
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>${document.title}</title>
+  <title>${escapeHtml(document.title)}</title>
   <style>
     body { font-family: Georgia, serif; line-height: 1.7; max-width: 720px; margin: 40px auto; color: #111; }
     h1 { font-size: 2rem; margin-bottom: 0.25rem; }
@@ -71,34 +78,34 @@ ${document.callToAction ? `CALL TO ACTION: ${document.callToAction}` : ''}`;
   </style>
 </head>
 <body>
-  <h1>${document.title}</h1>
-  <p class="subtitle">${document.subtitle}</p>
+  <h1>${escapeHtml(document.title)}</h1>
+  <p class="subtitle">${escapeHtml(document.subtitle)}</p>
   <div class="content">
-    ${document.bodyContent.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br/>')}
+    ${escapeHtml(document.bodyContent).replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br/>')}
   </div>
-  ${document.callToAction ? `<div class="cta">${document.callToAction}</div>` : ''}
+  ${document.callToAction ? `<div class="cta">${escapeHtml(document.callToAction)}</div>` : ''}
 </body>
 </html>`;
 
       case 'wire':
         const nr = document.newsroom;
         return `[VERITAS WIRE SERVICE — PRESS TRANSMISSION]
-SLUG: ${nr?.slug || 'METRO-NEWS-REPORT'}
-SECTION: ${nr?.section || 'General'}
-DESK: ${nr?.desk || 'Metro'}
-DATELINE: ${nr?.dateline || 'LONDON —'}
-BYLINE: ${nr?.byline || 'By Staff Reporter'}
+SLUG: ${nr?.slug || ''}
+SECTION: ${nr?.section || ''}
+DESK: ${nr?.desk || ''}
+DATELINE: ${nr?.dateline || ''}
+BYLINE: ${nr?.byline || ''}
 WORD TARGET: ${nr?.wordTarget || document.wordCount} | ACTUAL: ${document.wordCount} words
-DEADLINE: ${nr?.deadline || 'IMMEDIATE'}
-STATUS: ${nr?.status || 'VERIFIED'}
+DEADLINE: ${nr?.deadline || ''}
+STATUS: ${nr?.status || document.status}
 
 ------------------------------------------------------------
 5W1H BRIEF:
-WHO: ${nr?.who || 'Official Authorities'}
-WHAT: ${nr?.what || document.title}
-WHEN: ${nr?.when || 'Recent'}
-WHERE: ${nr?.where || 'Local'}
-WHY: ${nr?.why || 'Public Interest'}
+WHO: ${nr?.who || ''}
+WHAT: ${nr?.what || ''}
+WHEN: ${nr?.when || ''}
+WHERE: ${nr?.where || ''}
+WHY: ${nr?.why || ''}
 ------------------------------------------------------------
 
 ${document.title.toUpperCase()}
@@ -110,9 +117,9 @@ ${nr?.standfirst ? `[STANDFIRST: ${nr.standfirst}]\n\n` : ''}${document.bodyCont
         const ad = document.adSpec;
         return `[VERITAS ADVERTISING PRODUCTION SPECIFICATION]
 CLIENT / PRODUCT: ${ad?.productOrOrg || document.title}
-OBJECTIVE: ${ad?.campaignObjective || 'Customer Inquiry & Enrolment'}
+OBJECTIVE: ${ad?.campaignObjective || ''}
 DIMENSIONS: ${ad?.width} × ${ad?.height} ${ad?.unit} (${ad?.formatPreset.toUpperCase()})
-PUBLICATION: ${ad?.publication || 'Broadsheet Daily'}
+PUBLICATION: ${ad?.publication || ''}
 TARGET AUDIENCE: ${ad?.targetAudience || document.targetAudience}
 
 PRIMARY HEADLINE:

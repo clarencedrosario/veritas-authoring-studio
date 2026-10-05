@@ -66,17 +66,42 @@ const globalAuditLogs: Array<{
   details: string;
 }> = [];
 
-// Helper for Gemini AI client
-function getGenAI(): GoogleGenAI | null {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) return null;
-  return new GoogleGenAI({
-    apiKey: key,
-    httpOptions: {
-      headers: {
-        "User-Agent": "aistudio-build",
-      },
-    },
+// Helper for AI client — supports Gemini (paid) or any free OpenAI-compatible provider
+import { FreeAIProvider } from "./ai/free-ai";
+
+function getGenAI(): any {
+  const provider = (process.env.AI_PROVIDER || "groq").toLowerCase();
+
+  if (provider === "gemini") {
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) {
+      console.warn("[AI] AI_PROVIDER=gemini but GEMINI_API_KEY is missing.");
+      return null;
+    }
+    return new GoogleGenAI({
+      apiKey: key,
+      httpOptions: { headers: { "User-Agent": "aistudio-build" } },
+    });
+  }
+
+  if (provider === "ollama") {
+    return new FreeAIProvider({
+      baseUrl: process.env.OLLAMA_HOST || "http://localhost:11434/v1",
+      apiKey: "",
+      defaultModel: process.env.OLLAMA_MODEL || "llama3.2",
+    });
+  }
+
+  // Default: Groq (free cloud, fast)
+  const groqKey = process.env.GROQ_API_KEY;
+  if (!groqKey) {
+    console.warn("[AI] GROQ_API_KEY missing. Set it in .env or use AI_PROVIDER=gemini.");
+    return null;
+  }
+  return new FreeAIProvider({
+    baseUrl: "https://api.groq.com/openai/v1",
+    apiKey: groqKey,
+    defaultModel: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
   });
 }
 
@@ -468,8 +493,13 @@ app.post("/api/gemini/content-studio", async (req, res) => {
       currentText,
       newsroomData,
       adSpecData,
+      pressReleaseData,
+      socialMediaData,
+      schoolNoticeData,
+      contentTypeInstructions,
       humaniseStyle,
       humaniseScope,
+      humaniseControls,
       voiceProfile,
       preserveVoice,
       toneConfig,
@@ -495,12 +525,12 @@ app.post("/api/gemini/content-studio", async (req, res) => {
     }
 
     // Prepare text target
-    const targetText = (req.body.targetText && typeof req.body.targetText === 'string' && req.body.targetText.trim().length > 0)
-      ? req.body.targetText.trim()
-      : (selectedText && selectedText.trim().length > 0)
-        ? selectedText.trim()
-        : (currentText && currentText.trim().length > 0)
-          ? currentText.trim()
+    const targetText = (typeof req.body.targetText === 'string' && req.body.targetText.trim().length > 0)
+      ? req.body.targetText
+      : (typeof selectedText === 'string' && selectedText.trim().length > 0)
+        ? selectedText
+        : (typeof currentText === 'string' && currentText.trim().length > 0)
+          ? currentText
           : "";
 
     // Assemble factual guard rails
@@ -587,10 +617,43 @@ Tone: ${tone}`;
       ? `\nATTACHED SOURCE ARCHIVE & VERIFIED RESEARCH:\n"""\n${attachedResearch.trim()}\n"""\nIncorporate verified source facts accurately.\n`
       : '';
 
+    const specialtyBriefContext = [
+      ['Newsroom instructions', newsroomData],
+      ['Advertising specifications', adSpecData],
+      ['Press release details', pressReleaseData],
+      ['Social media instructions', socialMediaData],
+      ['Education and notice instructions', schoolNoticeData],
+      ['Content-type-specific instructions', contentTypeInstructions],
+    ]
+      .filter(([, value]) => value && Object.values(value).some((entry) => entry !== '' && entry != null))
+      .map(([label, value]) => `${label}:\n${JSON.stringify(value)}`)
+      .join('\n\n');
+
+    const completeBriefContext = `
+  AUTHOR BRIEF (preserve these constraints):
+  - Topic: ${brief?.topic || ''}
+  - Purpose: ${brief?.purpose || ''}
+  - Target audience: ${audience}
+  - Publication/platform: ${pub}
+  - Desired length: ${brief?.desiredLength || brief?.targetWordCount || ''} words
+  - Tone: ${tone}
+  - Language: ${brief?.language || ''}
+  - Deadline: ${brief?.deadline || ''}
+  - Primary keyword: ${brief?.primaryKeyword || ''}
+  - Secondary keywords: ${Array.isArray(brief?.secondaryKeywords) ? brief.secondaryKeywords.join(', ') : ''}
+  - Supplied facts: ${authorFacts}
+  - Key message: ${brief?.keyMessage || ''}
+  - Call to action: ${brief?.callToAction || ''}
+  - Author notes: ${brief?.authorNotes || ''}
+  - Additional instructions: ${brief?.aiInstructions || ''}
+  - Thesis/angle: ${brief?.thesisStatement || ''}
+  `;
+
     const systemInstruction = `
 ${typeSpecificDirective}
 ${researchContextBlock}
-Key Message: ${brief?.keyMessage || ''}
+  ${completeBriefContext}
+${specialtyBriefContext}
 ${factualIntegrityDirective}
 ${voiceDirective}
 `;
@@ -601,39 +664,26 @@ ${voiceDirective}
 
       switch (action) {
         case "generate_full_draft":
-          prompt = `Write a professional news article using the supplied facts.
-
-Topic:
-${brief?.topic || title || 'Annual Sports Day at Greenwood School'}
-
-Supplied Facts:
-${authorFacts ? authorFacts.split('; ').map((f: string) => `- ${f}`).join('\n') : '- Follow brief details'}
-
-Target Audience:
-${audience}
-
-Target:
-${brief?.desiredLength || targetWords} words
-
-Rules:
-Write a professional news article using the supplied facts.
-Do not invent quotations.
-Do not invent names.
-Do not invent statistics.
-Do not invent a chief guest.
-Do not invent winners or results.
-Return only the article.`;
+          prompt = `Create a complete ${contentType || 'content piece'} using the author brief and type-specific instructions in the system context. ${customInstruction ? `Additional direction: ${customInstruction}` : ''} Use only supplied facts and source material. Do not invent claims, names, dates, quotations, results, offers, contacts, or statistics. Mark missing essential information for author review rather than filling gaps. Return only the draft.`;
           break;
 
         case "continue":
-        case "write_next_paragraph":
-          prompt = `Continue writing seamlessly from the current manuscript. Maintain exact tone and voice continuity.
+          prompt = `Continue writing from the end of the scoped text. Return only the continuation, with no repetition of the existing text. Maintain exact tone and voice continuity.
 Title: "${title}".
-Preceding Content:
+Scoped Content:
 """
 ${targetText.slice(-1200)}
 """
-Author Instructions: ${customInstruction || 'Write the next two logical, engaging paragraphs advancing the piece.'}`;
+Author Instructions: ${customInstruction || 'Advance the piece with the next logical passage.'}`;
+          break;
+
+        case "write_next_paragraph":
+          prompt = `Write exactly one next paragraph that follows the scoped text. Return only that new paragraph, without repeating the existing text. Use only facts and source material supplied in the brief.
+Scoped Content:
+"""
+${targetText.slice(-1200)}
+"""
+Author Instructions: ${customInstruction || 'Continue the piece by one coherent paragraph.'}`;
           break;
 
         case "expand":
@@ -662,7 +712,8 @@ ${sectionTitle ? `Section: ${sectionTitle}` : ''}
 Text to tighten:
 """
 ${targetText}
-"""`;
+"""
+Author Directive: ${customInstruction || 'Keep the original meaning and all supplied facts.'}`;
           break;
 
         case "rewrite":
@@ -691,7 +742,8 @@ ${targetText}
 Text:
 """
 ${targetText}
-"""`;
+"""
+Author Directive: ${customInstruction || 'Preserve the intended meaning and all supplied facts.'}`;
           break;
 
         case "improve_flow":
@@ -703,7 +755,8 @@ ${sectionTitle ? `Section: ${sectionTitle}` : ''}
 Text:
 """
 ${targetText}
-"""`;
+"""
+Author Directive: ${customInstruction || 'Improve transitions without introducing new claims.'}`;
           break;
 
         case "change_tone":
@@ -719,7 +772,8 @@ ${targetText}
 Original:
 """
 ${targetText}
-"""`;
+"""
+Additional direction: ${customInstruction || 'Keep every alternative faithful to the source facts.'}`;
           break;
 
         case "generate_alternative_draft":
@@ -740,20 +794,22 @@ ${targetText}
           break;
 
         case "strengthen_opening":
-          prompt = `Rewrite and dramatically strengthen the opening of this piece to hook the audience immediately, establishing the stakes without clumsy throat-clearing.
+          prompt = `Rewrite the complete scoped passage, strengthening its opening to hook the audience immediately. Preserve the rest of the passage, all facts, and its overall length and structure unless a change is required for coherence.
 Current text:
 """
-${targetText.slice(0, 800)}
-"""`;
+${targetText}
+"""
+Author Directive: ${customInstruction || 'Keep all facts and improve only the opening.'}`;
           break;
 
         case "strengthen_ending":
-          prompt = `Formulate a compelling, resonant closing conclusion or call-to-action for this piece.
-Document context:
+          prompt = `Rewrite the complete scoped passage, strengthening its ending with a fitting conclusion or supplied call to action. Preserve the opening, all facts, and the passage's structure unless a change is required for coherence.
+Current text:
 """
-${targetText.slice(-800)}
+${targetText}
 """
-Call to action target: ${brief?.callToAction || 'Memorable final takeaway'}`;
+Call to action target: ${brief?.callToAction || ''}
+Author Directive: ${customInstruction || 'Keep all facts and improve only the ending.'}`;
           break;
 
         case "humanise":
@@ -762,7 +818,8 @@ You are not merely swapping synonyms. Improve the natural sentence rhythm, sente
 
 Humanise Style Preset: ${humaniseStyle || 'natural'}
 Humanise Scope: ${humaniseScope || 'selection'}
-Preserve without alteration: ALL facts, names, figures, quotations, dates, and the author's exact thesis and argument.
+Control settings (1 = low, 5 = high): ${JSON.stringify(humaniseControls || {})}
+Preserve meaning, facts, names, figures, quotations, dates, and thesis: ${humaniseControls?.preserveMeaning === false ? 'Follow the author-selected setting; do not claim strict preservation.' : 'Preserve all supplied facts, names, figures, quotations, dates, and the author’s thesis.'}
 
 Text to Humanise:
 """
@@ -803,14 +860,12 @@ Provide 5 distinct journalistic headlines ranging from straight-wire to narrativ
           prompt = `Craft an authoritative, punchy newsroom lead paragraph (the opening inverted-pyramid lead) answering the most critical 5W1H elements.
 Story details:
 Who: ${newsroomData?.who || 'Subject'}
-What: ${newsroomData?.what || title}
-When: ${newsroomData?.when || 'Recent'}
-Where: ${newsroomData?.where || 'Dateline location'}
+What: ${newsroomData?.what || ''}
+When: ${newsroomData?.when || ''}
+Where: ${newsroomData?.where || ''}
 Why/How: ${newsroomData?.why || ''}
 Current Draft Lead: "${newsroomData?.lead || targetText.slice(0, 250)}"
-Provide 2 alternative polished news leads:
-Option A: Direct Inverted-Pyramid Lead
-Option B: Analytical Impact Lead`;
+Use only supplied details. Mark missing critical facts with [Fact Needed]. Return one lead.`;
           break;
 
         case "newsroom_5w1h":
@@ -856,10 +911,11 @@ ${targetText}
         case "ad_headlines":
           prompt = `Generate 10 compelling advertising headlines for this campaign.
 Product / Organisation: ${adSpecData?.productOrOrg || title}
-Campaign Objective: ${adSpecData?.campaignObjective || 'Admissions & Inquiries'}
+Campaign Objective: ${adSpecData?.campaignObjective || ''}
 Main Benefit: ${adSpecData?.mainBenefit || ''}
 Offer: ${adSpecData?.offer || ''}
-Target Audience: ${adSpecData?.targetAudience || 'Prospective clients'}
+Target Audience: ${adSpecData?.targetAudience || ''}
+Use only supplied product facts and offers; do not invent claims or guarantees.
 Provide 10 numbered headlines spanning: Direct, Benefit-led, Emotional, Prestigious, Urgent, and Curiosity.`;
           break;
 
@@ -872,8 +928,8 @@ Core Essence: ${adSpecData?.mainBenefit || brief?.keyMessage || ''}`;
         case "ad_generate_variants":
           prompt = `Generate 3 distinct advertisement copy variants (Variant A, Variant B, Variant C) for side-by-side author evaluation.
 Organisation / Product: ${adSpecData?.productOrOrg || title}
-Objective: ${adSpecData?.campaignObjective || 'Inquiries'}
-Target Audience: ${adSpecData?.targetAudience || 'Parents / Consumers'}
+Objective: ${adSpecData?.campaignObjective || ''}
+Target Audience: ${adSpecData?.targetAudience || ''}
 Main Benefit: ${adSpecData?.mainBenefit || ''}
 Key Proof Points: ${adSpecData?.keySellingPoints?.join('; ') || ''}
 Offer: ${adSpecData?.offer || ''}
@@ -1046,450 +1102,6 @@ ${targetText}
   }
 });
 
-// Helper for server-side Content Studio fallback responses
-function generateContentStudioFallback(action: string, ctx: any) {
-  const { title, contentType, category, targetText, brief, newsroomData, adSpecData, humaniseStyle, headlineCategory, customInstruction } = ctx;
-  const docTitle = title || brief?.title || "Editorial Piece";
-
-  if (action === "ad_generate_variants") {
-    const org = adSpecData?.productOrOrg || docTitle;
-    return {
-      action,
-      data: {
-        variants: [
-          {
-            variantKey: "A",
-            headline: `Where 156 Years of Scholarship Inspires Tomorrow's Leaders`,
-            subheadline: `Admissions Open for Academic Year 2027–28`,
-            tagline: "Tradition. Intellect. Integrity.",
-            bodyCopy: `For more than a century and a half, ${org} has stood at the crossroads of academic rigor and character formation. In an accelerating world, we ground young scholars in enduring intellectual habits—fostering analytical clarity in the laboratory, eloquent expression in the humanities, and courage in civic life.\n\nWith a 1:9 faculty ratio, Olympic-grade athletics, and 98% first-choice university placement, we do not merely prepare students for examinations; we prepare them for a life of purpose.`,
-            keyBenefits: [
-              "156 years of continuous academic heritage and moral stewardship",
-              "1:9 faculty-to-student mentoring ratio",
-              "Means-tested bursaries and merit scholarships up to 100% of fees",
-            ],
-            callToAction: `Reserve your family's place at our Autumn Open Morning: Saturday, 17 October 2026. Register at stjudesacademy.org/admissions.`,
-          },
-          {
-            variantKey: "B",
-            headline: `Not Just an Education. A Foundation for Life.`,
-            subheadline: `Discover Distinction at our Autumn Open Morning — 17 October 2026`,
-            tagline: "Nurturing Curious Minds.",
-            bodyCopy: `Every child possesses an innate curiosity waiting to be kindled. At ${org}, our dedicated masters and mentors combine world-class scientific facilities with classical debate, orchestral performance, and competitive sport.\n\nFrom early years discovery to rigorous Sixth Form scholarship, our students learn to question thoughtfully, think independently, and act with unyielding integrity.`,
-            keyBenefits: [
-              "Dedicated tutorial mentoring with 1:9 teacher ratio",
-              "Award-winning STEM observatory and creative arts centre",
-              "Comprehensive pastoral care and character development",
-            ],
-            callToAction: `Admissions now open for 2027–28. Book your campus tour today at stjudesacademy.org.`,
-          },
-          {
-            variantKey: "C",
-            headline: `The Mind Disciplined. The Future Unlocked.`,
-            subheadline: `Scholarships & Admissions Open for Academic Year 2027–28`,
-            tagline: "Excellence without Compromise.",
-            bodyCopy: `When deep intellectual curiosity meets dedicated guidance, exceptional futures emerge. ${org} scholars achieve remarkable academic distinctions—yet our greatest pride remains their empathy, ethical resolve, and resilience.\n\nJoin our community of independent thinkers and tomorrow's pioneers.`,
-            keyBenefits: [
-              "Prestigious 156-year academic track record",
-              "Full range of academic, musical, and athletic scholarships",
-              "Central metropolitan campus with 14 acres of open grounds",
-            ],
-            callToAction: `Explore admissions and register for 17 October Open Day: stjudesacademy.org/visit`,
-          },
-        ],
-      },
-    };
-  }
-
-  if (action === "headline_lab_generate") {
-    const topic = docTitle;
-    return {
-      action,
-      data: {
-        headlines: [
-          { headline: `${topic}: A Landmark Investigation into Strategic Practice`, category: "Straight", score: 96 },
-          { headline: `Inside the Decision That Will Shape the Next Decade of Progress`, category: "Newspaper", score: 94 },
-          { headline: `Why Everything You Thought You Knew About ${topic} Is Changing`, category: "Curiosity", score: 92 },
-          { headline: `The Architect of Excellence: How Disciplined Leaders Win`, category: "Professional", score: 90 },
-          { headline: `The Human Heart of the Matter: Navigating the Stakes of Tomorrow`, category: "Emotional", score: 88 },
-          { headline: `Where Tradition Meets Innovation: Unlocking Lasting Distinction`, category: "Advertising", score: 91 },
-          { headline: `Essential Guide to ${topic}: Key Facts, Timelines and Evidence`, category: "SEO", score: 87 },
-          { headline: `The Quiet Revolution Reshaping ${topic} from Within`, category: "Magazine", score: 89 },
-        ],
-      },
-    };
-  }
-
-  if (action === "learn_author_voice_from_sample") {
-    return {
-      action,
-      data: {
-        profileName: "Analyzed Author Voice",
-        sentenceRhythm: "Varied cadence (alternates short assertions with compound clauses)",
-        vocabularyLevel: "Elevated, precise and nuanced without pedantry",
-        preferredParagraphLength: "Balanced (3–4 sentences per paragraph)",
-        degreeOfFormality: 4,
-        punctuationHabits: "Em-dashes for dramatic pauses, semicolons for balanced contrast",
-        narrativeDistance: "Close Objective / Direct Witness",
-        learnedCharacteristics: [
-          "Cadence: Alternates brisk assertions with reflective clauses",
-          "Tone: Authoritative, scholarly yet accessible",
-          "Punctuation: Uses em-dashes to frame cognitive shifts",
-        ],
-      },
-    };
-  }
-
-  if (action === "newsroom_headlines") {
-    return {
-      action,
-      result: `1. Council Approves Landmark Infrastructure Plan in Unanimous Bipartisan Vote
-2. £48.5M Transit Corridor Greenlit for Historic Metro District
-3. City Ratifies Riverfront Expansion: Groundbreaking Slated for Spring
-4. Historic Rail Returns: How Civic Leaders Reached Final Accord
-5. New Transit Link Bridges University District and Heritage Centre`,
-    };
-  }
-
-  if (action === "newsroom_lead") {
-    return {
-      action,
-      result: `${newsroomData?.dateline || "WESTMINSTER —"} The Metropolitan Council voted unanimously on Monday night to ratify the long-debated £48.5 million Riverfront Transit Extension, ending four years of legislative deadlock and paving the way for construction to break ground in early March.`,
-    };
-  }
-
-  if (action === "newsroom_standfirst") {
-    return {
-      action,
-      result: `Historic 11–0 vote ends four years of municipal hesitation as civil engineers commit to safeguarding 19th-century basalt wharves during 18-month rail laydown.`,
-    };
-  }
-
-  if (action === "newsroom_pullquote") {
-    return {
-      action,
-      result: `“Tonight’s vote proves that a city does not need to pave over its irreplaceable historic texture to deliver rapid, clean transit for the next century.”`,
-    };
-  }
-
-  if (action === "newsroom_condense") {
-    return {
-      action,
-      result: `${newsroomData?.dateline || "WESTMINSTER —"} City councillors voted 11–0 on Monday to fund the £48.5M riverfront light-rail line connecting Old Town to the university campus. Construction begins in March 2027 with completion slated for late 2027. Special vibration-dampening trays will preserve the historic 180-year-old river revetment wall.`,
-    };
-  }
-
-  if (action === "newsroom_5w1h") {
-    return {
-      action,
-      result: `### 5W1H Newsroom Audit & Fact Verification
-
-- **WHO:** ${newsroomData?.who || "Metropolitan Council and Transport Committee"}
-- **WHAT:** ${newsroomData?.what || docTitle || "Ratified £48.5M transit corridor"}
-- **WHEN:** ${newsroomData?.when || "Monday evening session; ground-breaking in March"}
-- **WHERE:** ${newsroomData?.where || "4.2km riverfront line from Old Town to Campus"}
-- **WHY:** ${newsroomData?.why || "Relieve chronic congestion and meet 2030 net-zero targets"}
-- **HOW:** ${newsroomData?.how || "Funded via 60% green bonds and 40% central infrastructure co-grant"}
-
-#### Verified Quotes on Record:
-- ${newsroomData?.quotes?.[0]?.quote ? `"${newsroomData.quotes[0].quote}" — ${newsroomData.quotes[0].speaker}` : "Official on-the-record statement verified."}
-
-#### Missing Information Flags (To Verify Before Publication):
-- [ ] Confirm exact contractor procurement timeline for phase 1 utility diversions.
-- [ ] Verify precise pedestrian detour routes during initial street excavations.`,
-    };
-  }
-
-  if (action === "ad_headlines") {
-    return {
-      action,
-      result: `1. Where 156 Years of Scholarship Inspires Tomorrow’s Leaders
-2. Not Just an Education. A Foundation for Life.
-3. The Mind Disciplined. The Future Unlocked.
-4. Discover the Standard of Excellence in Modern Education
-5. Cultivating Curiosity, Character, and Courage Since 1871
-6. Open Mornings Now Booking: Experience the Difference
-7. Proven Pathways to World-Class Universities
-8. Scholarships and Bursaries: Nurturing Merit and Ambition
-9. Tradition Meets Scientific Inquiry at St. Jude’s
-10. Your Child’s Journey to Leadership Begins Here`,
-    };
-  }
-
-  if (action === "ad_taglines") {
-    return {
-      action,
-      result: `1. Truth. Intellect. Integrity.
-2. Nurturing Curious Minds.
-3. Excellence in Action.
-4. An Enduring Foundation.
-5. Inspiring Purpose Since 1871.
-6. Disciplined Minds, Unlocked Futures.`,
-    };
-  }
-
-  if (action === "humanise") {
-    // Advanced cadence humanization preserving every single fact, date, quote and name
-    const paragraphs = targetText.split(/\n\n+/);
-    const humanised = paragraphs.map((para: string) => {
-      const sentences = para.split(/(?<=[.!?])\s+/);
-      return sentences.map((s: string) => {
-        let cleaned = s
-          .replace(/^Moreover,\s*/i, "")
-          .replace(/^Furthermore,\s*/i, "")
-          .replace(/^In conclusion,\s*/i, "")
-          .replace(/^It is important to remember that\s*/i, "")
-          .replace(/^It is worth noting that\s*/i, "")
-          .replace(/a rich tapestry of/gi, "a diverse array of")
-          .replace(/delve into/gi, "examine")
-          .replace(/stands as a testament to/gi, "reflects");
-
-        // Capitalize first letter if stripped
-        if (cleaned.length > 0) {
-          cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-        }
-        return cleaned;
-      }).join(" ");
-    }).join("\n\n");
-
-    return { action, result: humanised || targetText };
-  }
-
-  if (action === "generate_full_draft") {
-    if (category === "news") {
-      return {
-        action,
-        result: `${newsroomData?.dateline || "WESTMINSTER, 28 SEP — "}The Metropolitan Council voted unanimously on Monday night to ratify the long-debated £48.5 million Riverfront Tramway Extension, ending four years of legislative deadlock and paving the way for construction to break ground in early March.
-
-The 4.2-kilometre zero-emission transit line will restore rail service along the historic cobblestone wharves for the first time since 1958, bridging the gap between the Old Town terminal and the burgeoning university district. Once operational in late 2027, the corridor is projected to transport 34,000 riders daily and divert more than 6,000 private vehicles from congested riverside thoroughfares.
-
-"Tonight’s vote proves that a city does not need to pave over its irreplaceable historic texture to deliver rapid, clean transit for the next century," said Marcus Thorne, Chairman of the Council Transport Committee, addressing reporters following the 11–0 roll-call vote.
-
-A critical breakthrough came after civil engineering consultants resolved longstanding conservation disputes regarding the fragile 180-year-old river revetment wall. Under the finalized engineering blueprint, tracks will rest on specialized sub-ballast elastomer trays that isolate acoustic and physical vibrations from surrounding historic brick structures.
-
-"By embedding elastomer dampening trays beneath the heritage rails, we protect the fragile 180-year-old river wall foundations from cyclic resonant vibrations," confirmed Elena Rostova, Chief Engineer with the Riverfront Transit Authority.
-
-Public design consultations regarding platform accessibility ramps, tree canopy protection, and integrated bicycle corridors will open this Thursday at 17:30 in the City Chambers.`,
-      };
-    }
-
-    if (category === "advertising") {
-      return {
-        action,
-        result: `WHERE 156 YEARS OF SCHOLARSHIP INSPIRES TOMORROW’S LEADERS.
-
-Admissions Open for Kindergarten through Sixth Form — Academic Year 2027–28.
-
-For more than a century and a half, St. Jude’s Collegiate Academy has stood at the crossroads of academic rigor and character formation. In an accelerating world, we ground young scholars in enduring intellectual habits—fostering analytical clarity in the laboratory, eloquent expression in the humanities, and courage in civic life.
-
-With a 1:9 faculty ratio, Olympic-grade athletics, and 98% first-choice university placement across Russell Group and global institutions, we do not merely prepare students for examinations; we prepare them for a life of purpose.
-
-KEY DISTINCTIONS:
-• 156 years of continuous academic heritage and moral stewardship
-• 1:9 faculty-to-student mentoring ratio
-• 14-acre central collegiate campus with state-of-the-art STEM pavilion
-• Generous means-tested bursaries and merit scholarships up to 100% of fees
-
-AUTUMN OPEN MORNING:
-Saturday, 17 October 2026 | 09:30 – 13:00
-Experience our vibrant classrooms, meet the Headmaster, and tour our historic grounds.
-
-RESERVE YOUR VISIT:
-Online: www.stjudesacademy.org/admissions
-Admissions Office: +44 (0) 20 7946 0192 | admissions@stjudesacademy.org
-The Admissions Registrar, St. Jude’s Close, Westminster SW1P 3PB
-
-St. Jude’s Collegiate Academy is a Registered Educational Charity No. 312849. Co-educational Day School for ages 4–18.`,
-      };
-    }
-
-    return {
-      action,
-      result: `# ${docTitle}
-
-${brief?.purpose || "A strategic investigation synthesizing core insights, empirical evidence, and actionable frameworks."}
-
-The foundation of lasting impact lies in rigorous precision. When communicating across professional domains, clarity is not merely an aesthetic choice—it is a functional imperative. By anchoring analysis in concrete evidence rather than speculative assertion, practitioners establish the credibility necessary to guide collective action.
-
-First, consider the structural context. Prevailing assumptions frequently overlook the friction between institutional legacy and emerging demands. Where conventional models prioritize immediate velocity, sustainable architectures require intentional pacing, resilience, and verified benchmarks.
-
-Second, the human dimension remains decisive. No framework succeeds in a vacuum; its effectiveness depends on the clarity with which stakeholders understand their responsibilities and the shared objectives that unite them.
-
-${brief?.callToAction ? `\n\n${brief.callToAction}` : ""}`,
-    };
-  }
-
-  if (action === "continue" || action === "write_next_paragraph") {
-    return {
-      action,
-      result: `Furthermore, examining the empirical data reveals a consistent correlation between transparent documentation and operational resilience. When institutions clearly articulate both their foundational principles and their concrete execution milestones, stakeholder trust increases measurably.\n\nLooking forward, the next phase demands sustained attention to implementation standards. By establishing rigorous checkpoints and open feedback loops, leaders can ensure that the initial vision translates into enduring, measurable outcomes.`,
-    };
-  }
-
-  if (action === "expand" || action === "expand_selection" || action === "expand_paragraph" || action === "expand_section" || action === "expand_document") {
-    return {
-      action,
-      result: `${targetText}\n\nTo substantiate this premise, consider how contemporary practitioners navigate competing priorities. When empirical data is combined with clear contextual narrative, complex challenges become manageable operational steps. This synthesis ensures that every participant understands not only the overarching objective, but also the specific criteria by which progress is evaluated.`,
-    };
-  }
-
-  if (action === "shorten" || action === "shorten_selection" || action === "shorten_paragraph" || action === "condense_section" || action === "shorten_document") {
-    const sentences = targetText.split(/(?<=[.!?])\s+/);
-    const tightened = sentences.filter((_, idx) => idx % 2 === 0).join(" ");
-    return {
-      action,
-      result: tightened || targetText,
-    };
-  }
-
-  if (action === "rewrite" || action === "rewrite_selection" || action === "rewrite_paragraph" || action === "rewrite_section") {
-    const sentences = targetText.split(/(?<=[.!?])\s+/);
-    const rewritten = sentences.map((s: string) => {
-      let cleaned = s.replace(/^(In addition|Furthermore|Moreover|In order to|It should be noted that),\s*/i, "").trim();
-      if (!cleaned) return s;
-      return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-    }).join(" ");
-    return {
-      action,
-      result: rewritten || targetText,
-    };
-  }
-
-  if (action === "strengthen_paragraph") {
-    return {
-      action,
-      result: `${targetText} Decisive action here establishes an unassailable benchmark for subsequent progress.`,
-    };
-  }
-
-  if (action === "strengthen_opening") {
-    return {
-      action,
-      result: `At the intersection of enduring principle and immediate necessity lies a decisive choice: ${targetText.replace(/^[#\s]+/, '')}`,
-    };
-  }
-
-  if (action === "strengthen_ending") {
-    return {
-      action,
-      result: `${targetText}\n\nIn conclusion, the path forward is unmistakably clear: rigorous execution today secures enduring distinction tomorrow.`,
-    };
-  }
-
-  if (action === "improve_clarity") {
-    return {
-      action,
-      result: targetText
-        .replace(/in order to/gi, "to")
-        .replace(/utilize/gi, "use")
-        .replace(/a majority of/gi, "most")
-        .replace(/at this point in time/gi, "currently")
-        .replace(/due to the fact that/gi, "because"),
-    };
-  }
-
-  if (action === "improve_flow" || action === "improve_section_flow" || action === "improve_overall_flow") {
-    const sentences = targetText.split(/(?<=[.!?])\s+/);
-    const smoothed = sentences.map((s: string, idx: number) => {
-      if (idx === 1 && !s.startsWith("However") && !s.startsWith("Consequently")) {
-        return `Crucially, ${s.charAt(0).toLowerCase()}${s.slice(1)}`;
-      }
-      return s;
-    }).join(" ");
-    return {
-      action,
-      result: smoothed || targetText,
-    };
-  }
-
-  if (action === "change_tone") {
-    return {
-      action,
-      result: targetText
-        .replace(/really good/gi, "exceptional")
-        .replace(/a lot of/gi, "substantial")
-        .replace(/big/gi, "significant"),
-    };
-  }
-
-  if (action === "generate_alternatives") {
-    return {
-      action,
-      result: `1. Direct & Authoritative: ${targetText}\n\n2. Analytical & Nuanced: By systematically examining these fundamentals, the imperative becomes evident: ${targetText.toLowerCase()}\n\n3. Dynamic & Impact-Driven: At the decisive core of this matter: ${targetText}`,
-    };
-  }
-
-  if (action === "generate_alternative_draft") {
-    return {
-      action,
-      result: `# ${docTitle} (Alternative Perspective)\n\nIn an evolving landscape where traditional paradigms encounter novel challenges, the decisive differentiator is strategic intentionality.\n\n${targetText}`,
-    };
-  }
-
-  if (action === "editorial_polish") {
-    return {
-      action,
-      result: targetText
-        .replace(/\s+/g, " ")
-        .replace(/,\s*,/g, ",")
-        .trim(),
-    };
-  }
-
-  if (action === "check_consistency") {
-    return {
-      action,
-      result: `Editorial Audit: All named entities, factual citations, and tonal attributes demonstrate internal consistency.\n\n${targetText}`,
-    };
-  }
-
-  if (action === "add_supporting_points") {
-    return {
-      action,
-      result: `${targetText}\n\n• Verified Empirical Validation: Independent institutional audits demonstrate consistent outperformance against baseline benchmarks.\n• Long-Term Value Accrual: Dedicated investment in these capabilities compound over multi-year operational horizons.`,
-    };
-  }
-
-  if (action === "convert_to_bullet_points") {
-    const sentences = targetText.split(/(?<=[.!?])\s+/).filter(Boolean);
-    const bullets = sentences.map((s: string) => `• ${s.trim()}`).join("\n");
-    return {
-      action,
-      result: bullets || targetText,
-    };
-  }
-
-  if (action === "convert_bullets_to_prose") {
-    const cleaned = targetText
-      .split("\n")
-      .map((l: string) => l.replace(/^[•\-\*\d+\.]\s*/, "").trim())
-      .filter(Boolean)
-      .join(" ");
-    return {
-      action,
-      result: cleaned || targetText,
-    };
-  }
-
-  if (action === "summarise") {
-    return {
-      action,
-      result: `Executive Summary: This piece examines ${docTitle}, highlighting the crucial balance between established standards and forward-looking execution. It provides actionable recommendations for stakeholders and emphasizes verified benchmarks.`,
-    };
-  }
-
-  if (action === "fix_grammar") {
-    return {
-      action,
-      result: targetText.replace(/\s+/g, " ").trim(),
-    };
-  }
-
-  return {
-    action,
-    result: `Draft updated successfully with verified editorial standards.`,
-  };
-}
 app.post("/api/chapter-studio/author-components", async (req, res) => {
   try {
     const board = req.body.board || req.body.systemId || "CISCE";
@@ -5040,6 +4652,174 @@ OUTPUT FORMAT: Return STRICT JSON matching this schema:
   } catch (error: any) {
     console.error("Composition prompt generation error:", error);
     return res.status(500).json({ error: error.message || "Failed to generate composition prompt." });
+  }
+});
+
+// ============================================================================
+// AI RESEARCH ASSISTANT — draft a structured research note from a query
+// ============================================================================
+app.post("/api/gemini/research-assist", async (req, res) => {
+  try {
+    const { query, projectTitle = "Untitled", workspaceType = "novel", activeChapterTitle = "", authorContext = "" } = req.body || {};
+    if (!query || typeof query !== "string" || !query.trim()) {
+      return res.status(400).json({ error: "Research query is required." });
+    }
+    const ai = getGenAI();
+    if (!ai) return res.status(503).json({ error: "AI service unavailable." });
+
+    const workspaceLabel = workspaceType === 'content' ? 'a professional content piece' : workspaceType === 'academic' ? 'an academic textbook' : 'a book manuscript';
+
+    const systemPrompt = `You are a meticulous research assistant for an author working on ${workspaceLabel}.
+Project: "${projectTitle}"
+${activeChapterTitle ? `Active chapter: "${activeChapterTitle}"` : ''}
+${authorContext ? `Author context: ${authorContext}` : ''}
+
+TASK: Research the following query and produce a structured research note.
+
+QUERY: "${query}"
+
+CRITICAL RULES:
+- British English.
+- Do NOT invent specific dates, names, statistics, or quotes. If uncertain, insert [Verify: ...] markers.
+- Content should be 150-400 words of clear paragraphs (no markdown headings, no asterisks, no bullet characters).
+- Prefer concrete sensory, technical, and historical detail.
+
+Return STRICT JSON only:
+{
+  "title": "Concise, specific note title, max 12 words",
+  "category": "Historical" | "Geographical" | "Scientific & Technical" | "Material & Sensory" | "Literary Reference",
+  "tags": ["tag1", "tag2", "tag3"],
+  "content": "The research content, 150-400 words.",
+  "sourceSearchTerms": ["search phrase 1", "search phrase 2"],
+  "followUpQuestions": ["question 1", "question 2"]
+}`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.8-flash",
+      contents: systemPrompt,
+      config: { temperature: 0.5, responseMimeType: "application/json" },
+    });
+
+    const raw = response.text?.trim() || "";
+    let parsed: any = null;
+    try { parsed = JSON.parse(raw); } catch {
+      const m = raw.match(/\{[\s\S]*\}/);
+      if (m) { try { parsed = JSON.parse(m[0]); } catch {} }
+    }
+    if (!parsed || !parsed.title || !parsed.content) {
+      return res.status(502).json({ error: "AI returned an invalid research draft." });
+    }
+    return res.json({
+      title: String(parsed.title).slice(0, 200),
+      category: parsed.category || "Historical",
+      tags: Array.isArray(parsed.tags) ? parsed.tags.slice(0, 8).map(String) : [],
+      content: String(parsed.content),
+      sourceSearchTerms: Array.isArray(parsed.sourceSearchTerms) ? parsed.sourceSearchTerms.slice(0, 6).map(String) : [],
+      followUpQuestions: Array.isArray(parsed.followUpQuestions) ? parsed.followUpQuestions.slice(0, 6).map(String) : [],
+    });
+  } catch (err: any) {
+    console.error("Research assist error:", err?.message || err);
+    return res.status(500).json({ error: err?.message || "Research assist failed." });
+  }
+});
+
+// ============================================================================
+// AI RESEARCH ARTICLE SYNTHESIS — turn collected research into a full article
+// ============================================================================
+app.post("/api/gemini/research-article", async (req, res) => {
+  try {
+    const {
+      title = "Research Article",
+      targetWordCount = 1200,
+      tone = "Objective, fact-centred journalistic style",
+      audience = "General readers",
+      instructions = "",
+      notes = [],
+      sources = [],
+      claims = [],
+      quotes = [],
+    } = req.body || {};
+
+    const ai = getGenAI();
+    if (!ai) return res.status(503).json({ error: "AI service unavailable." });
+
+    const sourceLines = sources.map((s: any, i: number) =>
+      `${i + 1}. ${s.title}${s.author ? ` — ${s.author}` : ''}${s.publication ? ` (${s.publication})` : ''}${s.publicationDate ? `, ${s.publicationDate}` : ''}${s.url ? ` — ${s.url}` : ''}`
+    ).join('\n');
+
+    const noteLines = notes.map((n: any, i: number) =>
+      `${i + 1}. [${n.category}] ${n.title}\n   ${(n.content || '').slice(0, 500)}`
+    ).join('\n\n');
+
+    const claimLines = claims.map((c: any) => `- [${c.status} / ${c.confidence}] ${c.text}`).join('\n');
+
+    const quoteLines = quotes.map((q: any) =>
+      `- "${q.text}" — ${q.speaker}${q.speakerRole ? `, ${q.speakerRole}` : ''}${q.organisation ? ` (${q.organisation})` : ''}${q.date ? ` \u00b7 ${q.date}` : ''}`
+    ).join('\n');
+
+    const systemPrompt = `You are a senior research writer for a professional publication. Synthesise the provided research materials into a coherent, publication-ready article.
+
+CRITICAL RULES:
+- British English.
+- Use ONLY the factual claims, quotes, and source material provided. Do NOT invent facts, names, dates, statistics, or quotes.
+- Where the research is thin, insert [Verify: ...] markers rather than guessing.
+- Structure: opening hook, 3-6 body sections with clear subheadings, closing synthesis.
+- Cite sources inline (e.g., "according to The Times of India, 2024").
+- Tone: ${tone}
+- Target audience: ${audience}
+- Target length: approximately ${targetWordCount} words.
+${instructions ? `- Additional instructions: ${instructions}` : ''}
+
+Return STRICT JSON only:
+{
+  "title": "Article title",
+  "standfirst": "One-sentence deck summarising the angle",
+  "sections": [
+    { "heading": "Section heading", "content": "Paragraph(s) of body copy..." }
+  ],
+  "keyTakeaways": ["Takeaway 1", "Takeaway 2", "Takeaway 3"],
+  "citationsUsed": ["Source 1 title", "Source 2 title"]
+}`;
+
+    const userPrompt = `RESEARCH MATERIALS
+==================
+
+TITLE: ${title}
+
+NOTES (${notes.length}):
+${noteLines || '(none)'}
+
+SOURCES (${sources.length}):
+${sourceLines || '(none)'}
+
+CLAIMS (${claims.length}):
+${claimLines || '(none)'}
+
+QUOTES (${quotes.length}):
+${quoteLines || '(none)'}
+
+==================
+Write the article now.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.8-flash",
+      contents: `${systemPrompt}\n\n${userPrompt}`,
+      config: { temperature: 0.6, responseMimeType: "application/json" },
+    });
+
+    const raw = response.text?.trim() || "";
+    let parsed: any = null;
+    try { parsed = JSON.parse(raw); } catch {
+      const m = raw.match(/\{[\s\S]*\}/);
+      if (m) { try { parsed = JSON.parse(m[0]); } catch {} }
+    }
+    if (!parsed || !Array.isArray(parsed.sections)) {
+      return res.status(502).json({ error: "AI returned an invalid article draft." });
+    }
+    return res.json(parsed);
+  } catch (err: any) {
+    console.error("Research article synthesis error:", err?.message || err);
+    return res.status(500).json({ error: err?.message || "Article synthesis failed." });
   }
 });
 

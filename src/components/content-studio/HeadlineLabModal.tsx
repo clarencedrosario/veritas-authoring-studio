@@ -12,7 +12,7 @@ import {
   TrendingUp,
   Award,
 } from 'lucide-react';
-import { HeadlineAlternativeItem } from '../../types';
+import { ContentDocument, HeadlineAlternativeItem } from '../../types';
 import { HEADLINE_LAB_CATEGORIES } from './constants';
 
 interface HeadlineLabModalProps {
@@ -21,6 +21,7 @@ interface HeadlineLabModalProps {
   currentHeadline: string;
   contentType: string;
   topic: string;
+  document: ContentDocument;
   savedHeadlines: HeadlineAlternativeItem[];
   onApplyHeadline: (headlineText: string) => void;
   onSaveHeadlines: (headlines: HeadlineAlternativeItem[]) => void;
@@ -33,6 +34,7 @@ export const HeadlineLabModal: React.FC<HeadlineLabModalProps> = ({
   currentHeadline,
   contentType,
   topic,
+  document,
   savedHeadlines,
   onApplyHeadline,
   onSaveHeadlines,
@@ -40,15 +42,8 @@ export const HeadlineLabModal: React.FC<HeadlineLabModalProps> = ({
 }) => {
   const [selectedFilter, setSelectedFilter] = useState<string>('All');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedHeadlines, setGeneratedHeadlines] = useState<HeadlineAlternativeItem[]>(() => {
-    if (savedHeadlines && savedHeadlines.length > 0) return savedHeadlines;
-    return [
-      { id: 'hl-init-1', headline: `${topic || 'Editorial Project'}: The Strategic Blueprint for Next-Generation Impact`, category: 'Informative', saved: true, score: 95 },
-      { id: 'hl-init-2', headline: `Why ${topic || 'This Development'} Changes Everything We Know`, category: 'Curiosity', saved: false, score: 91 },
-      { id: 'hl-init-3', headline: `Inside the Landmark Decision That Will Define Tomorrow`, category: 'Newspaper', saved: false, score: 89 },
-      { id: 'hl-init-4', headline: `Excellence Tested: How Leaders Are Navigating Change`, category: 'Professional', saved: false, score: 86 },
-    ];
-  });
+  const [generatedHeadlines, setGeneratedHeadlines] = useState<HeadlineAlternativeItem[]>(savedHeadlines || []);
+  const [requestError, setRequestError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
 
@@ -56,6 +51,7 @@ export const HeadlineLabModal: React.FC<HeadlineLabModalProps> = ({
 
   const handleGenerateHeadlines = async (filterCategory: string) => {
     setIsGenerating(true);
+    setRequestError(null);
     try {
       const res = await fetch('/api/gemini/content-studio', {
         method: 'POST',
@@ -64,28 +60,60 @@ export const HeadlineLabModal: React.FC<HeadlineLabModalProps> = ({
           action: 'headline_lab_generate',
           title: currentHeadline || topic,
           contentType,
+          targetText: document.bodyContent,
+          currentText: document.bodyContent,
           headlineCategory: filterCategory === 'All' ? undefined : filterCategory,
-          brief: { topic, targetAudience: 'Broad readership' },
+          brief: {
+            topic: document.topic,
+            purpose: document.purpose,
+            targetAudience: document.targetAudience,
+            publicationOrPlatform: document.publicationOrPlatform,
+            desiredLength: document.desiredLength,
+            targetWordCount: document.targetWordCount,
+            tone: document.tone,
+            language: document.language,
+            deadline: document.deadline,
+            primaryKeyword: document.primaryKeyword,
+            secondaryKeywords: document.secondaryKeywords,
+            importantFacts: document.importantFacts,
+            keyMessage: document.keyMessage,
+            callToAction: document.callToAction,
+            referenceMaterial: document.referenceMaterial,
+            authorNotes: document.authorNotes,
+            aiInstructions: document.aiInstructions,
+            thesisStatement: document.thesisStatement,
+          },
+          newsroomData: document.newsroom,
+          adSpecData: document.adSpec,
+          pressReleaseData: document.pressRelease,
+          socialMediaData: document.socialMedia,
+          schoolNoticeData: document.schoolNotice,
+          contentTypeInstructions: document.contentTypeInstructions,
+          attachedResearch: document.referenceMaterial,
+          toneConfig: document.toneConfig,
         }),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.data?.headlines && Array.isArray(data.data.headlines)) {
-          const formatted: HeadlineAlternativeItem[] = data.data.headlines.map(
-            (item: any, idx: number) => ({
-              id: `hl-gen-${Date.now()}-${idx}`,
-              headline: item.headline || item,
-              category: (item.category as any) || filterCategory || 'Creative',
-              saved: false,
-              score: item.score || 85 + (idx % 10),
-            })
-          );
-          setGeneratedHeadlines(formatted);
-        }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || `Provider request failed with HTTP ${res.status}.`);
       }
+      if (!Array.isArray(data.data?.headlines)) {
+        throw new Error(data.result
+          ? `The provider returned an unstructured headline response: ${data.result}`
+          : 'The provider returned no headline alternatives.');
+      }
+      const formatted: HeadlineAlternativeItem[] = data.data.headlines.map((item: any, idx: number) => ({
+        id: `hl-gen-${Date.now()}-${idx}`,
+        headline: item.headline || item,
+        category: item.category || filterCategory || 'Creative',
+        saved: false,
+        score: typeof item.score === 'number' ? item.score : undefined,
+      }));
+      setGeneratedHeadlines(formatted);
     } catch (err) {
       console.error(err);
+      setRequestError(err instanceof Error ? err.message : 'Headline request failed.');
     } finally {
       setIsGenerating(false);
     }
@@ -112,6 +140,7 @@ export const HeadlineLabModal: React.FC<HeadlineLabModalProps> = ({
     );
     setGeneratedHeadlines(updated);
     setEditingId(null);
+    onSaveHeadlines(updated.filter((headline) => headline.saved));
   };
 
   const handleUseHeadline = (headline: string) => {
@@ -195,6 +224,10 @@ export const HeadlineLabModal: React.FC<HeadlineLabModalProps> = ({
 
         {/* Headline Alternatives Cards */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
+          {requestError && <div role="alert" className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-300 text-xs">Headline request failed: {requestError}</div>}
+          {filteredItems.length === 0 && !requestError && (
+            <div className="py-12 text-center text-sm text-[#71685E]">No saved headlines yet. Generate alternatives to compare them here.</div>
+          )}
           {filteredItems.map((item) => (
             <div
               key={item.id}

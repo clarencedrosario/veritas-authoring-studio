@@ -137,7 +137,7 @@ export const AiWritingMenu: React.FC<AiWritingMenuProps> = ({
 
           {/* Contextual Action List Based On Resolved Scope */}
           <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
-            {/* 1. SELECTION SCOPE */}
+            {/* Scope-specific actions always operate on the resolved target range. */}
             {scope === 'selection' && (
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-[10px] font-mono uppercase font-bold text-[#9A7438] dark:text-[#C29A52] px-1">
@@ -153,14 +153,13 @@ export const AiWritingMenu: React.FC<AiWritingMenuProps> = ({
                 ) : (
                   <div className="grid grid-cols-2 gap-1">
                     {[
-                      { key: 'rewrite_selection', label: 'Rewrite Selection' },
-                      { key: 'expand_selection', label: 'Expand Selection' },
-                      { key: 'shorten_selection', label: 'Shorten Selection' },
+                      { key: 'rewrite_selection', label: 'Rewrite' },
+                      { key: 'expand_selection', label: 'Expand' },
+                      { key: 'shorten_selection', label: 'Shorten' },
                       { key: 'improve_clarity', label: 'Improve Clarity' },
                       { key: 'improve_flow', label: 'Improve Flow' },
-                      { key: 'humanise', label: 'Humanise Selection' },
-                      { key: 'change_tone', label: 'Change Tone' },
-                      { key: 'fix_grammar', label: 'Fix Grammar' },
+                      { key: 'strengthen_opening', label: 'Strengthen Opening' },
+                      { key: 'strengthen_ending', label: 'Strengthen Ending' },
                       { key: 'generate_alternatives', label: 'Generate Alternatives' },
                     ].map((act) => (
                       <button
@@ -185,14 +184,15 @@ export const AiWritingMenu: React.FC<AiWritingMenuProps> = ({
                 </div>
                 <div className="grid grid-cols-2 gap-1">
                   {[
-                    { key: 'rewrite_paragraph', label: 'Rewrite Paragraph' },
-                    { key: 'expand_paragraph', label: 'Expand Paragraph' },
-                    { key: 'shorten_paragraph', label: 'Shorten Paragraph' },
+                    { key: 'rewrite_paragraph', label: 'Rewrite' },
+                    { key: 'expand_paragraph', label: 'Expand' },
+                    { key: 'shorten_paragraph', label: 'Shorten' },
                     { key: 'improve_clarity', label: 'Improve Clarity' },
                     { key: 'improve_flow', label: 'Improve Flow' },
-                    { key: 'humanise', label: 'Humanise Paragraph' },
-                    { key: 'strengthen_paragraph', label: 'Strengthen Paragraph' },
-                    { key: 'fix_grammar', label: 'Fix Grammar' },
+                    { key: 'strengthen_opening', label: 'Strengthen Opening' },
+                    { key: 'strengthen_ending', label: 'Strengthen Ending' },
+                    { key: 'generate_alternatives', label: 'Generate Alternatives' },
+                    { key: 'write_next_paragraph', label: 'Write Next Paragraph' },
                   ].map((act) => (
                     <button
                       key={act.key}
@@ -215,14 +215,15 @@ export const AiWritingMenu: React.FC<AiWritingMenuProps> = ({
                 </div>
                 <div className="grid grid-cols-2 gap-1">
                   {[
-                    { key: 'rewrite_section', label: 'Rewrite Section' },
-                    { key: 'expand_section', label: 'Expand Section' },
-                    { key: 'condense_section', label: 'Condense Section' },
-                    { key: 'improve_section_flow', label: 'Improve Section Flow' },
+                    { key: 'rewrite_section', label: 'Rewrite' },
+                    { key: 'expand_section', label: 'Expand' },
+                    { key: 'condense_section', label: 'Shorten' },
+                    { key: 'improve_section_flow', label: 'Improve Flow' },
+                    { key: 'improve_clarity', label: 'Improve Clarity' },
                     { key: 'strengthen_opening', label: 'Strengthen Opening' },
                     { key: 'strengthen_ending', label: 'Strengthen Ending' },
-                    { key: 'humanise', label: 'Humanise Section' },
-                    { key: 'add_supporting_points', label: 'Add Supporting Points' },
+                    { key: 'generate_alternatives', label: 'Generate Alternatives' },
+                    { key: 'write_next_paragraph', label: 'Write Next Paragraph' },
                   ].map((act) => (
                     <button
                       key={act.key}
@@ -258,13 +259,24 @@ export const AiWritingMenu: React.FC<AiWritingMenuProps> = ({
                     <span className="font-medium">Continue Writing</span>
                     <span className="text-[10px] text-[#71685E]">At Caret</span>
                   </button>
+                  <button
+                    onClick={() => handleActionClick('write_next_paragraph')}
+                    className="w-full text-left p-2 rounded-xl hover:bg-[#EDE4D6] dark:hover:bg-[#2b101c] flex items-center justify-between text-[#35101F] dark:text-[#F6F0E7]"
+                  >
+                    <span className="font-medium">Write Next Paragraph</span>
+                    <span className="text-[10px] text-[#71685E]">At Caret</span>
+                  </button>
                 </div>
                 <div className="grid grid-cols-2 gap-1 pt-1 border-t border-[#CBBEAC]/40 dark:border-[#4d1e2e]">
                   {[
+                    { key: 'rewrite', label: 'Rewrite' },
+                    { key: 'expand', label: 'Expand' },
+                    { key: 'shorten', label: 'Shorten' },
+                    { key: 'improve_clarity', label: 'Improve Clarity' },
                     { key: 'improve_overall_flow', label: 'Improve Overall Flow' },
-                    { key: 'humanise', label: 'Humanise Entire Piece' },
-                    { key: 'shorten_document', label: 'Shorten Document' },
-                    { key: 'expand_document', label: 'Expand Document' },
+                    { key: 'strengthen_opening', label: 'Strengthen Opening' },
+                    { key: 'strengthen_ending', label: 'Strengthen Ending' },
+                    { key: 'generate_alternatives', label: 'Generate Alternatives' },
                     { key: 'editorial_polish', label: 'Editorial Polish' },
                     { key: 'check_consistency', label: 'Check Consistency' },
                     { key: 'generate_alternative_draft', label: 'Generate Alternative Draft' },

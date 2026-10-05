@@ -37,19 +37,15 @@ export const AuthorVoiceModal: React.FC<AuthorVoiceModalProps> = ({
   const [punctuationHabits, setPunctuationHabits] = useState(voiceProfile?.punctuationHabits ?? 'Frequent em-dashes and occasional parentheticals');
   const [narrativeDistance, setNarrativeDistance] = useState(voiceProfile?.narrativeDistance ?? 'Close Objective / Engaged Observer');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [characteristics, setCharacteristics] = useState<string[]>(
-    voiceProfile?.learnedCharacteristics ?? [
-      'Cadence: Alternates brisk assertions with reflective clauses',
-      'Tone: Authoritative, scholarly yet accessible',
-      'Punctuation: Uses em-dashes to frame cognitive shifts',
-    ]
-  );
+  const [characteristics, setCharacteristics] = useState<string[]>(voiceProfile?.learnedCharacteristics ?? []);
+  const [requestError, setRequestError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
   const handleAnalyzeSample = async () => {
     if (!sampleText.trim()) return;
     setIsAnalyzing(true);
+    setRequestError(null);
 
     try {
       const res = await fetch('/api/gemini/content-studio', {
@@ -62,22 +58,21 @@ export const AuthorVoiceModal: React.FC<AuthorVoiceModalProps> = ({
         }),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.data) {
-          const profile = data.data;
-          if (profile.sentenceRhythm) setSentenceRhythm(profile.sentenceRhythm);
-          if (profile.vocabularyLevel) setVocabularyLevel(profile.vocabularyLevel);
-          if (profile.preferredParagraphLength) setPreferredParagraphLength(profile.preferredParagraphLength);
-          if (profile.degreeOfFormality) setDegreeOfFormality(profile.degreeOfFormality);
-          if (profile.punctuationHabits) setPunctuationHabits(profile.punctuationHabits);
-          if (profile.narrativeDistance) setNarrativeDistance(profile.narrativeDistance);
-          if (profile.learnedCharacteristics) setCharacteristics(profile.learnedCharacteristics);
-          setEnabled(true);
-        }
-      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Provider request failed with HTTP ${res.status}.`);
+      if (!data.data) throw new Error('The provider returned no voice profile.');
+      const profile = data.data;
+      if (profile.sentenceRhythm) setSentenceRhythm(profile.sentenceRhythm);
+      if (profile.vocabularyLevel) setVocabularyLevel(profile.vocabularyLevel);
+      if (profile.preferredParagraphLength) setPreferredParagraphLength(profile.preferredParagraphLength);
+      if (profile.degreeOfFormality) setDegreeOfFormality(profile.degreeOfFormality);
+      if (profile.punctuationHabits) setPunctuationHabits(profile.punctuationHabits);
+      if (profile.narrativeDistance) setNarrativeDistance(profile.narrativeDistance);
+      if (profile.learnedCharacteristics) setCharacteristics(profile.learnedCharacteristics);
+      setEnabled(true);
     } catch (err) {
       console.error(err);
+      setRequestError(err instanceof Error ? err.message : 'Voice analysis request failed.');
     } finally {
       setIsAnalyzing(false);
     }
@@ -179,6 +174,7 @@ export const AuthorVoiceModal: React.FC<AuthorVoiceModalProps> = ({
                 <span>Extract Voice Characteristics</span>
               </button>
             </div>
+            {requestError && <div role="alert" className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-300 text-xs">Voice analysis failed: {requestError}</div>}
           </div>
 
           {/* Extracted Characteristics */}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   BookOpen,
   Search,
@@ -20,14 +20,19 @@ import {
   Layers,
   ArrowRight,
 } from 'lucide-react';
-import { NovelProject, ResearchNote, Character, CodexEntry, ContentWritingProject } from '../types';
+import { NovelProject, ResearchNote, ResearchSource, ResearchClaim, ResearchPerson, ResearchQuote, Character, CodexEntry, ContentWritingProject } from '../types';
 import { WorkspaceType } from './NavigationRail';
+import { ResearchWorkbench, WorkbenchSection } from './research/ResearchWorkbench';
 
 interface ResearchViewProps {
   project: NovelProject;
   contentProject?: ContentWritingProject;
   activeWorkspace?: WorkspaceType;
   onUpdateResearchNotes: (notes: ResearchNote[]) => void;
+  onUpdateResearchSources: (sources: ResearchSource[]) => void;
+  onUpdateResearchClaims: (claims: ResearchClaim[]) => void;
+  onUpdateResearchPeople: (people: ResearchPerson[]) => void;
+  onUpdateResearchQuotes: (quotes: ResearchQuote[]) => void;
   isDarkMode: boolean;
   onNavigateToScene?: (chapterId: string, sceneId: string) => void;
   onNavigateToCharacter?: (characterId: string) => void;
@@ -52,6 +57,10 @@ export const ResearchView: React.FC<ResearchViewProps> = ({
   contentProject,
   activeWorkspace,
   onUpdateResearchNotes,
+  onUpdateResearchSources,
+  onUpdateResearchClaims,
+  onUpdateResearchPeople,
+  onUpdateResearchQuotes,
   isDarkMode,
   onNavigateToScene,
   onNavigateToCharacter,
@@ -68,7 +77,23 @@ export const ResearchView: React.FC<ResearchViewProps> = ({
   const [editFormData, setEditFormData] = useState<Partial<ResearchNote>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const notes = project.researchNotes || [];
+  const [activeSection, setActiveSection] = useState<WorkbenchSection | 'notes'>('notes');
+
+  const notes = activeWorkspace === 'content'
+    ? contentProject?.researchNotes || []
+    : project.researchNotes || [];
+  const sources = activeWorkspace === 'content'
+    ? contentProject?.researchSources || []
+    : project.researchSources || [];
+  const claims = activeWorkspace === 'content'
+    ? contentProject?.researchClaims || []
+    : project.researchClaims || [];
+  const people = activeWorkspace === 'content'
+    ? contentProject?.researchPeople || []
+    : project.researchPeople || [];
+  const quotes = activeWorkspace === 'content'
+    ? contentProject?.researchQuotes || []
+    : project.researchQuotes || [];
   const characters = project.characters || [];
   const codexEntries = project.codexEntries || [];
   const chapters = project.chapters || [];
@@ -84,6 +109,12 @@ export const ResearchView: React.FC<ResearchViewProps> = ({
   });
 
   const activeNote = notes.find((n) => n.id === activeNoteId) || filteredNotes[0];
+
+  useEffect(() => {
+    if (!notes.some((note) => note.id === activeNoteId)) {
+      setActiveNoteId(notes[0]?.id || '');
+    }
+  }, [activeNoteId, notes]);
 
   const handleStartCreate = () => {
     const newNote: ResearchNote = {
@@ -174,7 +205,34 @@ export const ResearchView: React.FC<ResearchViewProps> = ({
         </div>
       </header>
 
+      {/* Workbench tab bar */}
+      <nav className="shrink-0 border-b border-[#e8e8e6] dark:border-[#28292d] bg-white dark:bg-[#141517] px-4 flex items-center gap-1 overflow-x-auto">
+        {([
+          { id: 'notes', label: 'Notes', count: notes.length },
+          { id: 'overview', label: 'Overview', count: null },
+          { id: 'sources', label: 'Sources', count: sources.length },
+          { id: 'claims', label: 'Claims', count: claims.length },
+          { id: 'people', label: 'People', count: people.length },
+          { id: 'quotes', label: 'Quotes', count: quotes.length },
+          { id: 'assistant', label: 'AI Assistant', count: null },
+        ] as const).map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveSection(tab.id as WorkbenchSection | 'notes')}
+            className={`px-3 py-2.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
+              activeSection === tab.id
+                ? 'border-[#191918] dark:border-[#f4f4f5] text-[#191918] dark:text-[#f4f4f5]'
+                : 'border-transparent text-[#6e6e6b] dark:text-[#9ca3af] hover:text-[#191918] dark:hover:text-[#f4f4f5]'
+            }`}
+          >
+            {tab.label}
+            {tab.count !== null && <span className="ml-1.5 text-[10px] font-mono text-[#9c9c98]">{tab.count}</span>}
+          </button>
+        ))}
+      </nav>
+
       {/* Two-Column Author's Notebook Layout */}
+      {activeSection === 'notes' ? (
       <div className="flex-1 flex overflow-hidden">
         {/* Left Column: Note Index & Categories */}
         <div className="w-80 shrink-0 border-r border-[#e8e8e6] dark:border-[#28292d] bg-white dark:bg-[#141517] flex flex-col">
@@ -535,6 +593,22 @@ export const ResearchView: React.FC<ResearchViewProps> = ({
           )}
         </div>
       </div>
+      ) : (
+        <ResearchWorkbench
+          section={activeSection}
+          notes={notes}
+          sources={sources}
+          claims={claims}
+          people={people}
+          quotes={quotes}
+          onUpdateSources={onUpdateResearchSources}
+          onUpdateClaims={onUpdateResearchClaims}
+          onUpdatePeople={onUpdateResearchPeople}
+          onUpdateQuotes={onUpdateResearchQuotes}
+          onSaveNote={(note) => onUpdateResearchNotes([note, ...notes])}
+          isDarkMode={isDarkMode}
+        />
+      )}
     </div>
   );
 };
